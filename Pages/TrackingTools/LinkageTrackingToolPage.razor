@@ -1,0 +1,1234 @@
+﻿@page "/LinkageTrackingToolPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> BENEFICIARY LINKAGE TRACKING TOOL</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryLinkageTrackingToolGrid" TValue="BeneficiaryLinkageTrackingTool" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(BeneficiaryLinkageTrackingToolAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnBeneficiaryLinkageTrackingToolActionBegin" OnActionComplete="@OnBeneficiaryLinkageTrackingToolActionComplete" TValue="BeneficiaryLinkageTrackingTool"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="BeneficiaryLinkageTrackingToolContext">
+                    @{
+                        BeneficiaryLinkageTrackingToolReviewData = (BeneficiaryLinkageTrackingToolContext as BeneficiaryLinkageTrackingTool);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4 style="text-align:center;">USAID ICARE BENEFICIARY LINKAGE TRACKING TOOL</h4>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of IP/CSO</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="ChangeDistrict"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubcountyId)" Query="@DistricttQuery" Enabled="true" TItem="ASubcounty" TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Group Name </p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.GroupId)" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="AGroups" TValue="int?" ValueChange="OnGroupsChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4" hidden>
+                                    <p>Group Name</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.GroupCompositionCode)" PopupWidth="150%" Enabled="true" TItem="ViewGroupComposition" TValue="int?" DataSource="@GroupCompositionData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListTemplates TItem="ViewGroupComposition">
+                                            <ItemTemplate>
+                                                <div style="margin-left:10px;">
+                                                    <table>
+                                                        <tr>
+                                                            <td><p>Code:@((context as ViewGroupComposition).GroupCode)</p></td>
+                                                            <td><p style="margin-left:10px;">Name: @((context as ViewGroupComposition).GroupName)</p></td>
+                                                            <td><p style="margin-left:10px;">Cycle :@((context as ViewGroupComposition).GroupCycleDesc)</p></td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </ItemTemplate>
+                                            <ValueTemplate>
+                                                <div>
+                                                    <p style="margin-left:10px;">@((context as ViewGroupComposition).GroupCode) | @((context as ViewGroupComposition).GroupName) | @((context as ViewGroupComposition).GroupCycleDesc)</p>
+                                                </div>
+                                            </ValueTemplate>
+                                        </DropDownListTemplates>
+                                        <DropDownListFieldSettings Value="@nameof(ViewGroupComposition.GroupCompositionCode)" Text="@nameof(ViewGroupComposition.GroupName)" GroupBy="@(nameof(ViewGroupComposition.GroupTypeDesc))"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.LinkageDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Group Type</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.GroupTypeId)" Enabled="true" TItem="AGroupType" TValue="int?" DataSource="@GroupTypeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AGroupType.GroupTypeId)" Text="@nameof(AGroupType.GroupTypeDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (BeneficiaryLinkageTrackingToolReviewData.GroupTypeId == 10)
+                                {
+                                    <div class="form-group col-md-4">
+                                        <p>Other Group Type</p>
+                                        <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.OtherGroupType)" Enabled="true" Placeholder="Pleses enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                    </div>
+                                 }
+                                
+                                <div class="form-group col-md-4">
+                                    <p>Name of Service Provider</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ServiceProviderId)" Enabled="true" TItem="AServiceProvider" TValue="int?" DataSource="@ServiceProviderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)" Text="@nameof(AServiceProvider.ServiceProviderDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Service category</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.LinkageServiceCategoryId)" Enabled="true" TItem="ALinkageServiceCategory" TValue="int?" DataSource="@LinkageServiceCategoryData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ALinkageServiceCategory.LinkageServiceCategoryId)" Text="@nameof(ALinkageServiceCategory.LinkageServiceCategoryDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+
+                                @if (BeneficiaryLinkageTrackingToolReviewData.GroupCompositionCode!= null && BeneficiaryLinkageTrackingToolReviewData.GroupTypeId != null && BeneficiaryLinkageTrackingToolReviewData.LinkageDate != null && BeneficiaryLinkageTrackingToolReviewData.LinkageServiceCategoryId != null)
+                                {
+                                    <div class="form-group col-md-12">
+                                        <h4>Direct Beneficiaries</h4>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        @{
+                                            var mQuery = new Query().AddParams("GroupCompositionCode", BeneficiaryLinkageTrackingToolReviewData.GroupCompositionCode);
+                                            if (BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId > 0)
+                                            {
+                                                mQuery.AddParams("LinkageTrackingToolId", BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId);
+                                            }
+                                        }
+                                        <SfGrid @ref="VslaGroupShareOutDirectMemberGrid" TValue="spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult" AllowPaging="true" AllowFiltering="true" Query="@mQuery"
+                                                GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                            <SfDataManager AdaptorInstance="@typeof(LinkageTrackingToolDirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                <Template Context="VslaGroupDirectMemberContext">
+                                                    @{
+                                                        var VslaGroupDirectMemberReviewData = (VslaGroupDirectMemberContext as spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult);
+                                                        <div class="form-row" style="padding:10px;">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.LinkageTrackingToolDirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.LinkageTrackingToolId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    HH INDIVIDUAL CODE
+                                                                </p>
+                                                                <p>@VslaGroupDirectMemberReviewData.HouseHoldMemberCode</p>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    NAME
+                                                                </p>
+                                                                <p>@VslaGroupDirectMemberReviewData.FullName</p>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Sex
+                                                                </p>
+                                                                <p>@VslaGroupDirectMemberReviewData.GenderDescription</p>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Service Linked to </p>
+                                                                <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.ServiceLinkedToId)" Enabled="true" TItem="AServiceLinkedTo" TValue="int?" DataSource="@ServiceLinkedToData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                    <DropDownListFieldSettings Value="@nameof(AServiceLinkedTo.ServiceLinkedToId)" Text="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Received
+                                                                    Service? (Y/N)
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.ServiceReceived)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Cost of Item /Support (if Applicable)</p>
+                                                                @*<SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.IteamCost" Enabled="true"></SfNumericTextBox>*@
+                                                                <SfTextBox Multiline="false" @bind-Value="@VslaGroupDirectMemberReviewData.IteamCost" Enabled="true"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Details of Service Received
+                                                                    (Name Items, services and Goods received)
+                                                                </p>
+                                                                <SfTextBox Multiline="true" @bind-Value="@VslaGroupDirectMemberReviewData.ServiceRecievedDetail" Enabled="true"></SfTextBox>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </Template>
+                                            </GridEditSettings>
+                                            @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                            <GridEvents OnActionComplete="@TemplateActionComplete" OnActionBegin="@VslaGroupDirectMemberActionBegin" TValue="spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult"></GridEvents>
+                                            @*<GridEvents CellSaved="OnCellSaved" OnActionComplete="TemplateActionComplete" OnBatchSave="BatchSaveHandler" QueryCellInfo="QueryCellInfoHandler" TValue="CouncilofDecisionsCountry"></GridEvents>*@
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridColumns>
+                                                <GridColumn HeaderText="Manage Records" Width="80" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                    <GridCommandColumns>
+                                                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                    </GridCommandColumns>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.LinkageTrackingToolDirectMemberId) Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.HouseHoldMemberCode) Visible="true" HeaderText="Individual Code" Width="180"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.FullName) HeaderText="Name" Width="200"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.GenderDescription) HeaderText="Sex" Width="160"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.Age) HeaderText="Age" Width="140"></GridColumn>
+                                                <GridForeignColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.ServiceLinkedToId) Visible="true" HeaderText="Service Linked to" ForeignKeyField="@nameof(AServiceLinkedTo.ServiceLinkedToId)" ForeignKeyValue="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)" ForeignDataSource="@ServiceLinkedToData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.ServiceReceived) Visible="true" HeaderText="Received Service? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.IteamCost) Visible="true" HeaderText="Cost of Item /Support (if Applicable)" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult.ServiceRecievedDetail) Visible="true" HeaderText="Details of Service Received(Name Items, services and Goods received)" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                            </GridColumns>
+                                        </SfGrid>
+                                    </div>
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                    <div class="form-group col-md-12">
+                                        <h4>Indirect Beneficiaries</h4>
+                                    </div>
+                                    <div>
+                                        <p><b>Note:</b> All Indirect Beneficiaries should be given codes in this order.  Starting with the Indirect District Code (IBU), then Sub county code (01 for Budhaya), then VSLA+ group Code (starting V01), then HH Code (Starting with 1000 for every group) and Lastly the Individual Code (Starting with 01) e.g.<b>IBU-01-V01-1000-01</b>.  </p>
+                                        <p>In instances where there are two (2) or more indirect beneficiaries from the same Household, the last individual code should be changed e.g. <b>IBU-01-V01-1000-01</b> for One HH member then,<b>IBU-01-V01-1000-02</b>  for the next member and so on.   </p>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <SfGrid @ref="VslaGroupShareOutIndirectMemberGrid" TValue="spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult" AllowPaging="true" AllowFiltering="true" Query="@mQuery"
+                                                GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                            <SfDataManager AdaptorInstance="@typeof(LinkageTrackingToolIndirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                <Template Context="VslaGroupShareOutIndirectMemberContext">
+                                                    @{
+                                                        var VslaGroupShareOutIndirectMemberReviewData = (VslaGroupShareOutIndirectMemberContext as spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult);
+                                                        <div class="form-row" style="padding:10px;">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@VslaGroupShareOutIndirectMemberReviewData.LinkageTrackingToolId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@VslaGroupShareOutIndirectMemberReviewData.LinkageTrackingToolIndirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Indirect Member Code
+                                                                </p>
+                                                                <p>@VslaGroupShareOutIndirectMemberReviewData.IndirectMemberCode</p>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Name</p>
+                                                                <p>@VslaGroupShareOutIndirectMemberReviewData.MemberName</p>
+                                                            </div>
+                                                             <div class="form-group col-md-4">
+                                                                <p>Service Linked to </p>
+                                                                <SfDropDownList @bind-Value="@(VslaGroupShareOutIndirectMemberReviewData.ServiceLinkedToId)" Enabled="true" TItem="AServiceLinkedTo" TValue="int?" DataSource="@ServiceLinkedToData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                    <DropDownListFieldSettings Value="@nameof(AServiceLinkedTo.ServiceLinkedToId)" Text="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Received
+                                                                    Service? (Y/N)
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(VslaGroupShareOutIndirectMemberReviewData.ServiceReceived)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Cost of Item /Support (if Applicable)</p>
+                                                                @*<SfNumericTextBox @bind-Value="@VslaGroupShareOutIndirectMemberReviewData.IteamCost" Enabled="true"></SfNumericTextBox>*@
+                                                                <SfTextBox Multiline="false" @bind-Value="@VslaGroupShareOutIndirectMemberReviewData.IteamCost" Enabled="true"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Details of Service Received
+                                                                    (Name Items, services and Goods received)
+                                                                </p>
+                                                                <SfTextBox Multiline="true" @bind-Value="@VslaGroupShareOutIndirectMemberReviewData.ServiceRecievedDetail" Enabled="true"></SfTextBox>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </Template>
+                                            </GridEditSettings>
+                                            @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                            <GridEvents OnActionComplete="@VslaGroupShareOutIndirectMemberActionComplete" OnActionBegin="@VslaGroupShareOutIndirectMemberActionBegin" TValue="spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult"></GridEvents>
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridColumns>
+                                                <GridColumn HeaderText="Manage Records" Width="80" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                    <GridCommandColumns>
+                                                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                    </GridCommandColumns>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.LinkageTrackingToolIndirectMemberId) Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.IndirectMemberCode) Visible="true" HeaderText="Individual Code" Width="180"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.MemberName) HeaderText="Name " Width="200"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.GenderDescription) HeaderText="Sex" Width="160"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.Age) HeaderText="Age" Width="140"></GridColumn>
+                                                <GridForeignColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.ServiceLinkedToId) Visible="true" HeaderText="Service Linked to" ForeignKeyField="@nameof(AServiceLinkedTo.ServiceLinkedToId)" ForeignKeyValue="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)" ForeignDataSource="@ServiceLinkedToData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.ServiceReceived) Visible="true" HeaderText="Received Service? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.IteamCost) Visible="true" HeaderText="Cost of Item /Support (if Applicable)" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                <GridColumn Field=@nameof(spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult.ServiceRecievedDetail) Visible="true" HeaderText="Details of Service Received(Name Items, services and Goods received)" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                            </GridColumns>
+                                        </SfGrid>
+                                    </div>
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                }
+                                <div class="form-group col-md-4">
+                                    <p>Name & Contact of Person providing services</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.PersonProvidingService)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.TitlePersonProvidingService)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.DateProvidingService)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                <div class="form-group col-md-4">
+                                    <p>Submitted by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedTitle)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Reviewed by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewTitle)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveBeneficiaryLinkageTrackingToolBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelBeneficiaryLinkageTrackingToolBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingTool.LinkageTrackingToolId) HeaderText="Linkage Tracking Tool Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.ImplementingPartnerId) HeaderText="Implementing Partner" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingTool.LinkageDate) HeaderText="Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.GroupCompositionCode) HeaderText="Group Name" ForeignKeyField="@nameof(ViewGroupComposition.GroupCompositionCode)" ForeignKeyValue="@nameof(ViewGroupComposition.GroupName)" ForeignDataSource="@GroupCompositionData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.GroupTypeId) HeaderText=" Group Type" ForeignKeyField="@nameof(AGroupType.GroupTypeId)" ForeignKeyValue="@nameof(AGroupType.GroupTypeDesc)" ForeignDataSource="@GroupTypeData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.ServiceProviderId) HeaderText="Service Provider" ForeignKeyField="@nameof(AServiceProvider.ServiceProviderId)" ForeignKeyValue="@nameof(AServiceProvider.ServiceProviderDesc)" ForeignDataSource="@ServiceProviderData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingTool.LinkageServiceCategoryId) HeaderText="Service category" ForeignKeyField="@nameof(ALinkageServiceCategory.LinkageServiceCategoryId)" ForeignKeyValue="@nameof(ALinkageServiceCategory.LinkageServiceCategoryDesc)" ForeignDataSource="@LinkageServiceCategoryData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingTool.PersonProvidingService) HeaderText="Name of Person providing services" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingTool.SubmittedBy) HeaderText="Submitted By" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingTool.ReviewedBy) HeaderText="Reviewed By" Width="220"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+
+    SfGrid<BeneficiaryLinkageTrackingTool> BeneficiaryLinkageTrackingToolGrid;
+    private BeneficiaryLinkageTrackingTool BeneficiaryLinkageTrackingToolReviewData { get; set; }
+
+    SfGrid<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult> VslaGroupShareOutDirectMemberGrid;
+    List<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult> VslaGroupDirectMemberDatasource = new();
+
+    SfGrid<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult> VslaGroupShareOutIndirectMemberGrid;
+    List<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult> VslaGroupShareOutIndirectMemberDatasource = new();
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<AGroupPosition> GroupPositionData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<ViewGroupComposition> GroupCompositionData { get; set; }
+    List<AGroupCycle> GroupCycleData { get; set; }
+    List<AGroupType> GroupTypeData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<ALinkageServiceCategory> LinkageServiceCategoryData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AServiceLinkedTo> ServiceLinkedToData { get; set; }
+    List<AGroups> GroupsData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+    public Query DistricttQuery { get; set; } = null;
+
+    private async Task SaveBeneficiaryLinkageTrackingToolBtnClick()
+    {
+        await VslaGroupShareOutDirectMemberGrid.EndEditAsync();
+        await BeneficiaryLinkageTrackingToolGrid.EndEditAsync();
+    }
+    private async Task CancelBeneficiaryLinkageTrackingToolBtnClick()
+    {
+        await VslaGroupShareOutDirectMemberGrid.EndEditAsync();
+        await BeneficiaryLinkageTrackingToolGrid.CloseEditAsync();
+    }
+    private void OnGroupsChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AGroups> args)
+    {
+        if (args.ItemData != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                GroupCompositionData = db.ViewGroupComposition.Where(o => o.GroupId == args.Value).OrderBy(o => o.GroupCompositionCode).AsNoTracking().ToList();
+                var last = GroupCompositionData.LastOrDefault();
+                if (last != null)
+                {
+                    BeneficiaryLinkageTrackingToolReviewData.GroupCompositionCode = last.GroupCompositionCode;
+                    BeneficiaryLinkageTrackingToolReviewData.GroupTypeId = last.GroupTypeId;
+                }
+            }
+        }
+    }
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    GenderData = db.AGender.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+                    GroupPositionData = db.AGroupPosition.AsNoTracking().ToList();
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    GroupCompositionData = db.ViewGroupComposition.AsNoTracking().ToList();
+                    GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+                    GroupTypeData = db.AGroupType.AsNoTracking().ToList();
+                    ServiceProviderData = db.AServiceProvider.AsNoTracking().ToList();
+                    LinkageServiceCategoryData = db.ALinkageServiceCategory.AsNoTracking().ToList();
+                    YesNoData = db.AYesNo.AsNoTracking().ToList();
+                    ServiceLinkedToData = db.AServiceLinkedTo.AsNoTracking().ToList();
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    #region Graduation Checklist Header
+    public class BeneficiaryLinkageTrackingToolAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public BeneficiaryLinkageTrackingToolAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<BeneficiaryLinkageTrackingTool>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.BeneficiaryLinkageTrackingTool/*.Where(o => o.HouseHoldId == HouseHoldId)*/.ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<BeneficiaryLinkageTrackingTool>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryLinkageTrackingTool);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.BeneficiaryLinkageTrackingTool.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.BeneficiaryLinkageTrackingTool.OrderBy(o => o.LinkageTrackingToolId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.LinkageTrackingToolId + 1);
+                        }
+                        val.LinkageTrackingToolId = id;
+                        db.BeneficiaryLinkageTrackingTool.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryLinkageTrackingTool);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.BeneficiaryLinkageTrackingTool.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnBeneficiaryLinkageTrackingToolActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<BeneficiaryLinkageTrackingTool> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    //VslaGroupDirectMemberDatasource = await db.VslaGroupShareOutDirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //VslaGroupShareOutIndirectMemberDatasource = await db.VslaGroupShareOutIndirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    //VslaGroupDirectMemberDatasource = await db.VslaGroupShareOutDirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //VslaGroupShareOutIndirectMemberDatasource = await db.VslaGroupShareOutIndirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.GroupCompositionCode == 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the group name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Implementing Partner", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.LinkageDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DistrictId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.GroupTypeId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Group Type.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ServiceProviderId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Service Provider.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.LinkageServiceCategoryId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Service Category.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnBeneficiaryLinkageTrackingToolActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<BeneficiaryLinkageTrackingTool> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryLinkageTrackingToolGrid.PreventRender(false);
+        }
+    }
+
+    public async Task CellSelectHandler(CellSelectEventArgs<VslaGroupShareOutDirectMember> args)
+    {
+        //get selected cell index
+        var CellIndexes = await VslaGroupShareOutDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await VslaGroupShareOutDirectMemberGrid.GetColumnFieldNames();
+        //await VslaGroupShareOutDirectMemberGrid.ClearSelectionAsync();
+        // edit the selected cell using the cell index and column name
+        await VslaGroupShareOutDirectMemberGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public void TemplateActionComplete(ActionEventArgs<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaGroupShareOutDirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public void VslaGroupShareOutIndirectMemberActionComplete(ActionEventArgs<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaGroupShareOutIndirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public async Task VslaGroupDirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Direct_Member_Id == 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.ServiceLinkedToId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the service linked to", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.ServiceReceived == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please indicate whether the service was received", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IteamCost == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Cost of Item / Support", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.ServiceRecievedDetail))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Details of Service Received(Name Items, services and Goods received)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId == 0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.BeneficiaryLinkageTrackingTool.FirstOrDefault(o => o.LinkageTrackingToolId == BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.BeneficiaryLinkageTrackingTool.OrderBy(o => o.LinkageTrackingToolId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.LinkageTrackingToolId + 1);
+                            }
+                            BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId = id;
+                            args.Data.LinkageTrackingToolId = id;
+                            db.BeneficiaryLinkageTrackingTool.Add(BeneficiaryLinkageTrackingToolReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.LinkageTrackingToolId = BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId;
+                }
+            }
+        }
+    }
+    public async Task VslaGroupShareOutIndirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Indirect_Member_Id == 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.ServiceLinkedToId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the service linked to", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.ServiceReceived == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please indicate whether the service was received", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IteamCost == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Cost of Item / Support", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.ServiceRecievedDetail))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Details of Service Received(Name Items, services and Goods received)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId == 0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.BeneficiaryLinkageTrackingTool.FirstOrDefault(o => o.LinkageTrackingToolId == BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.BeneficiaryLinkageTrackingTool.OrderBy(o => o.LinkageTrackingToolId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.LinkageTrackingToolId + 1);
+                            }
+                            BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId = id;
+                            args.Data.LinkageTrackingToolId = id;
+                            db.BeneficiaryLinkageTrackingTool.Add(BeneficiaryLinkageTrackingToolReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.LinkageTrackingToolId = BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId;
+                }
+            }
+        }
+    }
+    #endregion Graduation Checklist Header
+    #region Group Members
+    public class LinkageTrackingToolDirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public LinkageTrackingToolDirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? LinkageTrackingToolId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "LinkageTrackingToolId").Value != null)
+                    {
+                        LinkageTrackingToolId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "LinkageTrackingToolId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryLinkageTrackingToolDirectMemberGetAllAsync(LinkageTrackingToolId, GroupCompositionCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.BeneficiaryLinkageTrackingToolDirectMember.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id);
+                    if (_exist == null)
+                    {
+                        BeneficiaryLinkageTrackingToolDirectMember m = new();
+                        m.LinkageTrackingToolId = val.LinkageTrackingToolId.Value;
+                        m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                        m.ServiceLinkedToId = val.ServiceLinkedToId;
+                        m.ServiceReceived = val.ServiceReceived;
+                        m.IteamCost = val.IteamCost;
+                        m.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        int id = 1;
+                        var last = db.BeneficiaryLinkageTrackingToolDirectMember.OrderBy(o => o.LinkageTrackingToolDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.LinkageTrackingToolDirectMemberId + 1);
+                        }
+                        m.LinkageTrackingToolDirectMemberId = id;
+                        db.BeneficiaryLinkageTrackingToolDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.ServiceLinkedToId = val.ServiceLinkedToId;
+                        _exist.ServiceReceived = val.ServiceReceived;
+                        _exist.IteamCost = val.IteamCost;
+                        _exist.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spBeneficiaryLinkageTrackingToolDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.BeneficiaryLinkageTrackingToolDirectMember.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id);
+                    if (_exist == null)
+                    {
+                        BeneficiaryLinkageTrackingToolDirectMember m = new();
+                        m.LinkageTrackingToolId = val.LinkageTrackingToolId.Value;
+                        m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                        m.ServiceLinkedToId = val.ServiceLinkedToId;
+                        m.ServiceReceived = val.ServiceReceived;
+                        m.IteamCost = val.IteamCost;
+                        m.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        int id = 1;
+                        var last = db.BeneficiaryLinkageTrackingToolDirectMember.OrderBy(o => o.LinkageTrackingToolDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.LinkageTrackingToolDirectMemberId + 1);
+                        }
+                        m.LinkageTrackingToolDirectMemberId = id;
+                        db.BeneficiaryLinkageTrackingToolDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.ServiceLinkedToId = val.ServiceLinkedToId;
+                        _exist.ServiceReceived = val.ServiceReceived;
+                        _exist.IteamCost = val.IteamCost;
+                        _exist.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+    }
+    public class LinkageTrackingToolIndirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public LinkageTrackingToolIndirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? LinkageTrackingToolId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "LinkageTrackingToolId").Value != null)
+                    {
+                        LinkageTrackingToolId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "LinkageTrackingToolId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryLinkageTrackingToolIndirectMemberGetAllAsync(LinkageTrackingToolId, GroupCompositionCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.BeneficiaryLinkageTrackingToolIndirectMember.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id);
+                    if (_exist == null)
+                    {
+                        BeneficiaryLinkageTrackingToolIndirectMember m = new();
+                        m.LinkageTrackingToolId = val.LinkageTrackingToolId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.ServiceLinkedToId = val.ServiceLinkedToId;
+                        m.ServiceReceived = val.ServiceReceived;
+                        m.IteamCost = val.IteamCost;
+                        m.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        int id = 1;
+                        var last = db.BeneficiaryLinkageTrackingToolIndirectMember.OrderBy(o => o.LinkageTrackingToolIndirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.LinkageTrackingToolIndirectMemberId + 1);
+                        }
+                        m.LinkageTrackingToolIndirectMemberId = id;
+                        db.BeneficiaryLinkageTrackingToolIndirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.ServiceLinkedToId = val.ServiceLinkedToId;
+                        _exist.ServiceReceived = val.ServiceReceived;
+                        _exist.IteamCost = val.IteamCost;
+                        _exist.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spBeneficiaryLinkageTrackingToolIndirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.BeneficiaryLinkageTrackingToolIndirectMember.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id);
+                    if (_exist == null)
+                    {
+                        BeneficiaryLinkageTrackingToolIndirectMember m = new();
+                        m.LinkageTrackingToolId = val.LinkageTrackingToolId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.ServiceLinkedToId = val.ServiceLinkedToId;
+                        m.ServiceReceived = val.ServiceReceived;
+                        m.IteamCost = val.IteamCost;
+                        m.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        int id = 1;
+                        var last = db.BeneficiaryLinkageTrackingToolIndirectMember.OrderBy(o => o.LinkageTrackingToolIndirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.LinkageTrackingToolIndirectMemberId + 1);
+                        }
+                        m.LinkageTrackingToolIndirectMemberId = id;
+                        db.BeneficiaryLinkageTrackingToolIndirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.ServiceLinkedToId = val.ServiceLinkedToId;
+                        _exist.ServiceReceived = val.ServiceReceived;
+                        _exist.IteamCost = val.IteamCost;
+                        _exist.ServiceRecievedDetail = val.ServiceRecievedDetail;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+    }
+    #endregion Group Members
+}

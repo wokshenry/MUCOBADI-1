@@ -1,0 +1,1021 @@
+﻿@page "/SelectionPlanningReportPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID/ICARE SELECTION, PLANNING & MGT SESSION GUIDE Report</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <p>District</p>
+                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Sub-County</p>
+                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                        @*<MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>*@
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Group</p>
+                    <SfDropDownList @bind-Value="@(InputModel.GroupId)" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                @*<div class="form-group col-md-3">
+                        <p>Group Cycle</p>
+                        <SfDropDownList @bind-Value="@(InputModel.GroupCycleId)" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                            <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                        </SfDropDownList>
+                    </div>*@
+                @*<div class="form-group col-md-3">
+                    <p>Reporting Period</p>
+                    <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Financial Year</p>
+                    <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>*@
+                <div class="form-group col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+                <div class="form-group col-md-12">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                </div>
+                @if (!string.IsNullOrEmpty(outComeResult))
+                {
+                    <div class="form-group col-md-12">
+                        @if (outComeResult.Contains("No Record"))
+                        {
+                            <p class="alert alert-danger" style="padding:10px;">@outComeResult</p>
+                        }
+                        else if (outComeResult.Contains("Warning"))
+                        {
+                            <p class="alert alert-warning" style="padding:10px;">@outComeResult</p>
+                        }
+                        else
+                        {
+                            <p class="alert alert-success" style="padding:10px;">@outComeResult</p>
+                        }
+                    </div>
+                }
+                <div class="form-group col-md-12">
+                    <SfSpinner @ref="ReportSpinner" Label="downloading the report please wait..." Size="70" Visible="false"></SfSpinner>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfSpinner ReportSpinner;
+
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    List<AGroups> GroupsData { get; set; }
+    List<AGroupCycle> GroupCycleData { get; set; }
+    bool isEnabled { get; set; } = false;
+    string outComeResult { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+                    FianacialYearData = new List<FianacialYear>();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    //QuarterData = db.AQuarter.AsNoTracking().ToList();
+                    //int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o => o.DateofIdentification.HasValue == true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                    InputModel = new();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                    if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        try
+        {
+            InputModel = new();
+            using (var db = new MUCOBADIContext())
+            {
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public async Task SearchRecords()
+    {
+        try
+        {
+            await ReportSpinner.ShowAsync();
+            outComeResult = null;
+            string district = null;
+            string Subcounty = null;
+            if (InputModel.DistrictId != null)
+            {
+                district = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                Subcounty = string.Join(",", InputModel.SubcountyId);
+            }
+            //if (InputModel.QuarterId == null || InputModel.YearId == null)
+            //{
+            //    outComeResult = "Please select the reporting period and the financial year";
+            //}
+            //else
+            {
+                //DateTime? startdate = null;
+                //DateTime? enddate = null;
+                //var quarter = QuarterData.FirstOrDefault(o => o.QuarterId == InputModel.QuarterId);
+                //if (quarter != null)
+                //{
+                //    startdate = new DateTime(InputModel.YearId.Value, quarter.StartMonthId.Value, 1);
+                //    if (quarter.EndMonthId < quarter.StartMonthId)
+                //    {
+                //        enddate = new DateTime((InputModel.YearId.Value + 1), quarter.EndMonthId.Value, DateTime.DaysInMonth((InputModel.YearId.Value + 1), quarter.EndMonthId.Value));
+                //    }
+                //    else
+                //    {
+                //        enddate = new DateTime(InputModel.YearId.Value, quarter.EndMonthId.Value, DateTime.DaysInMonth(InputModel.YearId.Value, quarter.EndMonthId.Value));
+                //    }
+                //}
+                using (var db = new SPToCoreContext())
+                {
+                    var data = await db.spCTR_Selection_Planning_Indirect_ReportGetAllAsync(district, Subcounty, InputModel.GroupId, InputModel.GroupCycleId/*, startdate, enddate*/);
+                    if (data.Count > 0)
+                    {
+                        using (ExcelEngine excelEngine = new ExcelEngine())
+                        {
+                            IApplication application = excelEngine.Excel;
+                            application.DefaultVersion = ExcelVersion.Excel2013;
+                            IWorkbook workbook = application.Workbooks.Create(1);
+                            IWorksheet worksheet = workbook.Worksheets[0];
+                            worksheet.Name = "SELECTION PLANNING AND MGT SESSION GUIDE Report";
+
+                            #region Styles
+                            var headerStyle = workbook.Styles.Add("headerStyle");
+
+                            headerStyle.BeginUpdate();
+                            headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                            headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            headerStyle.Font.Bold = true;
+                            headerStyle.Font.FontName = "Arial";
+                            headerStyle.Font.Size = 8f;
+                            headerStyle.Font.Color = ExcelKnownColors.White;
+
+                            headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            headerStyle.Borders.Color = ExcelKnownColors.White;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                            headerStyle.WrapText = true;
+
+                            headerStyle.EndUpdate();
+
+                            var Style = workbook.Styles.Add("bodyStyle");
+
+                            Style.BeginUpdate();
+                            Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                            Style.Font.Bold = false;
+                            Style.Font.FontName = "Arial";
+                            Style.Font.Size = 8f;
+                            Style.Font.Color = ExcelKnownColors.Black;
+                            Style.WrapText = true;
+                            Style.Borders.Color = ExcelKnownColors.Black;
+                            Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            Style.EndUpdate();
+
+
+                            var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                            CategoryStyle.BeginUpdate();
+                            CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                            /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                            CategoryStyle.Font.Bold = true;
+                            CategoryStyle.Font.FontName = "Arial";
+                            CategoryStyle.Font.Size = 10f;
+                            CategoryStyle.Font.Color = ExcelKnownColors.White;
+                            CategoryStyle.WrapText = true;
+                            CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.EndUpdate();
+
+                            var CategoryTotalStyle = workbook.Styles.Add("CategoryTotalStyle");
+
+                            CategoryTotalStyle.BeginUpdate();
+                            CategoryTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            CategoryTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            CategoryTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                            CategoryTotalStyle.Font.Bold = true;
+                            CategoryTotalStyle.Font.FontName = "Arial";
+                            CategoryTotalStyle.Font.Size = 8f;
+                            CategoryTotalStyle.Font.Color = ExcelKnownColors.White;
+                            CategoryTotalStyle.WrapText = true;
+                            CategoryTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.EndUpdate();
+
+                            var DivisionStyle = workbook.Styles.Add("DivisionStyle");
+
+                            DivisionStyle.BeginUpdate();
+                            DivisionStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            DivisionStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 0, 0); //RED
+                            DivisionStyle.Font.Bold = true;
+                            DivisionStyle.Font.FontName = "Arial";
+                            DivisionStyle.Font.Size = 8f;
+                            DivisionStyle.Font.Color = ExcelKnownColors.White;
+                            DivisionStyle.WrapText = true;
+                            DivisionStyle.Borders.Color = ExcelKnownColors.White;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.EndUpdate();
+
+                            var DivisionTotalStyle = workbook.Styles.Add("DivisionTotalStyle");
+
+                            DivisionTotalStyle.BeginUpdate();
+                            DivisionTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            DivisionTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            DivisionTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                            DivisionTotalStyle.Font.Bold = true;
+                            DivisionTotalStyle.Font.FontName = "Arial";
+                            DivisionTotalStyle.Font.Size = 8f;
+                            DivisionTotalStyle.Font.Color = ExcelKnownColors.White;
+                            DivisionTotalStyle.WrapText = true;
+                            DivisionTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.EndUpdate();
+
+
+                            var TopicStyle = workbook.Styles.Add("TopicStyle");
+
+                            TopicStyle.BeginUpdate();
+                            TopicStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            TopicStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88); //AUBERGINE
+                            TopicStyle.Font.Bold = true;
+                            TopicStyle.Font.FontName = "Arial";
+                            TopicStyle.Font.Size = 8f;
+                            TopicStyle.Font.Color = ExcelKnownColors.White;
+                            TopicStyle.WrapText = true;
+                            TopicStyle.Borders.Color = ExcelKnownColors.White;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.EndUpdate();
+
+                            var TopicTotalStyle = workbook.Styles.Add("TopicTotalStyle");
+
+                            TopicTotalStyle.BeginUpdate();
+                            TopicTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            TopicTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            TopicTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                            TopicTotalStyle.Font.Bold = true;
+                            TopicTotalStyle.Font.FontName = "Arial";
+                            TopicTotalStyle.Font.Size = 8f;
+                            TopicTotalStyle.Font.Color = ExcelKnownColors.White;
+                            TopicTotalStyle.WrapText = true;
+                            TopicTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.EndUpdate();
+                            #endregion
+
+                            int row = 1;
+                            worksheet.Range["A" + row].Text = "COMMUNITY TRAINING REGISTER SELECTION, PLANNING & MGT SESSION GUIDE REPORT";
+                            worksheet.Range["A" + row + ":Z" + row].CellStyle = CategoryStyle;
+                            worksheet.Range["A" + row + ":Z" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            worksheet.Range["A" + row + ":Z" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 30;
+                            worksheet.Range["A" + row + ":Z" + row].Merge();
+                            row++;
+                            row++;
+
+                            worksheet.Range["H" + row].Text = "Dates of Training (DD/MM/YYYY)";
+                            worksheet.Range["H" + row].RowHeight = 20;
+                            worksheet.Range["H" + row + ":I" + row].Merge();
+
+                            worksheet.Range["P" + row].Text = "SPM1. IGA Selection Process";
+                            worksheet.Range["P" + row].RowHeight = 20;
+                            worksheet.Range["P" + row + ":T" + row].Merge();
+
+                            worksheet.Range["U" + row].Text = "SPM2. The Customers for the IGA products and Services";
+                            worksheet.Range["U" + row].RowHeight = 20;
+                            worksheet.Range["U" + row + ":X" + row].Merge();
+
+                            worksheet.Range["Y" + row].Text = "SPM3. Knowledge and Skills";
+                            worksheet.Range["Y" + row].RowHeight = 20;
+                            worksheet.Range["Y" + row + ":AA" + row].Merge();
+
+                            worksheet.Range["AB" + row].Text = "SPM4. Start-up Costs, Capital and Working costs";
+                            worksheet.Range["AB" + row].RowHeight = 20;
+                            worksheet.Range["AB" + row + ":AE" + row].Merge();
+
+                            worksheet.Range["AF" + row].Text = "SPM5. Sales and Income";
+                            worksheet.Range["AF" + row].RowHeight = 20;
+                            worksheet.Range["AF" + row + ":AI" + row].Merge();
+
+                            worksheet.Range["AJ" + row].Text = "SOM6. Weekly family Income and Expenses";
+                            worksheet.Range["AJ" + row].RowHeight = 20;
+                            worksheet.Range["AJ" + row + ":AN" + row].Merge();
+
+                            worksheet.Range["AO" + row].Text = "SPM7. Actual IGA Selection";
+                            worksheet.Range["AO" + row].RowHeight = 20;
+                            worksheet.Range["AO" + row + ":AQ" + row].Merge();
+
+                            worksheet.Range["AR" + row].Text = "SPM8. Planning";
+                            worksheet.Range["AR" + row].RowHeight = 20;
+                            worksheet.Range["AR" + row + ":AT" + row].Merge();
+
+                            worksheet.Range["AU" + row].Text = "SPM9. Management";
+                            worksheet.Range["AU" + row].RowHeight = 20;
+                            worksheet.Range["AU" + row + ":AX" + row].Merge();
+
+                            worksheet.Range["A" + row + ":AR" + row].CellStyle = headerStyle;
+                            row++;
+
+                            #region Header row
+                            worksheet.Range["A" + row].Text = "Name of IP/CSO";
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = "District";
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = "Sub county";
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = "Name of training/Curriculum ";
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = "Group Name";
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = "Group Code";
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text = "Total No. of sessions/Modules covered: ";
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = "from";
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = "to";
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = "Training Venue";
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            worksheet.Range["K" + row].Text = "Trainer/Artisan/Facilitator";
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = "Household/ Member Code";
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = "Name of participant";
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            worksheet.Range["N" + row].Text = "Sex (M/F)";
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            worksheet.Range["O" + row].Text = "Age";
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = "Session 1: step 1 (S1S1)";
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = "Session 1:  step 2 (S1S2)";
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = "Session 1: Step3 (S1S3)";
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = "Session 1: Step 4 (S1S4)";
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            worksheet.Range["T" + row].Text = "Session 1: Step 5(S1S5)";
+                            worksheet.Range["T" + row].ColumnWidth = 20;
+
+                            worksheet.Range["U" + row].Text = "Session 2: Step 1(S2S1)";
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["V" + row].Text = "Session 2:  step 2 (S2S2)";
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            worksheet.Range["W" + row].Text = "Session 2: Step3 (S2S3)";
+                            worksheet.Range["W" + row].ColumnWidth = 20;
+
+                            worksheet.Range["X" + row].Text = "Session 2: Step 4 (S2S4)";
+                            worksheet.Range["X" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Y" + row].Text = "Session 3: Step 1(S3S1)";
+                            worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Z" + row].Text = "Session 3:  step 2 (S3S2)";
+                            worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AA" + row].Text = "Session 3: Step3 (S3S3)";
+                            worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AB" + row].Text = "Session 4: Step 1(S4S1)";
+                            worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AC" + row].Text = "Session 4:  step 2 (S4S2)";
+                            worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AD" + row].Text = "Session 4: Step3 (S4S3)";
+                            worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AE" + row].Text = "Session 4: Step 4 (S4S4)";
+                            worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AF" + row].Text = "Session 5: Step 1(S5S1)";
+                            worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AG" + row].Text = "Session 5:  step 2 (S5S2)";
+                            worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AH" + row].Text = "Session 5: Step3 (S5S3)";
+                            worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AI" + row].Text = "Session 5: Step 4 (S5S4)";
+                            worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AJ" + row].Text = "Session 6: step 1 (S6S1)";
+                            worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AK" + row].Text = "Session 6:  step 2 (S6S2)";
+                            worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AL" + row].Text = "Session 6: Step3 (S6S3)";
+                            worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AM" + row].Text = "Session 6: Step 4 (S6S4)";
+                            worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AN" + row].Text = "Session 6: Step 5(S6S5)";
+                            worksheet.Range["AN" + row].ColumnWidth = 20;
+
+
+                            worksheet.Range["AO" + row].Text = "Session 7: Step 1(S7S1)";
+                            worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AP" + row].Text = "Session 7:  step 2 (S7S2)";
+                            worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AQ" + row].Text = "Session 7: Step3 (S7S3)";
+                            worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AR" + row].Text = "Session 8: Step 1(S8S1)";
+                            worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AS" + row].Text = "Session 8:  step 2 (S8S2)";
+                            worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AT" + row].Text = "Session 8: Step3 (S8S3)";
+                            worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AU" + row].Text = "Session 9: Step 1(S9S1)";
+                            worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AV" + row].Text = "Session 9:  step 2 (S9S2)";
+                            worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AW" + row].Text = "Session 9: Step3 (S9S3)";
+                            worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AX" + row].Text = "Session 9: Step4 (S9S3)";
+                            worksheet.Range["AX" + row].ColumnWidth = 20;
+
+
+
+
+
+
+                            worksheet.Range["AY" + row].Text = "Date";
+                            worksheet.Range["AY" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AZ" + row].Text = "Tel";
+                            worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BA" + row].Text = "Reviewed by ";
+                            worksheet.Range["BA" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BB" + row].Text = "Date";
+                            worksheet.Range["BB" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BC" + row].Text = "Tel";
+                            worksheet.Range["BC" + row].ColumnWidth = 20;
+
+
+                            worksheet.Range["A" + row + ":BC" + row].CellStyle = headerStyle;
+                            row++;
+                            #endregion Header row
+
+                            foreach (var n in data)
+                            {
+                                worksheet.Range["A" + row].Text = n.ImplementingPartnerName;
+                                worksheet.Range["A" + row].ColumnWidth = 20;
+
+                                worksheet.Range["B" + row].Text = n.DistrictDescription;
+                                worksheet.Range["B" + row].ColumnWidth = 20;
+
+                                worksheet.Range["C" + row].Text = n.SubcountyDescription;
+                                worksheet.Range["C" + row].ColumnWidth = 20;
+
+                                worksheet.Range["D" + row].Text = n.Curriculum_Desc;
+                                worksheet.Range["D" + row].ColumnWidth = 20;
+
+                                worksheet.Range["E" + row].Text = n.GroupName;
+                                worksheet.Range["E" + row].ColumnWidth = 20;
+
+                                worksheet.Range["F" + row].Text = n.GroupCode;
+                                worksheet.Range["F" + row].ColumnWidth = 20;
+
+                                if (n.TotalNoSessions.HasValue)
+                                {
+                                    worksheet.Range["G" + row].Number = n.TotalNoSessions.Value;
+                                    worksheet.Range["G" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.TrainingStartDate.HasValue)
+                                {
+                                    worksheet.Range["H" + row].Text = n.TrainingStartDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["H" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.TrainingEndDate.HasValue)
+                                {
+                                    worksheet.Range["I" + row].Text = n.TrainingEndDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["I" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["J" + row].Text = n.TrainingVenue;
+                                worksheet.Range["J" + row].ColumnWidth = 20;
+
+                                worksheet.Range["K" + row].Text = n.Trainer;
+                                worksheet.Range["K" + row].ColumnWidth = 20;
+
+                                worksheet.Range["L" + row].Text = n.HouseHoldMemberCode;
+                                worksheet.Range["L" + row].ColumnWidth = 20;
+
+                                worksheet.Range["M" + row].Text = n.FullName;
+                                worksheet.Range["M" + row].ColumnWidth = 20;
+
+                                worksheet.Range["N" + row].Text = n.GenderDescription;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+
+                                if (n.Age.HasValue)
+                                {
+                                    worksheet.Range["O" + row].Number = n.Age.Value;
+                                    worksheet.Range["O" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_1.HasValue)
+                                {
+                                    worksheet.Range["P" + row].Text = n.Session_1.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["P" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_2.HasValue)
+                                {
+                                    worksheet.Range["Q" + row].Text = n.Session_2.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["Q" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_3.HasValue)
+                                {
+                                    worksheet.Range["R" + row].Text = n.Session_3.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["R" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_4.HasValue)
+                                {
+                                    worksheet.Range["S" + row].Text = n.Session_4.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["S" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_5.HasValue)
+                                {
+                                    worksheet.Range["T" + row].Text = n.Session_5.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["T" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_6.HasValue)
+                                {
+                                    worksheet.Range["U" + row].Text = n.Session_6.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["U" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_7.HasValue)
+                                {
+                                    worksheet.Range["V" + row].Text = n.Session_7.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["V" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_8.HasValue)
+                                {
+                                    worksheet.Range["W" + row].Text = n.Session_8.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["W" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_9.HasValue)
+                                {
+                                    worksheet.Range["X" + row].Text = n.Session_9.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["X" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_10.HasValue)
+                                {
+                                    worksheet.Range["Y" + row].Text = n.Session_10.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["Y" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_11.HasValue)
+                                {
+                                    worksheet.Range["Z" + row].Text = n.Session_11.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["Z" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_12.HasValue)
+                                {
+                                    worksheet.Range["AA" + row].Text = n.Session_12.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AA" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_13.HasValue)
+                                {
+                                    worksheet.Range["AB" + row].Text = n.Session_13.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AB" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_14.HasValue)
+                                {
+                                    worksheet.Range["AC" + row].Text = n.Session_14.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AC" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_15.HasValue)
+                                {
+                                    worksheet.Range["AD" + row].Text = n.Session_15.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AD" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_16.HasValue)
+                                {
+                                    worksheet.Range["AE" + row].Text = n.Session_16.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AE" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_17.HasValue)
+                                {
+                                    worksheet.Range["AF" + row].Text = n.Session_17.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AF" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_18.HasValue)
+                                {
+                                    worksheet.Range["AG" + row].Text = n.Session_18.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AG" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_19.HasValue)
+                                {
+                                    worksheet.Range["AH" + row].Text = n.Session_19.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AH" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_20.HasValue)
+                                {
+                                    worksheet.Range["AI" + row].Text = n.Session_20.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AI" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_21.HasValue)
+                                {
+                                    worksheet.Range["AJ" + row].Text = n.Session_21.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AJ" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_22.HasValue)
+                                {
+                                    worksheet.Range["AK" + row].Text = n.Session_22.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AK" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_23.HasValue)
+                                {
+                                    worksheet.Range["AL" + row].Text = n.Session_23.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AL" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_24.HasValue)
+                                {
+                                    worksheet.Range["AM" + row].Text = n.Session_24.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AM" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_25.HasValue)
+                                {
+                                    worksheet.Range["AN" + row].Text = n.Session_25.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AN" + row].ColumnWidth = 20;
+                                }
+
+
+                                if (n.Session_26.HasValue)
+                                {
+                                    worksheet.Range["AO" + row].Text = n.Session_26.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AO" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_27.HasValue)
+                                {
+                                    worksheet.Range["AP" + row].Text = n.Session_27.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AP" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_28.HasValue)
+                                {
+                                    worksheet.Range["AQ" + row].Text = n.Session_28.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AQ" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_29.HasValue)
+                                {
+                                    worksheet.Range["AR" + row].Text = n.Session_29.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AR" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_30.HasValue)
+                                {
+                                    worksheet.Range["AS" + row].Text = n.Session_30.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AS" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_31.HasValue)
+                                {
+                                    worksheet.Range["AT" + row].Text = n.Session_31.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AT" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_32.HasValue)
+                                {
+                                    worksheet.Range["AU" + row].Text = n.Session_32.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AU" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_33.HasValue)
+                                {
+                                    worksheet.Range["AV" + row].Text = n.Session_33.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AV" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_34.HasValue)
+                                {
+                                    worksheet.Range["AW" + row].Text = n.Session_34.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AW" + row].ColumnWidth = 20;
+                                }
+
+                                if (n.Session_35.HasValue)
+                                {
+                                    worksheet.Range["AX" + row].Text = n.Session_35.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AX" + row].ColumnWidth = 20;
+                                }
+
+
+                                worksheet.Range["AM" + row].Text = n.CoodinatedBy;
+                                worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                                if (n.CoordinatorDate.HasValue)
+                                {
+                                    worksheet.Range["AN" + row].Text = n.CoordinatorDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AN" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["AO" + row].Text = n.CoordinatorPhoneNumber;
+                                worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                                worksheet.Range["AP" + row].Text = n.ReviewedBy;
+                                worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                                if (n.ReviewDate.HasValue)
+                                {
+                                    worksheet.Range["AQ" + row].Text = n.ReviewDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["AQ" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["AR" + row].Text = n.ReviewerPhoneNumber;
+                                worksheet.Range["AR" + row].ColumnWidth = 20;
+
+
+                                worksheet.Range["A" + row + ":AR" + row].CellStyle = Style;
+                                row++;
+                            }
+                            MemoryStream ms = new MemoryStream();
+                            // Save and close the document.
+                            workbook.SaveAs(ms);
+                            //Reset the memory stream position.
+                            ms.Position = 0;
+                            await JS.SaveAs("COMMUNITY TRAINING REGISTER SELECTION PLANNING AND MGT SESSION GUIDE REPORT.xlsx", ms.ToArray());
+                            ms.Dispose();
+                            workbook.Close();
+                            //excelEngine.Dispose();
+                            outComeResult = "Success:- The report was successfully downloaded.";
+
+                        }
+                    }
+                    else
+                    {
+                        outComeResult = "No Record:- There were no records found for this search";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { await ReportSpinner.HideAsync(); }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        try
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+}
+
+

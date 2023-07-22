@@ -1,0 +1,478 @@
+﻿@page "/GroupCompositionUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using System.Globalization;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> Group Composition </strong></li>
+</ol>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    </div>
+     <div class="form-group col-md-12">
+          <div class="alert-info" style="padding:10px;">
+            <p>Before uploading this excel, please ensure that the date columns are in the correct date format (Preferably in the 'dd/MM/yyyy' format);</p>
+            <p>If your planning to upload VSLA+ Groups of different cycles, i would request you upload them separately to avoid mixing them up.</p>
+        </div>
+    </div>
+    <div class="form-group col-md-4">
+        <p>Group Type</p>
+         <SfDropDownList @bind-Value="@(GroupType)" Enabled="true" TItem="AGroupType" TValue="int?" DataSource="@GroupTypeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AGroupType.GroupTypeId)" Text="@nameof(AGroupType.GroupTypeDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+    </div>
+     <div class="form-group col-md-4">
+        @if (GroupType == 1)
+        {
+             <p>Group Cycle</p>
+              <SfDropDownList @bind-Value="@(GroupCycle)" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+        }
+    </div>
+    <div class="form-group col-md-12">
+        @if (GroupType != null)
+        {
+            <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+        }
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+        }
+       @* <p>Row Number: @rownumber <br/>Column Number: @columnnnumber<br/> Used Rows: @usedRows</p>*@
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+   <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            <p class="badge-success" style="padding:10px;">@MessageResponse</p>
+        }
+    </div>
+     <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageError))
+        {
+            <p class="badge-danger" style="padding:10px;">@MessageError</p>
+        }
+    </div>
+</div>
+
+
+@code {
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    string _MessageResponse;
+    string MessageResponse { get { return _MessageResponse; } set { if (value != null && value != _MessageResponse)
+            {
+                _MessageResponse = value;
+                StateHasChanged();
+            } } }
+    string _Messageerror;
+    string MessageError { get { return _Messageerror; } set { if (value != null && value != _Messageerror)
+            {
+                _Messageerror = value;
+                StateHasChanged();
+            } } }
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    int? GroupType { get; set; }
+    int? GroupCycle { get; set; }
+    List<AGroupType> GroupTypeData{ get; set; }
+    List<AGroupCycle> GroupCycleData{ get; set; }
+    List<ADistrict> DistrictData{ get; set; }
+    List<ViewASubcounty> SubcountyData { get; set; }
+    List<ViewAParish> ParishData{ get; set; }
+    List<AGroups> GroupData{ get; set; }
+    protected override void OnInitialized()
+    {
+        using(var db = new MUCOBADIContext())
+        {
+            GroupTypeData = db.AGroupType.ToList();
+            GroupCycleData = db.AGroupCycle.ToList();
+            DistrictData = db.ADistrict.ToList();
+            SubcountyData = db.ViewASubcounty.ToList();
+            ParishData = db.ViewAParish.ToList();
+            GroupData = db.AGroups.ToList();
+        }
+        base.OnInitialized();
+    }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            MessageResponse = null;
+            await UploadingSpinner.ShowAsync();
+            if(GroupType==1 && GroupCycle == null)
+            {
+                MessageError = "Please select the group cycle before uploading the groups.";
+            }
+            else
+            {
+                foreach (var file in args.Files)
+                {
+                    using (ExcelEngine excelEngine = new ExcelEngine())
+                    {
+                        //Instantiate the Excel application object
+                        IApplication application = excelEngine.Excel;
+
+                        file.Stream.Position = 0;
+                        //Set the default application version
+                        application.DefaultVersion = ExcelVersion.Xlsx;
+                        IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                        //Get the first worksheet in the workbook into IWorksheet
+                        IWorksheet worksheet = workbook.Worksheets[0];
+
+                        if(worksheet.Range[1, 1].Value.Trim().Contains("Group Name") && worksheet.Range[1, 2].Value.Trim().Contains("Group Code")
+                        && worksheet.Range[1, 3].Value.Trim().Contains("DATE")&& worksheet.Range[1, 6].Value.Trim().Contains("Meeting Venue")
+                        && worksheet.Range[1, 8].Value.Trim().Contains("HH individual Code")&& worksheet.Range[1, 9].Value.Trim().Contains("Name"))
+                        {
+                            VslaGroupComposition groupcomp = new();
+                            VslaGroupDirectMembers directmembers = new();
+                            VslaGroupIndirectMember indirectmembers = new();
+
+                            using (var db = new MUCOBADIContext())
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+
+                                for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                                {
+                                    rownumber = row.ToString();
+                                    await Task.Delay(10);
+                                    groupcomp = new();
+                                    directmembers = new();
+                                    indirectmembers = new();
+                                    string membercode = null;
+                                    if (worksheet.IsRowVisible(row))
+                                    {
+                                        groupcomp.GroupTypeId = GroupType;
+                                        groupcomp.GroupCycleId = GroupCycle;
+
+                                        //GroupId
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 1].Value.Trim()) &&
+                                        (worksheet.Range[row, 1].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "1";
+                                            var obj = GroupData
+                                            .FirstOrDefault(x => x.GroupName.Trim().ToLower() == worksheet.Range[row, 1].Value.Trim().ToLower());
+
+                                            if (obj != null)
+                                            {
+                                                groupcomp.GroupId = obj.GroupId;
+                                            }
+                                            else
+                                            {
+                                                int id = 1;
+                                                var last = db.AGroups.OrderBy(o => o.GroupId).LastOrDefault();
+                                                if(last != null)
+                                                {
+                                                    id = (last.GroupId + 1);
+                                                }
+                                                AGroups m = new();
+                                                m.GroupName = worksheet.Range[row, 1].Value.Trim();
+                                                m.GroupId = id;
+                                                groupcomp.GroupId = id;
+                                                db.AGroups.Add(m);
+                                                db.SaveChanges();
+                                                GroupData.Add(m);
+                                            }
+
+                                        }
+
+                                        //GroupCode
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 2].Value.Trim())
+                                           && (worksheet.Range[row, 2].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "2";
+                                            if(worksheet.Range[row, 2].Value.Trim()=="DIRECT" || worksheet.Range[row, 2].Value.Trim() == "INDIRECT")
+                                            {
+                                                groupcomp.GroupCode = null;
+                                            }
+                                            else
+                                            {
+                                                groupcomp.GroupCode = worksheet.Range[row, 2].Value.Trim();
+                                            }
+                                        }
+
+                                        // Meeting Date
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 3].Value.Trim())
+                                        && (worksheet.Range[row, 3].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "3";
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 3].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                groupcomp.MeetingDate = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 3].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                groupcomp.MeetingDate = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 3].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                groupcomp.MeetingDate = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 3].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                groupcomp.MeetingDate = _date;
+                                            }
+                                        }
+
+                                        //District and Individual code
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 8].Value.Trim())
+                                            && (worksheet.Range[row, 8].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "8";
+                                            membercode = worksheet.Range[row, 8].Value.Trim();
+                                            indirectmembers.IndirectMemberCode= worksheet.Range[row, 8].Value.Trim();
+                                            var district = DistrictData
+                                                .FirstOrDefault(x => x.DistricCode.ToLower()
+                                                    == worksheet.Range[row, 8].Value.Trim().ToLower().Substring(0,2));
+                                            if (district != null)
+                                            {
+                                                groupcomp.DistrictId = district.DistrictId;
+                                            }
+                                            else
+                                                groupcomp.DistrictId = null;
+                                        }
+
+                                        //Sub county
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 4].Value.Trim())
+                                            && (worksheet.Range[row, 4].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "4";
+
+                                            var subcounty = SubcountyData.FirstOrDefault(x => (x.DistrictId == groupcomp.DistrictId || groupcomp.DistrictId== null) && x.SubcountyDescription.ToLower().Contains(worksheet.Range[row, 4].Value.Trim().ToLower()));
+
+
+                                            if (subcounty != null)
+                                            {
+                                                groupcomp.SubcountyId = subcounty.SubcountyId;
+                                                if(groupcomp.DistrictId== null)
+                                                {
+                                                    groupcomp.DistrictId = subcounty.DistrictId;
+                                                }
+                                            }
+                                            else
+                                                groupcomp.SubcountyId = null;
+                                        }
+
+                                        //Parish
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 5].Value.Trim())
+                                            && (worksheet.Range[row, 5].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "5";
+
+                                            var Parish = ParishData.FirstOrDefault(x => x.SubcountyId == groupcomp.SubcountyId && x.ParishDescription.ToLower().Contains(worksheet.Range[row, 5].Value.Trim().ToLower()));
+
+
+                                            if (Parish != null)
+                                            {
+                                                groupcomp.ParishId = Parish.ParishId;
+                                                indirectmembers.ParishId = Parish.ParishId;
+                                            }
+                                            else
+                                                groupcomp.ParishId = null;
+                                        }
+                                        //Meeting Venue
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 6].Value.Trim())
+                                            && (worksheet.Range[row, 6].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "6";
+                                            groupcomp.MeetingVenue = worksheet.Range[row, 6].Value.Trim();
+                                        }
+
+                                        //Checked by
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 15].Value.Trim())
+                                            && (worksheet.Range[row, 15].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "15";
+                                            groupcomp.CheckedBy = worksheet.Range[row, 15].Value.Trim();
+                                        }
+
+                                        //Verified by
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 16].Value.Trim())
+                                            && (worksheet.Range[row, 16].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "16";
+                                            groupcomp.VerifiedBy = worksheet.Range[row, 16].Value.Trim();
+                                        }
+
+
+                                        //Member Name 
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim())
+                                            && (worksheet.Range[row, 9].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "9";
+                                            indirectmembers.MemberName = worksheet.Range[row, 9].Value.Trim();
+                                        }
+
+                                        //Sex M/F 
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 10].Value.Trim())
+                                            && (worksheet.Range[row, 10].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "10";
+                                            if(worksheet.Range[row, 10].Value.Trim() == "Male")
+                                            {
+                                                indirectmembers.GenderId ="M" ;
+                                            }
+                                            else if(worksheet.Range[row, 10].Value.Trim() == "Female")
+                                            {
+                                                indirectmembers.GenderId ="F" ;
+                                            }
+
+                                        }
+                                        //Age
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 11].Value.Trim())
+                                            && (worksheet.Range[row, 11].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "11";
+                                            string age = worksheet.Range[row, 11].Value.Trim();
+                                            if (age.All(Char.IsDigit))
+                                            {
+                                                int _age = Convert.ToInt32(age);
+                                                indirectmembers.Age = _age;
+                                                indirectmembers.DoB = new DateTime((DateTime.Now.Year - _age),1, 1);// DateTime.Now.AddYears(-_age);
+                                            }
+                                        }
+
+                                        //Telephone
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 14].Value.Trim())
+                                            && (worksheet.Range[row, 14].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "14";
+                                            indirectmembers.PhoneNumber = worksheet.Range[row, 14].Value.Trim();
+                                            directmembers.PhoneNumber = worksheet.Range[row, 14].Value.Trim();
+                                        }
+
+                                        if(groupcomp.DistrictId != null)
+                                        {
+                                            VslaGroupComposition _table1 = db.VslaGroupComposition
+                                            .FirstOrDefault(
+                                                o => o.DistrictId == groupcomp.DistrictId &&
+                                                o.SubcountyId == groupcomp.SubcountyId &&
+                                                o.GroupTypeId == groupcomp.GroupTypeId &&
+                                                o.GroupCode == groupcomp.GroupCode &&
+                                                o.GroupId == groupcomp.GroupId &&
+                                                o.GroupCycleId==groupcomp.GroupCycleId
+                                                );
+
+
+                                            if(_table1 != null)
+                                            {
+                                                groupcomp.GroupCompositionCode = _table1.GroupCompositionCode;
+                                            }
+                                            else
+                                            {
+                                                int id = 1;
+                                                var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                                                if(last != null)
+                                                {
+                                                    id = (last.GroupCompositionCode + 1);
+                                                }
+                                                groupcomp.GroupCompositionCode = id;
+                                                db.VslaGroupComposition.Add(groupcomp);
+                                                db.SaveChanges();
+                                            }
+
+                                            if (membercode.ToUpper().Contains("IND") == false)
+                                            {
+                                                var householdmemberexists = db.HouseHoldMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode);
+                                                if(householdmemberexists != null)
+                                                {
+                                                    directmembers.HouseHoldMemberId = householdmemberexists.HouseHoldMemberId;
+                                                    directmembers.GroupCompositionCode = groupcomp.GroupCompositionCode;
+
+                                                    var exists = db.VslaGroupDirectMembers.FirstOrDefault(o => o.GroupCompositionCode == directmembers.GroupCompositionCode && o.HouseHoldMemberId == directmembers.HouseHoldMemberId);
+                                                    if(exists == null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.VslaGroupDirectMembers.OrderBy(o => o.VslaGroupDirectMemberId).LastOrDefault();
+                                                        if(last != null)
+                                                        {
+                                                            id = (last.VslaGroupDirectMemberId + 1);
+                                                        }
+                                                        directmembers.VslaGroupDirectMemberId = id;
+                                                        db.VslaGroupDirectMembers.Add(directmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                indirectmembers.GroupCompositionCode = groupcomp.GroupCompositionCode;
+
+                                                var exists = db.VslaGroupIndirectMember.FirstOrDefault(o => o.GroupCompositionCode == indirectmembers.GroupCompositionCode && o.IndirectMemberCode == indirectmembers.IndirectMemberCode && o.MemberName== indirectmembers.MemberName);
+                                                if(exists == null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.VslaGroupIndirectMember.OrderBy(o => o.VslaGroupIndirectMemberId).LastOrDefault();
+                                                    if(last != null)
+                                                    {
+                                                        id = (last.VslaGroupIndirectMemberId + 1);
+                                                    }
+                                                    indirectmembers.VslaGroupIndirectMemberId = id;
+                                                    db.VslaGroupIndirectMember.Add(indirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                MessageResponse = "Group Composition data has been successfully uploaded";
+                                rownumber = null;
+                            }
+                        }
+                        else
+                        {
+                            MessageError = "please ensure that the excel you have uploaded is the correct one.";
+                        }
+                    }
+                }
+            }
+        }
+        catch(Exception ex)
+        {
+             MessageError = $"an error ({ex.Message.ToString()}) occured while trying to read records on row {rownumber} and at column {columnnnumber}";
+        }
+        finally{
+            await UploadingSpinner.HideAsync();
+        }
+    }
+}

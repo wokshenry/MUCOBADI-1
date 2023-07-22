@@ -1,0 +1,1478 @@
+﻿@page "/StakeholderDataCapture"
+@using MUCOBADI.DTOs.Dashboard;
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor;
+@using Syncfusion.Blazor.ProgressBar;
+@inject MUCOBADIContext db;
+@inject IToastService toastService;
+@using System.Collections;
+@inject UserManagement userManagement;
+
+<style>
+    .e-headercell.e-attr1 {
+        background: black;
+        color: ghostwhite;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+
+    .control-container {
+        background-color: #adb5bd;
+        height: 300px;
+        margin: 0 auto;
+        width: 500px;
+    }
+
+    .e-carousel .slide-content {
+        align-items: center;
+        display: flex;
+        font-size: 1.25rem;
+        height: 100%;
+        justify-content: center;
+    }
+
+    /*Customize carousel*/
+    .e-carousel .e-carousel-navigators .e-next .e-btn:not(:disabled) .e-btn-icon,
+    .e-carousel .e-carousel-navigators .e-previous .e-btn:not(:disabled) .e-btn-icon {
+        color: blackyellow;
+        font-size: 25px;
+    }
+
+    .e-carousel .e-carousel-navigators {
+        top: 150px;
+    }
+
+        .e-carousel .e-carousel-navigators .e-previous .e-btn:not(:disabled) .e-btn-icon, .e-carousel .e-carousel-navigators .e-next .e-btn:not(:disabled) .e-btn-icon, .e-carousel .e-carousel-navigators .e-play-pause .e-btn:not(:disabled) .e-btn-icon {
+            color: black;
+        }
+
+    table, th, td {
+        border: 1px solid black;
+    }
+
+    h5 {
+        display: block;
+        font-size: -1em;
+        font-weight: bold;
+        color: maroon;
+        background-color: white;
+    }
+
+    h6 {
+        color: ghostwhite;
+        background-color: #268cff;
+        padding: 10px;
+        width: 100%;
+        font-size: 10px;
+    }
+
+    h4 {
+        color: black;
+        background-color: deepskyblue;
+        padding: 10px;
+        width: 100%;
+        font-size: 15px;
+    }
+
+    h3 {
+        color: black;
+        background-color: darkorange;
+        padding: 10px;
+        width: 100%;
+        font-size: 15px;
+    }
+
+    /*stick grid headers*/
+    .e-gridheader {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 56px;
+        z-index: 1;
+    }
+    /*stick grid headers*/
+
+</style>
+
+@{
+    var Div = (new string[] {"ServiceProviderDesc", "DistrictDescription", "FinancialYearDesc", "QuarterName", "IndicatorDescription"});
+}
+
+@*@if(userManagement!=null)
+{
+    <div class="form-group col-md-12">
+        <p style="color:red; font-weight:bolder; font-size:18px; text-align:center;">Service Provider : @userManagement.GetServiceProviderDesc()</p>
+    </div>
+}*@
+
+<div class="form-group col-md-12">
+    <SfAccordion ExpandMode="@ExpandMode.Single">
+        <AccordionItems>
+            <AccordionItem Expanded="true">
+                <HeaderTemplate>Search Panel</HeaderTemplate>
+                <ContentTemplate>
+                    <div style="padding:10px;">
+                        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <p>Project</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.ServiceProviderId" TValue="int?[]" Enabled="@ServiceProviderSearchDD" TItem="AServiceProvider" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@ServiceProviderData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Project" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                     <MultiSelectFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)" Text="@nameof(AServiceProvider.ServiceProviderDesc)"></MultiSelectFieldSettings>
+                                     </SfMultiSelect>
+                                </div>
+                                
+                                <div class="form-group col-md-4">
+                                    <p>Indicator</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.IndicatorId" TValue="int?[]" TItem="AIndicators" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@IndicatorData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Indicator" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AIndicators.IndicatorId)" Text="@nameof(AIndicators.IndicatorDescription)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Financial Year</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.FinancialYearId" TValue="int?[]" TItem="AFinancialYear" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@FinancialYearData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Year" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)" Text="@nameof(AFinancialYear.FinancialYearDesc)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Quarter</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.QuarterId" TValue="int?[]" TItem="AQuarter" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@QuarterData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Quarter" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictsData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                </ContentTemplate>
+            </AccordionItem>
+        </AccordionItems>
+    </SfAccordion>
+</div>
+
+<div class="form-group col-md-12">
+    <SfGrid @ref="@MainGrid" TValue="ViewStakeHolderDataCapture" ID="GridMain" Query="@MainQuery" Toolbar="@ToolbarMenuMain"
+                AllowPaging="true" AllowFiltering="false" AllowTextWrap="true" AllowGrouping="true" GridLines="GridLine.Both">
+                <GridGroupSettings Columns="@Div" ShowDropArea="false">
+                    <CaptionTemplate>
+                        @{
+                            var dvn = (context as CaptionTemplateContext);
+                            <div><p class="pp"><strong>@dvn.Key</strong></p></div>
+                        }
+                    </CaptionTemplate>
+                </GridGroupSettings>
+            <GridEditSettings AllowAdding="true" AllowDeleting="true" AllowEditing="true" Mode="EditMode.Dialog" ShowConfirmDialog="false">
+                <Template>           
+                @{
+                    <center>
+                        <h5>
+                            <strong>ENTER VALUES</strong>
+                        </h5>
+                    </center>
+                    CaptureMainData = (context as ViewStakeHolderDataCapture);
+
+                    <div style="padding:15px;">
+                         <div class="form-row">
+                                <div class="form-group col-md-6">
+                                <p>Project:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.ServiceProviderId)"
+                                                Enabled="@ServiceProviderDD" TItem="AServiceProvider" TValue="int?"
+                                                DataSource="@ServiceProviderData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="servprovideredit">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)"
+                                                               Text="@nameof(AServiceProvider.ServiceProviderDesc)">
+                                        </DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+
+                                <div class="form-group col-md-6">
+                                <p>Indicator:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.IndicatorId)"
+                                                Enabled="@IndicatorDD" TItem="AIndicators" TValue="int?"
+                                                DataSource="@IndicatorData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="indicatoredit">
+                                                <DropDownListFieldSettings Value="@nameof(AIndicators.IndicatorId)"
+                                                 Text="@nameof(AIndicators.IndicatorDescription)">
+                                                </DropDownListFieldSettings>
+                                                <DropDownListEvents TValue="int?"
+                                                         TItem="AIndicators" ValueChange="OnIndicatorChange">
+                                                </DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+
+                                <div class="form-group col-md-6">
+                                <p>Financial Year:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.FinancialYearId)"
+                                                Enabled="@FinancialYearDD" TItem="AFinancialYear" TValue="int?"
+                                                DataSource="@FinancialYearData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="finyearedit">
+                                                <DropDownListFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)"
+                                                 Text="@nameof(AFinancialYear.FinancialYearDesc)">
+                                                </DropDownListFieldSettings>
+                                                <DropDownListEvents TValue="int?"
+                                                         TItem="AFinancialYear" ValueChange="OnFinancialYearChange">
+                                                </DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>                                
+
+                                <div class="form-group col-md-6">
+                                    <p>Quarter<span style="color:red;">*</span></p>
+                                    <SfDropDownList @bind-Value="@(CaptureMainData.QuarterId)" TItem="AQuarter" TValue="int?"
+                                                Enabled="@QuarterDD" DataSource="@QuarterData" Placeholder="Select Quarter"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)"
+                                                               Text="@nameof(AQuarter.QuarterName)">
+                                        </DropDownListFieldSettings>
+                                        <DropDownListEvents TValue="int?"
+                                                    TItem="AQuarter" ValueChange="OnQuarterChange">
+                                        </DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+
+                            <div class="form-group col-md-12">
+                                <SfGrid @ref="@DataGrid" 
+                                    TValue="StakeHolderDataCapture" 
+                                    ID="Grid1"
+                                    DataSource="@DataCaptureDataSource"
+                                    AllowPaging="false" AllowFiltering="false" AllowReordering="true"
+                                    AllowResizing="true" AllowGrouping="true" AllowExcelExport="true"
+                                    AllowPdfExport="true" AllowSelection="true" AllowSorting="true" 
+                                    Height="250px" GridLines="GridLine.Both">
+                                    @*<GridGroupSettings Columns="@Div" ShowDropArea="false">
+                                        <CaptionTemplate Context="childcontext">
+                                            @{
+                                                var dvn = (childcontext as CaptionTemplateContext);
+                                                <div><p class="pp"><strong>@dvn.Key</strong></p></div>
+                                            }
+                                        </CaptionTemplate>
+                                    </GridGroupSettings>*@
+                                    <GridEditSettings AllowAdding="true" AllowEditing="true" AllowDeleting="true" Mode="Syncfusion.Blazor.Grids.EditMode.Batch" ShowConfirmDialog="false"></GridEditSettings>
+                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                    <GridPageSettings PageSizes="true"></GridPageSettings>
+                                    @*<SfDataManager AdaptorInstance="@typeof(StakeHolderDataCaptureAdaptor)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>*@
+                                    <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Single" CellSelectionMode="CellSelectionMode.Box" Mode="Syncfusion.Blazor.Grids.SelectionMode.Cell"></GridSelectionSettings>                                    
+                                    @*CellSaved="OnCellSaved"*@
+                                    <GridEvents 
+                                            CellSelected="DataCaptureCellSelectHandler" 
+                                            TValue="StakeHolderDataCapture">
+                                    </GridEvents>
+                                    <GridColumns>
+                                        <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+                                        <GridColumn Field=@nameof(StakeHolderDataCapture.StakeHolderValueId) HeaderText="StakeHolderValueId" AllowEditing="false" IsPrimaryKey="true" Width="150" Visible="false"></GridColumn>
+                                        <GridForeignColumn Field=@nameof(StakeHolderDataCapture.DistrictId)
+                                                       Visible="true"
+                                                       HeaderText="District"
+                                                       Width="80"
+                                                       ForeignKeyField="@nameof(ADistrict.DistrictId)"
+                                                       ForeignKeyValue="@nameof(ADistrict.DistrictDescription)"
+                                                       ForeignDataSource="@DistrictsData"
+                                                       AllowEditing="false">
+                                        </GridForeignColumn>
+
+                                        @*<1 Year*@
+                                        <GridColumn HeaderText="<1 Year"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.Lessthan1YearMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.Lessthan1YearFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*1-4 Years*@
+                                        <GridColumn HeaderText="1-4 Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.OnetoFourYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.OnetoFourYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*5-9 Years*@
+                                        <GridColumn HeaderText="5-9 Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.FivetoNineYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.FivetoNineYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*10-14 Years*@
+                                        <GridColumn HeaderText="10-14 Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.TentoFourteenYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.TentoFourteenYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*15-17 Years*@
+                                        <GridColumn HeaderText="15-17 Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.FifteentoSeventeenYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.FifteentoSeventeenYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*18-24 Years*@
+                                        <GridColumn HeaderText="18-24 Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.EighteentoTwentyFourYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.EighteentoTwentyFourYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="90"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+
+                                        @*25+ Years*@
+                                        <GridColumn HeaderText="25+ Years"
+                                                CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.TwentyFiveAboveYearsMale)
+                                                        HeaderText="Male"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="80"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(StakeHolderDataCapture.TwentyFiveAboveYearsFemale)
+                                                        HeaderText="Female"
+                                                        TextAlign="TextAlign.Right"
+                                                        AllowEditing="true"
+                                                        EditType="EditType.NumericEdit"
+                                                        Width="80"
+                                                        CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                                                </GridColumn>
+                                            </GridColumns>
+                                        </GridColumn>
+                                    </GridColumns>
+                                </SfGrid>
+
+
+                                </div>
+                         </div>
+                    </div>
+
+                }
+                </Template>  
+                
+                <FooterTemplate>
+                    @if(userdetail != null && userdetail.ServiceProviderId != 1)
+                    {
+                        <button @onclick="@onSubmitForm" class="btn btn-primary" data-ripple="true" style="margin-right:10px;">Save Form</button>
+                        <button @onclick="@DialogCancelBtnclicked" class="btn btn-danger" data-ripple="true">Cancel</button>
+                    }
+                </FooterTemplate>            
+                
+            </GridEditSettings>
+            <SfDataManager AdaptorInstance="@typeof(DataCaptureHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionComplete="ActionCompleteMain"
+                        OnActionBegin="ActionBeginMain"
+                    TValue="ViewStakeHolderDataCapture">
+            </GridEvents>
+            <GridColumns>
+                <GridColumn Type="ColumnType.CheckBox" Width="20"></GridColumn>
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.StakeHolderValueId) HeaderText="ID" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.DistrictDescription) HeaderText="District" Width="80" AllowEditing="false"></GridColumn>
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.FinancialYearDesc) HeaderText="Year" Width="80" AllowEditing="false"></GridColumn>                
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.QuarterName) HeaderText="Quarter" Width="80" AllowEditing="false"></GridColumn>              
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.IndicatorDescription) HeaderText="Indicator" Width="80" AllowEditing="false"></GridColumn>
+                <GridColumn Field=@nameof(ViewStakeHolderDataCapture.ServiceProviderDesc) HeaderText="Project" Width="80" AllowEditing="false"></GridColumn>
+                <GridColumn HeaderText="<1 Year" CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.Lessthan1YearMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.Lessthan1YearFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>			
+					</GridColumns>
+				</GridColumn>
+                <GridColumn HeaderText="1-4 Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.OnetoFourYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.OnetoFourYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+                <GridColumn HeaderText="5-9 Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.FivetoNineYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.FivetoNineYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+                <GridColumn HeaderText="10-14 Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.TentoFourteenYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.TentoFourteenYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+                <GridColumn HeaderText="15-17 Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.FifteentoSeventeenYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.FifteentoSeventeenYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+                <GridColumn HeaderText="18-24 Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.EighteentoTwentyFourYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.EighteentoTwentyFourYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+                
+                <GridColumn HeaderText="25+ Years"CustomAttributes="@(new Dictionary<string, object>(){ { "class", "e-attr1" }})">
+                    <GridColumns>
+						<GridColumn Field=@nameof(ViewStakeHolderDataCapture.TwentyFiveAboveYearsMale) HeaderText="Male" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>
+                        <GridColumn Field=@nameof(ViewStakeHolderDataCapture.TwentyFiveAboveYearsFemale) HeaderText="Female" TextAlign="TextAlign.Right" Visible="true" Width="100"></GridColumn>					
+					</GridColumns>
+				</GridColumn>
+            </GridColumns>
+        </SfGrid>
+</div>
+
+@code
+{
+    SfGrid<StakeHolderDataCapture> DataGrid;
+    List<ADistrict> DistrictsData { get; set; }
+    List<AFinancialYear> FinancialYearData { get; set; }
+    List<AIndicators> IndicatorData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<ViewDashboardTargetDatasource> ServiceProviderDistrictsData { get; set; }
+    List<StakeHolderDataCapture> DataCaptureDataSource { get; set; }
+    List<ViewUserManagement> UserManagementData { get; set; }
+    //private List<StakeHolderDataCapture> DataCaptureDataSource = new List<StakeHolderDataCapture>();
+    SfGrid<ViewStakeHolderDataCapture>? MainGrid;
+    private static ViewStakeHolderDataCapture? CaptureMainData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    public bool FinancialYearDD = false;
+    public bool IndicatorDD = true;
+    public bool ServiceProviderDD = false;
+    public bool QuarterDD = false;
+    public bool ServiceProviderSearchDD = false;
+    SfDropDownList<int?, AFinancialYear> finyearedit { get; set; }
+    SfDropDownList<int?, AIndicators> indicatoredit { get; set; }
+    SfDropDownList<int?, AServiceProvider> servprovideredit { get; set; }
+    int? finyear = null;
+    int? SvcPvdId = null;
+    int? QtrId = null;
+    int? IndId = null;
+    public Query MainQuery = new Query();
+    private UtilitiesSearchPanel InputModel = new();
+    private static ViewUserManagement? userdetail { get; set; }
+
+    private List<object> ToolbarMenuMain = new List<object>()
+    {
+        new ItemModel() { Text = "Capture Values", PrefixIcon = "e-add", Id = "GridMain_add"},
+        new ItemModel(){ Text = "Edit Values", PrefixIcon= "e-edit", Id="GridMain_edit"},
+        //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+        new ItemModel(){ Text = "Update Values", PrefixIcon= "e-update", Id="GridMain_update"},
+        new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="GridMain_cancel"}
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        DistrictsData = db.ADistrict.AsNoTracking().ToList();
+        FinancialYearData = db.AFinancialYear.AsNoTracking().ToList();
+        IndicatorData = db.AIndicators.AsNoTracking().ToList();
+        ServiceProviderData = db.AServiceProvider
+        .Where(o=>o.ServiceProviderId != 1)
+        .AsNoTracking()
+        .ToList();
+        QuarterData = db.AQuarter.Where(o => o.QuarterId >= 1 && o.QuarterId <= 4).ToList();
+        ServiceProviderDistrictsData = db.ViewDashboardTargetDatasource
+        .OrderBy(o => o.DistrictDescription).ToList();
+        UserManagementData = db.ViewUserManagement.ToList();
+        //DataCaptureDataSource = db.StakeHolderDataCapture.ToList();
+
+        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+
+        if (user != null)
+        {
+            if (user.ServiceProviderId == 1)
+            {
+                ServiceProviderSearchDD =  true;
+
+                ToolbarMenuMain = new List<object>()
+                {
+                    //new ItemModel() { Text = "Capture Values", PrefixIcon = "e-add", Id = "GridMain_add"},
+                    //new ItemModel(){ Text = "Edit Values", PrefixIcon= "e-edit", Id="GridMain_edit"},
+                    //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+                    new ItemModel(){ Text = "Update Values", PrefixIcon= "e-update", Id="GridMain_update"},
+                    new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="GridMain_cancel"}
+                };
+            }
+            else
+            {
+                ToolbarMenuMain = new List<object>()
+                {
+                    new ItemModel() { Text = "Capture Values", PrefixIcon = "e-add", Id = "GridMain_add"},
+                    new ItemModel(){ Text = "Edit Values", PrefixIcon= "e-edit", Id="GridMain_edit"},
+                    //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+                    new ItemModel(){ Text = "Update Values", PrefixIcon= "e-update", Id="GridMain_update"},
+                    new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="GridMain_cancel"}
+                };
+            }
+        }
+
+        //var datasource = new List<StakeHolderDataCapture>();
+
+        //if (userManagement.GetServiceProviderId() != null)
+        //{
+        //    SvcPvdId = userManagement.GetServiceProviderId();
+        //}
+        //var dist = ServiceProviderDistrictsData.Where(o => o.ServiceProviderId == SvcPvdId).ToList();
+        //datasource = db.StakeHolderDataCapture.ToList();
+        //int countid = -1000;
+
+        //foreach (var item in dist)
+        //{
+        //    var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+        //    if (exist == null)
+        //    {
+        //        datasource.Add(new StakeHolderDataCapture()
+        //            {
+        //                DistrictId = item.DistrictId,
+        //                StakeHolderValueId = countid,
+        //            });
+        //        countid++;
+        //    }
+        //}
+        //DataCaptureDataSource = datasource;
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.IndicatorId != null)
+            {
+                MainQuery.AddParams("IndicatorId", string.Join(",", InputModel.IndicatorId));
+            }
+            if (InputModel.FinancialYearId != null)
+            {
+                MainQuery.AddParams("FinancialYearId", string.Join(",", InputModel.FinancialYearId));
+            }
+            if (InputModel.QuarterId != null)
+            {
+                MainQuery.AddParams("QuarterId", string.Join(",", InputModel.QuarterId));
+            }
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.ServiceProviderId != null)
+            {
+                MainQuery.AddParams("ServiceProviderId", string.Join(",", InputModel.ServiceProviderId));
+            }            
+        }
+
+        catch (Exception ex)
+        {
+            toastService.ShowWarning(ex.Message.ToString()); 
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+    }
+
+    public async Task onSubmitForm()
+    {
+        try
+        {
+            if (CaptureMainData.ServiceProviderId == null)
+            {
+                toastService.ShowWarning("Please select the service provider.");           
+            } 
+            else if (CaptureMainData.IndicatorId == null)
+            {
+                toastService.ShowWarning("Please select the indicator.");
+            }
+            else if (/*finyear == null*/CaptureMainData.FinancialYearId == null)
+            {
+                toastService.ShowWarning("Please select the financial year.");            
+            }  
+
+            else if (CaptureMainData.QuarterId == null)
+            {
+                toastService.ShowWarning("Please select the quarter.");            
+            }
+
+            else
+            {
+                await DataGrid.EndEditAsync();
+                foreach (StakeHolderDataCapture item in DataCaptureDataSource)
+                {
+                    StakeHolderDataCapture obj = new StakeHolderDataCapture();
+                    var mo = await db.StakeHolderDataCapture
+                    .FirstOrDefaultAsync(o => o.ServiceProviderId == CaptureMainData.ServiceProviderId
+                        && o.IndicatorId == CaptureMainData.IndicatorId && o.DistrictId == item.DistrictId
+                     && o.FinancialYearId == CaptureMainData.FinancialYearId && o.QuarterId == CaptureMainData.QuarterId);
+
+                    if (mo == null)
+                    {
+                        int id = 1;
+                        var last = db.StakeHolderDataCapture.OrderBy(o => o.StakeHolderValueId).ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.StakeHolderValueId + 1);
+                        }
+
+                        obj.StakeHolderValueId = id;
+                        obj.ServiceProviderId = CaptureMainData.ServiceProviderId;
+                        obj.IndicatorId = CaptureMainData.IndicatorId;
+                        obj.DistrictId = item.DistrictId;
+                        obj.FinancialYearId = CaptureMainData.FinancialYearId;
+                        obj.QuarterId = CaptureMainData.QuarterId;
+                        obj.Lessthan1YearMale = item.Lessthan1YearMale;
+                        obj.Lessthan1YearFemale = item.Lessthan1YearFemale;
+                        obj.OnetoFourYearsMale = item.OnetoFourYearsMale;
+                        obj.OnetoFourYearsFemale = item.OnetoFourYearsFemale;
+                        obj.FivetoNineYearsMale = item.FivetoNineYearsMale;
+                        obj.FivetoNineYearsFemale = item.FivetoNineYearsFemale;
+                        obj.TentoFourteenYearsMale = item.TentoFourteenYearsMale;
+                        obj.TentoFourteenYearsFemale = item.TentoFourteenYearsFemale;
+                        obj.FifteentoSeventeenYearsMale = item.FifteentoSeventeenYearsMale;
+                        obj.FifteentoSeventeenYearsFemale = item.FifteentoSeventeenYearsFemale;
+                        obj.EighteentoTwentyFourYearsMale = item.EighteentoTwentyFourYearsMale;
+                        obj.EighteentoTwentyFourYearsFemale = item.EighteentoTwentyFourYearsFemale;
+                        obj.TwentyFiveAboveYearsMale = item.TwentyFiveAboveYearsMale;
+                        obj.TwentyFiveAboveYearsFemale = item.TwentyFiveAboveYearsFemale;
+                        obj.DateCaptured = DateTime.Now;
+                        obj.CapturedBy = userManagement.GetUserName();
+
+                        await db.StakeHolderDataCapture.AddAsync(obj);
+                        await db.SaveChangesAsync();
+                        db.Entry(obj).State = EntityState.Detached;
+                        await db.SaveChangesAsync();
+                    }
+
+                    else
+                    {                        
+                        mo.ServiceProviderId = item.ServiceProviderId;
+                        mo.IndicatorId = item.IndicatorId;
+                        mo.DistrictId = item.DistrictId;
+                        mo.FinancialYearId = item.FinancialYearId;
+                        mo.QuarterId = item.QuarterId;
+                        mo.Lessthan1YearMale = item.Lessthan1YearMale;
+                        mo.Lessthan1YearFemale = item.Lessthan1YearFemale;
+                        mo.OnetoFourYearsMale = item.OnetoFourYearsMale;
+                        mo.OnetoFourYearsFemale = item.OnetoFourYearsFemale;
+                        mo.FivetoNineYearsMale = item.FivetoNineYearsMale;
+                        mo.FivetoNineYearsFemale = item.FivetoNineYearsFemale;
+                        mo.TentoFourteenYearsMale = item.TentoFourteenYearsMale;
+                        mo.TentoFourteenYearsFemale = item.TentoFourteenYearsFemale;
+                        mo.FifteentoSeventeenYearsMale = item.FifteentoSeventeenYearsMale;
+                        mo.FifteentoSeventeenYearsFemale = item.FifteentoSeventeenYearsFemale;
+                        mo.EighteentoTwentyFourYearsMale = item.EighteentoTwentyFourYearsMale;
+                        mo.EighteentoTwentyFourYearsFemale = item.EighteentoTwentyFourYearsFemale;
+                        mo.TwentyFiveAboveYearsMale = item.TwentyFiveAboveYearsMale;
+                        mo.TwentyFiveAboveYearsFemale = item.TwentyFiveAboveYearsFemale;
+
+                        db.Entry(mo).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        db.Entry(mo).State = EntityState.Detached;
+                        await db.SaveChangesAsync();
+                    }
+
+                }
+
+                if (MainGrid != null)
+                {
+                    await MainGrid.EndEditAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowWarning(ex.Message.ToString());
+        }
+        finally
+        {
+            //await LoadingDialogue.HideAsync();
+            StateHasChanged();
+        }
+    }
+
+    public async void DialogCancelBtnclicked()
+    {
+        if (DataGrid != null)
+        {
+            await DataGrid.CloseEdit();
+        }
+        if (MainGrid != null)
+        {
+            await MainGrid.CloseEdit();
+        }
+    }
+
+    public async void OnIndicatorChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?,AIndicators> args)
+    {
+        FinancialYearDD = true;
+        //Return empty datasource on adding new record
+        DataCaptureDataSource = null;
+    }
+
+    public async void OnFinancialYearChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AFinancialYear> args)
+    {
+        QuarterDD = true;
+        //Return empty datasource on adding new record
+        DataCaptureDataSource = null;
+    }
+
+    public async void OnQuarterChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?,AQuarter> args)
+    {
+        QtrId = args.ItemData.QuarterId;
+        SvcPvdId = CaptureMainData.ServiceProviderId;
+        finyear = CaptureMainData.FinancialYearId;
+        IndId = CaptureMainData.IndicatorId;
+
+        var datasource = new List<StakeHolderDataCapture>();
+        var dist = ServiceProviderDistrictsData
+        .Where(o => o.ServiceProviderId == SvcPvdId)
+        .OrderBy(o => o.DistrictDescription).ToList();
+        int countid = -1000;
+
+        List<StakeHolderDataCapture> mn = new List<StakeHolderDataCapture>();        
+
+        DataCaptureDataSource = db.StakeHolderDataCapture
+        .Where(o => o.ServiceProviderId == SvcPvdId 
+            && o.QuarterId == QtrId && o.FinancialYearId == finyear 
+            && o.IndicatorId == IndId).ToList();
+
+        if (DataCaptureDataSource.Count > 0)
+        {
+            foreach (var n in DataCaptureDataSource)
+            {
+                var countdata = db.StakeHolderDataCapture
+                    .FirstOrDefault(o => o.ServiceProviderId == SvcPvdId
+                    && o.QuarterId == QtrId && o.FinancialYearId == finyear 
+                    && o.IndicatorId == IndId);
+
+                datasource = db.StakeHolderDataCapture.Where(o => o.ServiceProviderId == SvcPvdId
+                    && o.QuarterId == QtrId && o.FinancialYearId == finyear
+                    && o.IndicatorId == IndId).ToList();
+
+                if (countdata == null)
+                {
+                    foreach (var item in dist)
+                    {
+                        var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                        if (exist == null)
+                        {
+                            var m = new StakeHolderDataCapture();
+                            m.DistrictId = item.DistrictId;
+                            m.StakeHolderValueId = countid;
+                            m.IndicatorId = IndId;
+                            m.FinancialYearId = finyear;
+                            m.QuarterId = QtrId;
+                            m.Lessthan1YearMale = 0;
+                            m.Lessthan1YearFemale = 0;
+                            m.OnetoFourYearsMale = 0;
+                            m.OnetoFourYearsFemale = 0;
+                            m.FivetoNineYearsMale = 0;
+                            m.FivetoNineYearsFemale = 0;
+                            m.TentoFourteenYearsMale = 0;
+                            m.TentoFourteenYearsFemale = 0;
+                            m.FifteentoSeventeenYearsMale = 0;
+                            m.FifteentoSeventeenYearsFemale = 0;
+                            m.EighteentoTwentyFourYearsMale = 0;
+                            m.EighteentoTwentyFourYearsFemale = 0;
+                            m.TwentyFiveAboveYearsMale = 0;
+                            m.TwentyFiveAboveYearsFemale = 0;
+
+                            DataCaptureDataSource.Add(m);
+                            countid++;
+                        }
+                    }
+                }
+
+                else
+                {
+                    foreach (var item in dist)
+                    {
+                        var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                        var countdata1 = db.StakeHolderDataCapture
+                            .FirstOrDefault(o => o.ServiceProviderId == SvcPvdId
+                            && o.QuarterId == QtrId && o.FinancialYearId == finyear 
+                            && o.IndicatorId == IndId && o.DistrictId == item.DistrictId );
+
+                        if (exist == null)
+                        {
+                            if (countdata1 != null)
+                            {
+                                var m = new StakeHolderDataCapture();
+                                m.StakeHolderValueId = countid;
+                                m.ServiceProviderId = SvcPvdId;
+                                m.IndicatorId = IndId;
+                                m.DistrictId = item.DistrictId;
+                                m.FinancialYearId = finyear;
+                                m.QuarterId = QtrId;
+                                m.Lessthan1YearMale = countdata1.Lessthan1YearMale;
+                                m.Lessthan1YearFemale = countdata1.Lessthan1YearFemale;
+                                m.OnetoFourYearsMale = countdata1.OnetoFourYearsMale;
+                                m.OnetoFourYearsFemale = countdata1.OnetoFourYearsFemale;
+                                m.FivetoNineYearsMale = countdata1.FivetoNineYearsMale;
+                                m.FivetoNineYearsFemale = countdata1.FivetoNineYearsFemale;
+                                m.TentoFourteenYearsMale = countdata1.TentoFourteenYearsMale;
+                                m.TentoFourteenYearsFemale = countdata1.TentoFourteenYearsFemale;
+                                m.FifteentoSeventeenYearsMale = countdata1.FifteentoSeventeenYearsMale;
+                                m.FifteentoSeventeenYearsFemale = countdata1.FifteentoSeventeenYearsFemale;
+                                m.EighteentoTwentyFourYearsMale = countdata1.EighteentoTwentyFourYearsMale;
+                                m.EighteentoTwentyFourYearsFemale = countdata1.EighteentoTwentyFourYearsFemale;
+                                m.TwentyFiveAboveYearsMale = countdata1.TwentyFiveAboveYearsMale;
+                                m.TwentyFiveAboveYearsFemale = countdata1.TwentyFiveAboveYearsFemale;
+
+                                DataCaptureDataSource.Add(m);
+                                countid++;
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        else
+        {
+            DataCaptureDataSource = new List<StakeHolderDataCapture>();
+            foreach (var item in dist)
+            {
+                var exist = DataCaptureDataSource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                if (exist == null)
+                {
+                    var m = new StakeHolderDataCapture();
+                    m.StakeHolderValueId = countid;
+                    m.DistrictId = item.DistrictId;                    
+                    m.IndicatorId = IndId;
+                    m.FinancialYearId = finyear;
+                    m.QuarterId = QtrId;
+                    m.Lessthan1YearMale = 0;
+                    m.Lessthan1YearFemale = 0;
+                    m.OnetoFourYearsMale = 0;
+                    m.OnetoFourYearsFemale = 0;
+                    m.FivetoNineYearsMale = 0;
+                    m.FivetoNineYearsFemale = 0;
+                    m.TentoFourteenYearsMale = 0;
+                    m.TentoFourteenYearsFemale = 0;
+                    m.FifteentoSeventeenYearsMale = 0;
+                    m.FifteentoSeventeenYearsFemale = 0;
+                    m.EighteentoTwentyFourYearsMale = 0;
+                    m.EighteentoTwentyFourYearsFemale = 0;
+                    m.TwentyFiveAboveYearsMale = 0;
+                    m.TwentyFiveAboveYearsFemale = 0;
+
+                    countid++;
+                    DataCaptureDataSource.Add(m);                    
+                }   
+            }            
+        }
+    }
+
+
+    //Parent Grid
+
+    public class DataCaptureHeaderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        private MUCOBADIContext _dbContext;
+        public DataCaptureHeaderAdapter(IToastService ts, UserManagement userManagement, MUCOBADIContext dbContext)
+        {
+            toastService = ts;
+            _userManagement = userManagement;
+            _dbContext = dbContext;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ViewStakeHolderDataCapture>();
+            try
+            {                
+                string FinancialYearId = null;
+                string QuarterId = null;
+                string IndicatorId = null;
+                string DistrictId = null;
+                string ServiceProviderId = null;
+
+                int? ServiceProviderIdd = null;
+                if (_userManagement.GetServiceProviderId() != null)
+                {
+                    ServiceProviderIdd = _userManagement.GetServiceProviderId();
+                }
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "FinancialYearId").Value != null)
+                    {
+                        FinancialYearId = val.FirstOrDefault(o => o.Key == "FinancialYearId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "QuarterId").Value != null)
+                    {
+                        QuarterId = val.FirstOrDefault(o => o.Key == "QuarterId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "IndicatorId").Value != null)
+                    {
+                        IndicatorId = val.FirstOrDefault(o => o.Key == "IndicatorId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ServiceProviderId").Value != null)
+                    {
+                        ServiceProviderId = val.FirstOrDefault(o => o.Key == "ServiceProviderId").Value.ToString();
+                    }
+                }
+
+                string[] _FinancialYearId = new string[] { };
+                if (!string.IsNullOrEmpty(FinancialYearId))
+                {
+                    _FinancialYearId = FinancialYearId.Split(',');
+                }
+                string[] _QuarterId = new string[] { };
+                if (!string.IsNullOrEmpty(QuarterId))
+                {
+                    _QuarterId = QuarterId.Split(',');
+                }
+
+                string[] _IndicatorId = new string[] { };
+                if (!string.IsNullOrEmpty(IndicatorId))
+                {
+                    _IndicatorId = IndicatorId.Split(',');
+                }
+                string[] _DistrictId = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _DistrictId = DistrictId.Split(',');
+                }
+                string[] _ServiceProviderId = new string[] { };
+                if (!string.IsNullOrEmpty(ServiceProviderId))
+                {
+                    _ServiceProviderId = ServiceProviderId.Split(',');
+                }
+                
+                //data = _dbContext.ViewStakeHolderDataCapture.Where(o => o.ServiceProviderId == ServiceProviderIdd).OrderBy(o => o.DistrictDescription).ToList();
+                
+                //For Mucobadi Staff
+                if(ServiceProviderIdd == 1)
+                {
+                    data = await _dbContext.ViewStakeHolderDataCapture.Where(o =>(_FinancialYearId.Length == 0 || (o.FinancialYearId != null
+                        && _FinancialYearId.Any(a => a == o.FinancialYearId.ToString()) == true)) &&
+                    (_QuarterId.Length == 0 || (o.QuarterId != null && _QuarterId.Any(a => a == o.QuarterId.ToString()) == true))
+                    && (_IndicatorId.Length == 0 || (o.IndicatorId != null && _IndicatorId.Any(a => a == o.IndicatorId.ToString()) == true))
+                    && (_DistrictId.Length == 0 || (o.DistrictId != null && _DistrictId.Any(a => a == o.DistrictId.ToString()) == true))
+                    && (_ServiceProviderId.Length == 0 || (o.ServiceProviderId != null && _ServiceProviderId.Any(a => a == o.ServiceProviderId.ToString()) == true))).ToListAsync();
+                }
+                else
+                {
+                    data = await _dbContext.ViewStakeHolderDataCapture.Where(o => (o.ServiceProviderId == ServiceProviderIdd) 
+                    && (_FinancialYearId.Length == 0 || (o.FinancialYearId != null && _FinancialYearId.Any(a => a == o.FinancialYearId.ToString()) == true)) &&
+                    (_QuarterId.Length == 0 || (o.QuarterId != null && _QuarterId.Any(a => a == o.QuarterId.ToString()) == true))
+                    && (_IndicatorId.Length == 0 || (o.IndicatorId != null && _IndicatorId.Any(a => a == o.IndicatorId.ToString()) == true))
+                    && (_DistrictId.Length == 0 || (o.DistrictId != null && _DistrictId.Any(a => a == o.DistrictId.ToString()) == true))).ToListAsync();
+                }                
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ViewStakeHolderDataCapture>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+    }
+
+    public void ActionCompleteMain(ActionEventArgs<ViewStakeHolderDataCapture> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) ||
+        args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            MainGrid.PreventRender(false);
+        }
+    }
+
+    public async void ActionBeginMain(ActionEventArgs<ViewStakeHolderDataCapture> Args)
+    {
+        var data = Args.Data;
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            //if (Args.Data.FinancialYearId == null)
+            //{
+            //    toastService.ShowWarning("Please select the financial year.");
+            //    Args.Cancel = true;
+            //}
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            FinancialYearDD = false;
+            ServiceProviderDD = false;
+            QuarterDD = false;
+            IndicatorDD = false;
+            finyear = Args.RowData.FinancialYearId;
+
+            userdetail = UserManagementData.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+
+            DataCaptureDataSource = db.StakeHolderDataCapture
+               .Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId
+               && o.QuarterId == Args.RowData.QuarterId && o.FinancialYearId == Args.RowData.FinancialYearId
+               && o.IndicatorId == Args.RowData.IndicatorId).ToList();
+
+            var datasource = new List<StakeHolderDataCapture>();
+            var dist = ServiceProviderDistrictsData
+            .Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId)
+            .OrderBy(o => o.DistrictDescription).ToList();
+            datasource = db.StakeHolderDataCapture.Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId
+                && o.QuarterId == Args.RowData.QuarterId && o.FinancialYearId == Args.RowData.FinancialYearId
+                && o.IndicatorId == Args.RowData.IndicatorId).ToList();
+            int countid = -1000;
+            var m = new StakeHolderDataCapture();
+
+            if (DataCaptureDataSource.Count > 0)
+            {
+                foreach (var n in DataCaptureDataSource)
+                {
+                    foreach (var item in dist)
+                    {
+                        var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                        if (exist == null)
+                        {
+                            m.DistrictId = item.DistrictId;
+                            m.StakeHolderValueId = countid;
+                            m.IndicatorId = IndId;
+                            m.FinancialYearId = finyear;
+                            m.QuarterId = QtrId;
+                            m.Lessthan1YearMale = n.Lessthan1YearMale;
+                            m.Lessthan1YearFemale = n.Lessthan1YearFemale;
+                            m.OnetoFourYearsMale = n.OnetoFourYearsMale;
+                            m.OnetoFourYearsFemale = n.OnetoFourYearsFemale;
+                            m.FivetoNineYearsMale = n.FivetoNineYearsMale;
+                            m.FivetoNineYearsFemale = n.FivetoNineYearsFemale;
+                            m.TentoFourteenYearsMale = n.TentoFourteenYearsMale;
+                            m.TentoFourteenYearsFemale = n.TentoFourteenYearsFemale;
+                            m.FifteentoSeventeenYearsMale = n.FifteentoSeventeenYearsMale;
+                            m.FifteentoSeventeenYearsFemale = n.FifteentoSeventeenYearsFemale;
+                            m.EighteentoTwentyFourYearsMale = n.EighteentoTwentyFourYearsMale;
+                            m.EighteentoTwentyFourYearsFemale = n.EighteentoTwentyFourYearsFemale;
+                            m.TwentyFiveAboveYearsMale = n.TwentyFiveAboveYearsMale;
+                            m.TwentyFiveAboveYearsFemale = n.TwentyFiveAboveYearsFemale;
+
+                            //datasource.Add(m);
+                            countid++;
+                        }
+                    }
+                }
+            }
+
+            //DataCaptureDataSource = datasource;
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            //Enable Financial Year on Edit
+            //FinancialYearDD = true;
+            //QuarterDD = true;
+            //ServiceProviderDD = false; 
+            finyear = null;
+            userdetail = UserManagementData.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+
+            DistrictsData = db.ADistrict.AsNoTracking().ToList();
+            FinancialYearData = db.AFinancialYear.AsNoTracking().ToList();
+            IndicatorData = db.AIndicators.AsNoTracking().ToList();
+            ServiceProviderData = db.AServiceProvider
+            .Where(o=>o.ServiceProviderId != 1)
+            .AsNoTracking()
+            .ToList();
+            QuarterData = db.AQuarter.Where(o => o.QuarterId >= 1 && o.QuarterId <= 4).ToList();
+
+            Args.Data.ServiceProviderId = userManagement.GetServiceProviderId();
+
+            //Return empty datasource on adding new record
+            DataCaptureDataSource = null;
+        }
+    }
+
+    //Parent Grid
+
+    //Child Grid
+
+    public class StakeHolderDataCaptureAdaptor : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        private MUCOBADIContext _context;
+
+        public StakeHolderDataCaptureAdaptor(IToastService ts, UserManagement userManagement
+            , MUCOBADIContext context)
+        {
+            toastService = ts;
+            _userManagement = userManagement;
+            _context = context;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<StakeHolderDataCapture>();
+            try
+            {
+                int? ServiceProviderIdd = null;
+                if (_userManagement.GetServiceProviderId() != null)
+                {
+                    ServiceProviderIdd = _userManagement.GetServiceProviderId();
+                }
+                //using (var dbContext = new MUCOBADIContext())
+                //{
+                var dist = _context.ViewDashboardTargetDatasource.Where(o => o.ServiceProviderId == ServiceProviderIdd).ToList();
+                data = _context.StakeHolderDataCapture.ToList();
+                int countid = -1000;
+
+                foreach (var item in dist)
+                {
+                    var exist = data.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                    if (exist == null)
+                    {
+                        data.Add(new StakeHolderDataCapture()
+                            {
+                                DistrictId = item.DistrictId,
+                                StakeHolderValueId = countid,
+                            });
+                        countid++;
+                    }
+                }
+                //}
+
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowWarning(ex.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<StakeHolderDataCapture>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        // Performs BatchUpdate operation
+        //public override object BatchUpdate(DataManager dm, object Changed, object Added, object Deleted, string KeyField, string Key, int? dropIndex)
+        //{
+        //    object value = null;
+        //    try
+        //    {
+        //        if (Added != null)
+        //        {
+        //            var val = (List<StakeHolderDataCapture>)Added;
+        //            if (val.Count > 0)
+        //            {
+        //                Changed = Added;
+        //                value = Added;
+        //            }
+        //        }
+        //        if (Changed != null)
+        //        {
+        //            value = Changed;
+
+        //            using (var dbContext = new MUCOBADIContext())
+        //            {
+        //                var val = (List<StakeHolderDataCapture>)Changed;
+        //                StakeHolderDataCapture capture = new StakeHolderDataCapture();
+
+        //                foreach (var n in val)
+        //                {
+        //                    var exists = dbContext.StakeHolderDataCapture.FirstOrDefault(o => o.StakeHolderValueId == n.StakeHolderValueId);
+        //                    if (exists != null)
+        //                    {
+        //                        exists.ServiceProviderId = exists.ServiceProviderId;
+        //                        exists.IndicatorId = 1 /*exists.IndicatorId*/;
+        //                        exists.DistrictId = n.DistrictId;
+        //                        exists.FinancialYearId = n.FinancialYearId;
+        //                        exists.Lessthan1YearMale = n.Lessthan1YearMale;
+        //                        exists.Lessthan1YearFemale = n.Lessthan1YearFemale;
+        //                        exists.OnetoFourYearsMale = n.OnetoFourYearsMale;
+        //                        exists.OnetoFourYearsFemale = n.OnetoFourYearsFemale;
+        //                        exists.FivetoNineYearsMale = n.FivetoNineYearsMale;
+        //                        exists.FivetoNineYearsFemale = n.FivetoNineYearsFemale;
+        //                        exists.TentoFourteenYearsMale = n.TentoFourteenYearsMale;
+        //                        exists.TentoFourteenYearsFemale = n.TentoFourteenYearsFemale;
+        //                        exists.FifteentoSeventeenYearsMale = n.FifteentoSeventeenYearsMale;
+        //                        exists.FifteentoSeventeenYearsFemale = n.FifteentoSeventeenYearsFemale;
+        //                        exists.EighteentoTwentyFourYearsMale = n.EighteentoTwentyFourYearsMale;
+        //                        exists.EighteentoTwentyFourYearsFemale = n.EighteentoTwentyFourYearsFemale;
+        //                        exists.TwentyFiveAboveYearsMale = n.TwentyFiveAboveYearsMale;
+        //                        exists.TwentyFiveAboveYearsFemale = n.TwentyFiveAboveYearsFemale;
+        //                        //exists.Actual = n.Actual;
+        //                        //exists.FinancialYearId = n.FinancialYearId;
+        //                        //exists.QuarterId = n.QuarterId;
+        //                        //exists.Quarter1 = n.Quarter1;
+        //                        //exists.Quarter2 = n.Quarter1;
+        //                        //exists.Quarter3 = n.Quarter1;
+        //                        //exists.Quarter4 = n.Quarter1;
+
+        //                        dbContext.Entry(exists).CurrentValues.SetValues(n);
+        //                        dbContext.Entry(exists).State = EntityState.Modified;
+        //                        dbContext.SaveChanges();
+        //                        dbContext.Entry(exists).State = EntityState.Detached;
+        //                        dbContext.SaveChanges();
+        //                    }
+        //                    else
+        //                    {
+        //                        int id = 1;
+        //                        var data = dbContext.StakeHolderDataCapture.OrderBy(o => o.StakeHolderValueId).ToList().LastOrDefault();
+        //                        if (data != null)
+        //                        {
+        //                            id = (data.StakeHolderValueId + 1);
+        //                        }
+        //                        capture.StakeHolderValueId = id;
+        //                        capture.ServiceProviderId = n.ServiceProviderId;
+        //                        capture.IndicatorId = 1 /*capture.IndicatorId*/;
+        //                        capture.DistrictId = n.DistrictId;
+        //                        capture.FinancialYearId = n.FinancialYearId;
+        //                        capture.Lessthan1YearMale = n.Lessthan1YearMale;
+        //                        capture.Lessthan1YearFemale = n.Lessthan1YearFemale;
+        //                        capture.OnetoFourYearsMale = n.OnetoFourYearsMale;
+        //                        capture.OnetoFourYearsFemale = n.OnetoFourYearsFemale;
+        //                        capture.FivetoNineYearsMale = n.FivetoNineYearsMale;
+        //                        capture.FivetoNineYearsFemale = n.FivetoNineYearsFemale;
+        //                        capture.TentoFourteenYearsMale = n.TentoFourteenYearsMale;
+        //                        capture.TentoFourteenYearsFemale = n.TentoFourteenYearsFemale;
+        //                        capture.FifteentoSeventeenYearsMale = n.FifteentoSeventeenYearsMale;
+        //                        capture.FifteentoSeventeenYearsFemale = n.FifteentoSeventeenYearsFemale;
+        //                        capture.EighteentoTwentyFourYearsMale = n.EighteentoTwentyFourYearsMale;
+        //                        capture.EighteentoTwentyFourYearsFemale = n.EighteentoTwentyFourYearsFemale;
+        //                        capture.TwentyFiveAboveYearsMale = n.TwentyFiveAboveYearsMale;
+        //                        capture.TwentyFiveAboveYearsFemale = n.TwentyFiveAboveYearsFemale;
+        //                        capture.DateCaptured = DateTime.Now;
+        //                        capture.CapturedBy = _userManagement.GetUserName();
+
+        //                        dbContext.StakeHolderDataCapture.Add(capture);
+        //                        dbContext.SaveChanges();
+        //                    }
+        //                    //dbContext.SaveChanges();
+        //                    string result = "Record Updated Successfully";
+        //                    toastService.ShowInfo(result);
+        //                }
+        //            }
+        //        }
+        //        //if (Deleted != null)
+        //        //{
+        //        //    foreach (var rec in (IEnumerable<OnaTargets>)Deleted)
+        //        //    {
+        //        //        //Orders.Remove(onata.Where(or => or.OrderID == rec.OrderID).FirstOrDefault());
+        //        //    }
+
+        //        //}
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        toastService.ShowError(ex.ToString());
+        //    }
+
+        //    return value;
+        //}
+    
+    }
+
+    //Enable cell edit on single click
+    public async Task DataCaptureCellSelectHandler(CellSelectEventArgs<StakeHolderDataCapture> args)
+    {
+        try
+        {
+            //get selected cell index
+            var CellIndexes = await DataGrid.GetSelectedRowCellIndexesAsync();
+
+            //get the row and cell index
+            var CurrentEditRowIndex = CellIndexes[0].Item1;
+            var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+            //get the available fields
+            var fields = await DataGrid.GetColumnFieldNamesAsync();
+            // edit the selected cell using the cell index and column name
+            await DataGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+        }
+        catch (Exception ex)
+        {
+            // throw ex;
+        }
+    }
+        
+    public void OnCellSaved(CellSaveArgs<StakeHolderDataCapture> Args)
+    {
+        this.DataGrid.EndEdit();
+    }
+
+    //Child Grid
+}

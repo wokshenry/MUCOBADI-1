@@ -1,0 +1,1031 @@
+﻿@page "/SchoolAttendencyPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> OVC SCHOOL ATTANDANCE & TRANSITION MONITORING TOOL</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager AdaptorInstance="@typeof(SchoolAttendancyBeneficiaryRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="RegisterContext">
+                    @{
+                        BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                        <div style="padding:3px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Household Code</p>
+                                    <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="OvcSchoolAttendencyHeaderGrid" TValue="OvcSchoolAttendencyHeader" Query="@(new Query().AddParams("HouseHoldId",BeneficiaryRegisterData.HouseHoldId))"
+                                            Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <SfDataManager AdaptorInstance="@typeof(OvcSchoolAttendencyHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridEvents OnActionBegin="OnOvcSchoolAttendencyHeaderActionBegin" OnActionComplete="@OnOvcSchoolAttendencyHeaderActionComplete" TValue="OvcSchoolAttendencyHeader"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="OvcSchoolAttendencyHeaderContext">
+                                                @{
+                                                    OvcSchoolAttendencyHeaderReviewData = (OvcSchoolAttendencyHeaderContext as OvcSchoolAttendencyHeader);
+                                                    <div style="padding:15px;">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.HouseHoldId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.SchoolAttendencyHeaderId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Name of IP/CSO</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.Csoname)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Name of Office</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.OfficeName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date of data collection</p>
+                                                                <SfDatePicker @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.DatacollectionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Term</p>
+                                                                <SfDropDownList @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.TermId)" Enabled="true" TItem="ATerm" TValue="int?" DataSource="@TermData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(ATerm.TermId)" Text="@nameof(ATerm.TermDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="SchoolAttendencyDetailsGrid" DataSource="@SchoolAttendencyDetailsData" TValue="spSchoolAttendencyDetailGetAllResult"
+                                                                        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                                        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                                                    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                                                    <GridEvents OnActionBegin="OnSchoolAttendencyDetailActionBegin" OnActionComplete="@OnSchoolAttendencyDetailActionComplete" TValue="spSchoolAttendencyDetailGetAllResult"></GridEvents>
+                                                                    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                                        <Template Context="MemberServiceContext">
+                                                                            @{
+                                                                                SchoolAttendencyDetailReviewData = (MemberServiceContext as spSchoolAttendencyDetailGetAllResult);
+                                                                                <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                                                    <div class="form-row">
+                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                            <SfNumericTextBox @bind-Value="@SchoolAttendencyDetailReviewData.SchoolAttendencyDetailsId" Enabled="false"></SfNumericTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <h4>Household member Details</h4>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Household Member Code</p>
+                                                                                            <p><b>@SchoolAttendencyDetailReviewData.HouseHoldMemberCode</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Name</p>
+                                                                                            <p><b>@SchoolAttendencyDetailReviewData.FullName</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Date of birth</p>
+                                                                                            @if (@SchoolAttendencyDetailReviewData.DoB.HasValue)
+                                                                                            {
+                                                                                                <p><b>@SchoolAttendencyDetailReviewData.DoB.Value.ToString("dd/MM/yyyy")</b></p>
+                                                                                            }
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Age</p>
+                                                                                            <p><b>@SchoolAttendencyDetailReviewData.Age</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Gender</p>
+                                                                                            <p><b>@SchoolAttendencyDetailReviewData.GenderDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Class at enrolment</p>
+                                                                                            <SfDropDownList @bind-Value="@(SchoolAttendencyDetailReviewData.ClassatEnrolmentId)" Enabled="true" TItem="ACurrentClass" TValue="int?" DataSource="@CurrentClassData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(ACurrentClass.CurrentClassId)" Text="@nameof(ACurrentClass.CurrentClassDesc)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Name of School</p>
+                                                                                            <SfTextBox Multiline="false" @bind-Value="@(SchoolAttendencyDetailReviewData.SchoolName)" Enabled="true" Placeholder="Enter Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Current class</p>
+                                                                                            <SfDropDownList @bind-Value="@(SchoolAttendencyDetailReviewData.CurrentClassId)" Enabled="true" TItem="ACurrentClass" TValue="int?" DataSource="@CurrentClassData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(ACurrentClass.CurrentClassId)" Text="@nameof(ACurrentClass.CurrentClassDesc)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Candidate classes completed</p>
+                                                                                            <SfMultiSelect @ref="CompletedClassesObj" TValue="int[]" TItem="ACandidentClassCompleted" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@CandidentClassCompletedData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Search here---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                <MultiSelectFieldSettings Value="@nameof(ACandidentClassCompleted.CandidentClassCompletedId)" Text="@nameof(ACandidentClassCompleted.CandidentClassCompletedDesc)"></MultiSelectFieldSettings>
+                                                                                                <MultiSelectEvents TValue="int[]" TItem="ACandidentClassCompleted" ValueChange="OnCandidentClassCompletedChange" DataBound="OnCandidentClassCompletedBound"></MultiSelectEvents>
+                                                                                            </SfMultiSelect>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Attendance</p>
+                                                                                            <SfDropDownList @bind-Value="@(SchoolAttendencyDetailReviewData.AttendencyId)" Enabled="true" TItem="AAttendency" TValue="int?" DataSource="@AttendencyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AAttendency.AttendencyId)" Text="@nameof(AAttendency.AttendencyDesc)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                        <FooterTemplate>
+                                                                            <SfButton CssClass="e-btn e-success" OnClick="SaveSchoolAttendencyDetailBtnClick"> Save Form</SfButton>
+                                                                            <SfButton CssClass="e-btn e-danger" OnClick="CancelSchoolAttendencyDetailBtnClick"> Cancel</SfButton>
+                                                                        </FooterTemplate>
+                                                                    </GridEditSettings>
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                        <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.SchoolAttendencyDetailsId) HeaderText="School Attendency Details Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.HouseHoldMemberCode) HeaderText="HouseHold Member Code" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.FullName) Visible="true" HeaderText="Name" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.DoB) HeaderText="Date of birth" Format="dd/MM/yyyy" Width="150"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.Age) Visible="true" HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="150"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.GenderDescription) Visible="true" HeaderText="Gender" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="150"></GridColumn>
+                                                                        <GridForeignColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.ClassatEnrolmentId) Visible="true" HeaderText="Class at enrolment" ForeignKeyField="@nameof(ACurrentClass.CurrentClassId)" ForeignKeyValue="@nameof(ACurrentClass.CurrentClassDesc)" ForeignDataSource="@CurrentClassData" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridForeignColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.SchoolName) Visible="true" HeaderText="Name of School" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridColumn>
+                                                                        <GridForeignColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.CurrentClassId) Visible="true" HeaderText="Current class" ForeignKeyField="@nameof(ACurrentClass.CurrentClassId)" ForeignKeyValue="@nameof(ACurrentClass.CurrentClassDesc)" ForeignDataSource="@CurrentClassData" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridForeignColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.CandidentClassCompletedDesc) Visible="true" HeaderText="Candidate classes completed" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spSchoolAttendencyDetailGetAllResult.AttendencyDesc) Visible="true" HeaderText="Attendance" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Submitted by</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.SubmittedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Title</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.SubmittedByTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date Submitted</p>
+                                                                <SfDatePicker @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.SubmittedDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Reviewed by</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.ReviewedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Title</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.ReviewedByTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date Reviewed</p>
+                                                                <SfDatePicker @bind-Value="@(OvcSchoolAttendencyHeaderReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="140">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.SchoolAttendencyHeaderId) HeaderText="School Attendency Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.Csoname) HeaderText="Name of IP/CSO" Width="200"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.OfficeName) HeaderText="Name of Office" Width="200"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.DatacollectionDate) HeaderText="Date of data collection" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(OvcSchoolAttendencyHeader.TermId) HeaderText="Term" ForeignKeyField="@nameof(ATerm.TermId)" ForeignKeyValue="@nameof(ATerm.TermDesc)" ForeignDataSource="@TermData" Width="150"></GridForeignColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.SubmittedBy) HeaderText="Submitted by" Width="220"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.SubmittedDate) HeaderText="Date Submitted" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.ReviewedBy) HeaderText="Reviewed by" Width="220"></GridColumn>
+                                            <GridColumn Field=@nameof(OvcSchoolAttendencyHeader.ReviewDate) HeaderText="Date Reviewed" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="view" })" Title="view"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+
+    SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+    private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+
+    SfGrid<OvcSchoolAttendencyHeader> OvcSchoolAttendencyHeaderGrid;
+    SfGrid<spSchoolAttendencyDetailGetAllResult> SchoolAttendencyDetailsGrid;
+    private OvcSchoolAttendencyHeader OvcSchoolAttendencyHeaderReviewData { get; set; }
+    private List<spSchoolAttendencyDetailGetAllResult> SchoolAttendencyDetailsData { get; set; } = new List<spSchoolAttendencyDetailGetAllResult>();
+    spSchoolAttendencyDetailGetAllResult SchoolAttendencyDetailReviewData { get; set; }
+    SfMultiSelect<int[], ACandidentClassCompleted> CompletedClassesObj;
+
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<ATerm> TermData { get; set; }
+    List<ACandidentClassCompleted> CandidentClassCompletedData { get; set; }
+    List<AAttendency> AttendencyData { get; set; }
+    List<ACurrentClass> CurrentClassData { get; set; }
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    private void SaveRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.EndEdit();
+    }
+    private void CancelRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.CloseEdit();
+    }
+    private async Task SaveSchoolAttendencyDetailBtnClick()
+    {
+        await SchoolAttendencyDetailsGrid.EndEditAsync();
+    }
+    private async Task CancelSchoolAttendencyDetailBtnClick()
+    {
+        await SchoolAttendencyDetailsGrid.CloseEditAsync();
+    }
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+
+                    YesNoData = db.AYesNo.AsNoTracking().ToList();
+                    HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    TermData = db.ATerm.AsNoTracking().ToList();
+                    CandidentClassCompletedData = db.ACandidentClassCompleted.AsNoTracking().ToList();
+                    AttendencyData = db.AAttendency.AsNoTracking().ToList();
+                    CurrentClassData = db.ACurrentClass.AsNoTracking().ToList();
+
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    #region Beneficiary Register
+    public class SchoolAttendancyBeneficiaryRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public SchoolAttendancyBeneficiaryRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryRegisterGrid.PreventRender(false);
+            ChildQuery = new Query().AddParams("HouseHoldId", args.Data.HouseHoldId);
+            using (var db = new MUCOBADIContext())
+            {
+                HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == args.Data.HouseHoldId).AsNoTracking().ToList();
+            }
+        }
+    }
+    #endregion Beneficiary Register
+
+    #region HIV EXPOSED INFANTS
+    public class OvcSchoolAttendencyHeaderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public OvcSchoolAttendencyHeaderAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<OvcSchoolAttendencyHeader>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.OvcSchoolAttendencyHeader.Where(o => o.HouseHoldId == HouseHoldId).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<OvcSchoolAttendencyHeader>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as OvcSchoolAttendencyHeader);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.OvcSchoolAttendencyHeader.FirstOrDefault(o => o.SchoolAttendencyHeaderId == val.SchoolAttendencyHeaderId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.OvcSchoolAttendencyHeader.OrderBy(o => o.SchoolAttendencyHeaderId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.SchoolAttendencyHeaderId + 1);
+                        }
+                        val.SchoolAttendencyHeaderId = id;
+                        db.OvcSchoolAttendencyHeader.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as OvcSchoolAttendencyHeader);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.OvcSchoolAttendencyHeader.FirstOrDefault(o => o.SchoolAttendencyHeaderId == val.SchoolAttendencyHeaderId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnOvcSchoolAttendencyHeaderActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<OvcSchoolAttendencyHeader> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    SchoolAttendencyDetailsData = await db.spSchoolAttendencyDetailGetAllAsync(args.RowData.HouseHoldId.ToString(), args.RowData.SchoolAttendencyHeaderId);
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+                using (var db = new SPToCoreContext())
+                {
+                    SchoolAttendencyDetailsData = await db.spSchoolAttendencyDetailGetAllAsync(args.RowData.HouseHoldId.ToString(), args.RowData.SchoolAttendencyHeaderId);
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (String.IsNullOrEmpty(args.Data.Csoname))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of IP/CSO", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.OfficeName))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of Office", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DatacollectionDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Date of data collection", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.TermId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Term", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.SubmittedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the person that submitted this record", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.ReviewedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the person that Reviewed this record", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubmittedDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date this record was submitted.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ReviewDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date this record was reviewed.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.OvcSchoolAttendencyHeader.FirstOrDefault(o => o.SchoolAttendencyHeaderId == args.Data.SchoolAttendencyHeaderId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.OvcSchoolAttendencyHeader.OrderBy(o => o.SchoolAttendencyHeaderId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.SchoolAttendencyHeaderId + 1);
+                            }
+                            args.Data.SchoolAttendencyHeaderId = id;
+                            db.OvcSchoolAttendencyHeader.Add(args.Data);
+                            db.SaveChanges();
+
+                        }
+                        foreach (var n in SchoolAttendencyDetailsData)
+                        {
+                            var record = db.OvcSchoolAttendencyDetails.FirstOrDefault(o => o.SchoolAttendencyHeaderId == args.Data.SchoolAttendencyHeaderId && o.HouseHoldMemberId == n.HouseHoldMemberId);
+                            if (record == null)
+                            {
+                                OvcSchoolAttendencyDetails m = new OvcSchoolAttendencyDetails();
+                                int id = 1;
+                                var last = db.OvcSchoolAttendencyDetails.OrderBy(o => o.SchoolAttendencyDetailsId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.SchoolAttendencyDetailsId + 1);
+                                }
+                                m.SchoolAttendencyDetailsId = id;
+                                m.HouseHoldMemberId = n.HouseHoldMemberId;
+                                m.SchoolName = n.SchoolName;
+                                m.AttendencyId = n.AttendencyId;
+                                m.CandidentClassCompletedId = n.CandidentClassCompletedId;
+                                m.ClassatEnrolmentId = n.ClassatEnrolmentId;
+                                m.CurrentClassId = n.CurrentClassId;
+                                m.SchoolAttendencyHeaderId = args.Data.SchoolAttendencyHeaderId;
+                                db.OvcSchoolAttendencyDetails.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                record.SchoolName = n.SchoolName;
+                                record.AttendencyId = n.AttendencyId;
+                                record.CandidentClassCompletedId = n.CandidentClassCompletedId;
+                                record.ClassatEnrolmentId = n.ClassatEnrolmentId;
+                                record.CurrentClassId = n.CurrentClassId;
+                                db.Entry(record).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnOvcSchoolAttendencyHeaderActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<OvcSchoolAttendencyHeader> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            OvcSchoolAttendencyHeaderGrid.PreventRender(false);
+        }
+    }
+    #endregion HIV EXPOSED INFANTS
+    public void OnSchoolAttendencyDetailActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spSchoolAttendencyDetailGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.ClassatEnrolmentId== null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Class at enrolment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.SchoolName))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of School", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.CurrentClassId== null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Current class", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.AttendencyId==null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Attendance", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+        }
+    }
+    public void OnSchoolAttendencyDetailActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<spSchoolAttendencyDetailGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            SchoolAttendencyDetailsGrid.PreventRender(false);
+        }
+    }
+    private void OnCandidentClassCompletedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            SchoolAttendencyDetailReviewData.CandidentClassCompletedId = string.Join(",", args.Value);
+        }
+        else
+        {
+            SchoolAttendencyDetailReviewData.CandidentClassCompletedId = null;
+        }
+    }
+    private void OnCandidentClassCompletedBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(SchoolAttendencyDetailReviewData.CandidentClassCompletedId))
+        {
+            var a = SchoolAttendencyDetailReviewData.CandidentClassCompletedId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            CompletedClassesObj.Value = c.ToArray();
+        }
+    }
+}

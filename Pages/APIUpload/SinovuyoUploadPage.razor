@@ -1,0 +1,712 @@
+﻿@page "/SinovuyoUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using System.Globalization;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> API UPLOAD PAGE </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+        }
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    string MessageResponse { get; set; }
+     string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        MessageResponse = null;
+        await UploadingSpinner.ShowAsync();
+        foreach (var file in args.Files)
+        {
+            using (ExcelEngine excelEngine = new ExcelEngine())
+            {
+
+                //Instantiate the Excel application object
+                IApplication application = excelEngine.Excel;
+
+                file.Stream.Position = 0;
+                //Set the default application version
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                //Get the first worksheet in the workbook into IWorksheet
+                IWorksheet worksheet = workbook.Worksheets[0];
+
+                SinoParentingAttendenceRegister apiuploadata = new SinoParentingAttendenceRegister();
+
+                using (var db = new MUCOBADIContext())
+                {
+                    var months = db.AMonth.ToList();
+                    var districts = db.ADistrict.ToList();
+                    var subcounties = db.ASubcounty.ToList();
+                    var parishes = db.AParish.ToList();
+                    var groups = db.AGroups.ToList();
+                    var yesNo = db.AYesNo.ToList();
+                    var vlsa_trainers = db.AVslaGroupTrainer.ToList();
+                    var vslaGroupComposition = db.VslaGroupComposition.ToList();
+                    usedRows = worksheet.UsedRange.LastRow.ToString();
+                    for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                    {
+                        rownumber = row.ToString();
+                        await Task.Delay(10);
+                        apiuploadata = new SinoParentingAttendenceRegister();
+
+                        int? _district = null;
+                        int? _subcounty = null;
+                        int? _parish = null;
+                        int? _groupTypeId = 2;
+                        string _vslaGroupCode = null;
+                        int? _groupId = null;
+                        string _memberCode = null;
+                        string _participantName = null;
+
+                        if (worksheet.IsRowVisible(row))
+                        {
+                            //ImplementingPartnerId
+                            apiuploadata.ImplementingPartnerId = 1;
+
+                            //District
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 3].Value.Trim())
+                                && (worksheet.Range[row, 3].Value.Trim() != ""))
+                            {
+                                var district = districts
+                                    .FirstOrDefault(x => x.DistrictDescription.Trim()
+                                        .Contains(worksheet.Range[row, 3].Value.Trim(),
+                                        StringComparison.CurrentCultureIgnoreCase));
+                                if (district != null)
+                                {
+                                    apiuploadata.DistrictId = Convert.ToInt32(district.DistrictId);
+                                    _district = Convert.ToInt32(district.DistrictId);
+                                }
+                                else
+                                    _district = null;
+                            }
+
+                            //Sub county
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 4].Value.Trim())
+                                && (worksheet.Range[row, 4].Value.Trim() != ""))
+                            {
+                                var subcounty = subcounties
+                                .Where(x => x.DistrictId == _district)
+                                .Where(x => x.SubcountyDescription.Trim()
+                                    .Contains(worksheet.Range[row, 4].Value.Trim(),
+                                        StringComparison.CurrentCultureIgnoreCase))
+                                .FirstOrDefault();
+
+                                if (subcounty != null)
+                                {
+                                    apiuploadata.SubcountyId = Convert.ToInt32(subcounty.SubcountyId);
+                                    _subcounty = Convert.ToInt32(subcounty.SubcountyId);
+                                }
+                                else
+                                    _subcounty = null;
+                            }
+
+                            //Parish
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 5].Value.Trim())
+                                && (worksheet.Range[row, 5].Value.Trim() != ""))
+                            {
+                                var parish = parishes 
+                                //.Where(x => )
+                                .Where(x => x.SubcountyId == _subcounty 
+                                    && x.ParishDescription != null
+                                    && x.ParishDescription.Trim()
+                                    .Contains(worksheet.Range[row, 5].Value.Trim(),
+                                        StringComparison.CurrentCultureIgnoreCase))
+                                .FirstOrDefault();
+
+                                if (parish != null)
+                                {
+                                    apiuploadata.ParishId = Convert.ToInt32(parish.ParishId);
+                                    _parish = Convert.ToInt32(parish.ParishId);
+                                }
+                                else
+                                    _parish = null;
+                            }
+
+                            //GroupId
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 7].Value.Trim()) &&
+                            (worksheet.Range[row, 7].Value.Trim() != ""))
+                            {
+                                string d = worksheet.Range[row, 7].Value.Trim();
+                                var obj = groups
+                                .FirstOrDefault(x => x.GroupName.Trim().ToLower() 
+                                == worksheet.Range[row, 7].Value.Trim().ToLower());
+
+                                if (obj != null)
+                                {
+                                    apiuploadata.GroupId = obj.GroupId;
+                                    _groupId = obj.GroupId;
+                                }
+                                else
+                                    _groupId = null;
+                            }
+
+                            //GroupCode
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim())
+                               && (worksheet.Range[row, 9].Value.Trim() != ""))
+                            {
+                                _vslaGroupCode = worksheet.Range[row, 9].Value.Trim();
+                            }
+                            else
+                                _vslaGroupCode = null;
+
+                            //Trainer/Artisan/Facilitator
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 13].Value.Trim())
+                                && (worksheet.Range[row, 13].Value.Trim() != ""))
+                            {
+                                apiuploadata.FacilitatorOne = worksheet.Range[row, 13].Value.Trim();
+                            } 
+
+                            //Member Code
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 14].Value.Trim())
+                                && (worksheet.Range[row, 14].Value.Trim() != ""))
+                            {
+                                _memberCode = worksheet.Range[row, 14].Value.Trim();
+                            }
+
+                            //Name of participant
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 15].Value.Trim())
+                                && (worksheet.Range[row, 15].Value.Trim() != ""))
+                            {
+                                _participantName = worksheet.Range[row, 15].Value.Trim();
+                            }
+
+                            //Coordinated By
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 32].Value.Trim())
+                                && (worksheet.Range[row, 32].Value.Trim() != ""))
+                            {
+                                apiuploadata.SubmittedBy = worksheet.Range[row, 32].Value.Trim();
+                            } 
+
+                            // CoordinatedDate
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 33].Value.Trim())
+                            && (worksheet.Range[row, 33].Value.Trim() != ""))
+                            {
+                                DateTime d;
+                                bool validDate = DateTime.TryParseExact(
+                                    worksheet.Range[row, 33].Value.Trim(),
+                                    new string[] { "dd/MM/yyyy" },
+                                    CultureInfo.InvariantCulture,
+                                    DateTimeStyles.None,
+                                    out d);
+
+                                if (validDate)
+                                    apiuploadata.SubmittedDate = Convert
+                                        .ToDateTime(worksheet.Range[row, 33].Value.Trim());
+                            }
+
+                            //Coordinated By
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 34].Value.Trim())
+                                && (worksheet.Range[row, 34].Value.Trim() != ""))
+                            {
+                                apiuploadata.SubmittedTitle = worksheet.Range[row, 34].Value.Trim();
+                            } 
+
+                            //Reviewed By
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 35].Value.Trim())
+                                && (worksheet.Range[row, 35].Value.Trim() != ""))
+                            {
+                                apiuploadata.ReviewedBy = worksheet.Range[row, 35].Value.Trim();
+                            } 
+
+                            // ReviewDate
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 36].Value.Trim())
+                            && (worksheet.Range[row, 36].Value.Trim() != ""))
+                            {
+                                DateTime d;
+                                bool validDate = DateTime.TryParseExact(
+                                    worksheet.Range[row, 36].Value.Trim(),
+                                    new string[] { "dd/MM/yyyy" },
+                                    CultureInfo.InvariantCulture,
+                                    DateTimeStyles.None,
+                                    out d);
+
+                                if (validDate)
+                                    apiuploadata.ReviewDate = Convert
+                                        .ToDateTime(worksheet.Range[row, 36].Value.Trim());
+                            }
+
+                            //Reviewers Contact
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 37].Value.Trim())
+                                && (worksheet.Range[row, 37].Value.Trim() != ""))
+                            {
+                                apiuploadata.ReviewTitle = worksheet.Range[row, 37].Value.Trim();
+                            } 
+
+                            VslaGroupComposition _table1 = db.VslaGroupComposition
+                                .FirstOrDefault(
+                                    o => o.DistrictId == _district &&
+                                    o.SubcountyId == _subcounty &&
+                                    o.GroupTypeId == _groupTypeId &&
+                                    o.GroupCode == _vslaGroupCode &&
+                                    o.GroupId == _groupId);
+
+                            if (_table1 != null)
+                            {
+                                int? compositionCode = null;
+
+                                compositionCode =  _table1.GroupCompositionCode;
+
+                                apiuploadata.GroupCompositionCode = Convert.ToInt32(compositionCode);
+
+                                SinoParentingAttendenceRegister _table = db.SinoParentingAttendenceRegister
+                                    .FirstOrDefault(
+                                        o => o.GroupCompositionCode == compositionCode);
+
+                                if (_table == null)
+                                {
+                                    int id = 1;
+                                    var last = db.SinoParentingAttendenceRegister
+                                        .OrderBy(o => o.SinoParentingId).ToList().LastOrDefault();
+                                    if (last != null)
+                                    {
+                                        id = (last.SinoParentingId + 1);
+                                    }
+                                    apiuploadata.SinoParentingId = id;
+                                    try
+                                    {
+                                        db.SinoParentingAttendenceRegister.Add(apiuploadata);
+                                        db.SaveChanges();
+
+                                        var directMembers = db.ViewVslaGroupDirectMembers
+                                           .Where(x => x.GroupCompositionCode == compositionCode
+                                               && x.HouseHoldMemberCode == _memberCode)
+                                           .FirstOrDefault();
+
+                                        if (directMembers != null)
+                                        {
+                                            int? SinoParentingDirectMemberId = null;
+                                            SinoParentingDirectMemberId = 
+                                                saveDirectMembers(id, compositionCode, _memberCode);
+                                            if (SinoParentingDirectMemberId != null)
+                                            {
+                                                saveDirectMemberSession(row,
+                                                    Convert.ToInt32(SinoParentingDirectMemberId),worksheet);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            int? SinoParentingInDirectMemberId = null;
+                                            SinoParentingInDirectMemberId = 
+                                                saveInDirectMembers(id, compositionCode, _memberCode,
+                                                _participantName);
+                                            //if (SinoParentingInDirectMemberId != null)
+                                            //{
+                                            //    saveInDirectMemberSession(row,
+                                            //        Convert.ToInt32(SinoParentingInDirectMemberId),worksheet);
+                                            //}
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        apiuploadata.SinoParentingId = _table.SinoParentingId;
+                                        db.Entry(_table).CurrentValues.SetValues(apiuploadata);
+                                        db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                        db.SaveChanges();
+
+                                        var directMembers = db.ViewVslaGroupDirectMembers
+                                           .Where(x => x.GroupCompositionCode == compositionCode
+                                               && x.HouseHoldMemberCode == _memberCode)
+                                           .FirstOrDefault();
+
+                                        if (directMembers != null)
+                                        {
+                                            int? SinoParentingDirectMemberId = null;
+                                            SinoParentingDirectMemberId = 
+                                                saveDirectMembers(_table.SinoParentingId, compositionCode, _memberCode);
+                                            if (SinoParentingDirectMemberId != null)
+                                            {
+                                                saveDirectMemberSession(row,
+                                                    Convert.ToInt32(SinoParentingDirectMemberId),worksheet);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            int? SinoParentingInDirectMemberId = null;
+                                            SinoParentingInDirectMemberId = 
+                                                saveInDirectMembers(_table.SinoParentingId, compositionCode, _memberCode,
+                                                _participantName);
+                                            //if (SinoParentingInDirectMemberId != null)
+                                            //{
+                                            //    saveInDirectMemberSession(row,
+                                            //        Convert.ToInt32(SinoParentingInDirectMemberId),worksheet);
+                                            //}
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            file.Stream.Close();
+        }
+    }
+
+    public int? saveDirectMembers(int id, int? compositionCode, string _memberCode)
+    {
+        int? idDirectMembers = null;
+
+        using (var db = new MUCOBADIContext())
+        {
+            var directMembers = db.ViewVslaGroupDirectMembers
+                .Where(x => x.GroupCompositionCode == compositionCode
+                    && x.HouseHoldMemberCode == _memberCode)
+                .FirstOrDefault();
+
+            if (directMembers != null)
+            {
+                var careTaker = db.HouseHoldMembers
+                    .Where(x => x.HouseHoldId == directMembers.HouseHoldId &&
+                        x.IsCareGiver == 1)
+                    .FirstOrDefault();
+
+                idDirectMembers = 1;
+
+                var last1 = db.SinoParentingDirectMemberAttendence
+                    .OrderBy(o => o.SinoParentingDirectMemberId)
+                    .ToList()
+                    .LastOrDefault();
+
+                if (last1 != null)
+                {
+                    idDirectMembers = (last1.SinoParentingDirectMemberId + 1);
+                }
+
+                SinoParentingDirectMemberAttendence record = db.SinoParentingDirectMemberAttendence
+                    .Where(x => x.SinoParentingId == id &&
+                        x.VslaGroupDirectMemberId == directMembers.VslaGroupDirectMemberId)
+                    .FirstOrDefault();
+
+                if (record == null)
+                {
+                    SinoParentingDirectMemberAttendence directMember =
+                        new SinoParentingDirectMemberAttendence();
+                    directMember.SinoParentingDirectMemberId = Convert.ToInt32(idDirectMembers);
+                    directMember.SinoParentingId = id;
+                    directMember.VslaGroupDirectMemberId = directMembers.VslaGroupDirectMemberId;
+                    if (careTaker != null)
+                        directMember.CareTakerHouseholdMemberId = careTaker.HouseHoldMemberId;
+
+                    db.SinoParentingDirectMemberAttendence.Add(directMember);
+                    db.SaveChanges();
+                }
+                else
+                {
+                    idDirectMembers = directMembers.VslaGroupDirectMemberId;
+                    record.SinoParentingId = id;
+                    record.VslaGroupDirectMemberId = directMembers.VslaGroupDirectMemberId;
+                    if (careTaker != null)
+                    {
+                        record.CareTakerHouseholdMemberId = careTaker.HouseHoldMemberId;
+                    }
+                    db.SinoParentingDirectMemberAttendence.Update(record);
+                    db.SaveChanges();
+                }
+            }
+        }
+
+        return idDirectMembers;
+    }
+
+    public void saveDirectMemberSession(int row, int SinoParentingDirectMemberId,
+         IWorksheet worksheet)
+    {
+        using (var db = new MUCOBADIContext())
+        {
+            int session = 1;
+
+            for (int col = 18; col <= 31; col++)
+            {
+                if (!string.IsNullOrEmpty(worksheet.Range[row, col].Value.Trim())
+                           && (worksheet.Range[row, col].Value.Trim() != ""))
+                {
+                    int id = 1;
+
+                    var last = db.SinoParentingDirectMemberDetail
+                        .OrderBy(o => o.SinoParentingDirectMemberDetailId)
+                        .ToList()
+                        .LastOrDefault();
+
+                    if (last != null)
+                    {
+                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                    }
+
+                    SinoParentingDirectMemberDetail record = db.SinoParentingDirectMemberDetail
+                        .Where(x => x.SinoParentingDirectMemberId == SinoParentingDirectMemberId &&
+                            x.ParentingGroupSessionId == session)
+                        .FirstOrDefault();
+
+                    if (record == null)
+                    {
+                        DateTime d;
+                        bool validDate = DateTime.TryParseExact(
+                            worksheet.Range[row, col].Value.Trim(),
+                            new string[] { "dd/MM/yyyy" },
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out d);
+
+                        if (validDate)
+                        {
+                            SinoParentingDirectMemberDetail _instance = new SinoParentingDirectMemberDetail();
+                            _instance.SinoParentingDirectMemberDetailId = id;
+                            _instance.SinoParentingDirectMemberId = SinoParentingDirectMemberId;
+                            _instance.ParentingGroupSessionId = session;
+                            _instance.SessionDate = Convert.ToDateTime(worksheet.Range[row, col].Value.Trim());
+                            _instance.ParentAttended = 1;
+                            _instance.TeenAttended = 1;
+                            db.SinoParentingDirectMemberDetail.Add(_instance);
+                            db.SaveChanges();
+                        }
+                    }
+                    else
+                    {
+                        DateTime d;
+                        bool validDate = DateTime.TryParseExact(
+                            worksheet.Range[row, col].Value.Trim(),
+                            new string[] { "dd/MM/yyyy" },
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out d);
+
+                        if (validDate)
+                        {
+                            record.ParentingGroupSessionId = session;
+                            record.SessionDate = Convert.ToDateTime(worksheet.Range[row, col].Value.Trim());
+                            record.ParentAttended = 1;
+                            record.TeenAttended = 1;
+
+                            db.SinoParentingDirectMemberDetail.Update(record);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+
+                session = session + 1;
+            }
+        }
+    }
+
+    public int? saveInDirectMembers(int id, int? compositionCode, string _memberCode,
+        string _participantName)
+    {
+        int? idInDirectMembers = null;
+
+        using (var db = new MUCOBADIContext())
+        {
+            var inDirectMembers = db.ViewVslaGroupIndirectMember
+                   .Where(x => x.GroupCompositionCode == compositionCode
+                       && x.IndirectMemberCode == _memberCode
+                       && x.MemberName == _participantName)
+                   .FirstOrDefault();
+
+            if (inDirectMembers != null)
+            {
+                idInDirectMembers = 1;
+
+                var last2 = db.SinoParentingIndirectMemberAttendence
+                    .OrderBy(o => o.SinoParentingIndirectMemberId)
+                    .ToList()
+                    .LastOrDefault();
+
+                if (last2 != null)
+                {
+                    idInDirectMembers = (last2.SinoParentingIndirectMemberId + 1);
+                }
+
+                SinoParentingIndirectMemberAttendence exists2 = db.SinoParentingIndirectMemberAttendence
+                    .Where(x => x.SinoParentingId == id &&
+                        x.VslaGroupIndirectMemberId == inDirectMembers.VslaGroupIndirectMemberId)
+                    .FirstOrDefault();
+
+                if (exists2 == null)
+                {
+                    SinoParentingIndirectMemberAttendence inDirectMember = new SinoParentingIndirectMemberAttendence();
+                    inDirectMember.SinoParentingIndirectMemberId = Convert.ToInt32(idInDirectMembers);
+                    inDirectMember.SinoParentingId = id;
+                    inDirectMember.VslaGroupIndirectMemberId = inDirectMembers.VslaGroupIndirectMemberId;
+
+                    db.SinoParentingIndirectMemberAttendence.Add(inDirectMember);
+                    db.SaveChanges();
+                }
+                else
+                {
+                    idInDirectMembers = inDirectMembers.VslaGroupIndirectMemberId;
+                    exists2.SinoParentingId = id;
+                    exists2.VslaGroupIndirectMemberId = inDirectMembers.VslaGroupIndirectMemberId;
+
+                    db.SinoParentingIndirectMemberAttendence.Update(exists2);
+                    db.SaveChanges();
+                }
+            }
+        }
+        return idInDirectMembers;
+    }
+
+    public void saveInDirectMemberSession(int row, int SinoParentingInDirectMemberId,
+         IWorksheet worksheet)
+    {
+        using (var db = new MUCOBADIContext())
+        {
+            int session = 1;
+
+            for (int col = 18; col <= 31; col++)
+            {
+                if (!string.IsNullOrEmpty(worksheet.Range[row, col].Value.Trim())
+                           && (worksheet.Range[row, col].Value.Trim() != ""))
+                {
+                    int id = 1;
+
+                    var last = db.SinoParentingIndirectMemberDetail
+                        .OrderBy(o => o.SinoParentingIndirectMemberDetailId)
+                        .ToList()
+                        .LastOrDefault();
+
+                    if (last != null)
+                    {
+                        id = (last.SinoParentingIndirectMemberDetailId + 1);
+                    }
+
+                    SinoParentingIndirectMemberDetail record = db.SinoParentingIndirectMemberDetail
+                        .Where(x => x.SinoParentingIndirectMemberId == SinoParentingInDirectMemberId &&
+                            x.ParentingGroupSessionId == session)
+                        .FirstOrDefault();
+
+                    if (record == null)
+                    {
+                        DateTime d;
+                        bool validDate = DateTime.TryParseExact(
+                            worksheet.Range[row, col].Value.Trim(),
+                            new string[] { "dd/MM/yyyy" },
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out d);
+
+                        if (validDate)
+                        {
+                            SinoParentingIndirectMemberDetail _instance = new SinoParentingIndirectMemberDetail();
+                            _instance.SinoParentingIndirectMemberDetailId = id;
+                            _instance.SinoParentingIndirectMemberId = SinoParentingInDirectMemberId;
+                            _instance.ParentingGroupSessionId = session;
+                            _instance.SessionDate = Convert.ToDateTime(worksheet.Range[row, col].Value.Trim());
+                            _instance.ParentAttended = 1;
+                            _instance.TeenAttended = 1;
+                            db.SinoParentingIndirectMemberDetail.Add(_instance);
+                            db.SaveChanges();
+                        }
+                    }
+                    else
+                    {
+                        DateTime d;
+                        bool validDate = DateTime.TryParseExact(
+                            worksheet.Range[row, col].Value.Trim(),
+                            new string[] { "dd/MM/yyyy" },
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None,
+                            out d);
+
+                        if (validDate)
+                        {
+                            record.ParentingGroupSessionId = session;
+                            record.SessionDate = Convert.ToDateTime(worksheet.Range[row, col].Value.Trim());
+                            record.ParentAttended = 1;
+                            record.TeenAttended = 1;
+
+                            db.SinoParentingIndirectMemberDetail.Update(record);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+
+                session = session + 1;
+            }
+        }
+    }
+
+}

@@ -1,0 +1,1198 @@
+﻿@page "/ReferralFormPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+    <style>
+        h4 {
+            background-color: black;
+            color: whitesmoke;
+            padding: 10px;
+        }
+
+        td {
+            padding: 10px;
+        }
+
+        h3 {
+            color: red;
+        }
+    </style>
+    <ol class="breadcrumb" style="margin-top:5px;">
+        <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> REFERRAL FORM FOR CHILDREN IN NEED OF ADDITIONAL SERVICES</li>
+    </ol>
+    <div class="row">
+        <div class="col-lg-12 control-section">
+            <SfToast @ref="ToastObj" ID="toast_type">
+                <ToastPosition X="@ToastPosition"></ToastPosition>
+            </SfToast>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <SfAccordion ExpandMode="@ExpandMode.Single">
+                <AccordionItems>
+                    <AccordionItem Expanded="false">
+                        <HeaderTemplate>Search Panel</HeaderTemplate>
+                        <ContentTemplate>
+                            <div style="padding:10px;">
+                                <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-3">
+                                            <p>District</p>
+                                            <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                            </SfMultiSelect>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <p>Sub-County</p>
+                                            <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                                <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                            </SfMultiSelect>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <p>Parish</p>
+                                            <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                                <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                            </SfMultiSelect>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <p>Village</p>
+                                            <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                            </SfMultiSelect>
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                            <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                        </div>
+                                        <div class="form-group col-md-12">
+                                            <DataAnnotationsValidator />
+                                            <ValidationSummary />
+                                        </div>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </ContentTemplate>
+                    </AccordionItem>
+                </AccordionItems>
+            </SfAccordion>
+        </div>
+        <div class="form-group col-md-12">
+            <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                    AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                    AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                <SfDataManager AdaptorInstance="@typeof(ReferralBeneficiaryRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+                <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                    <Template Context="RegisterContext">
+                        @{
+                            BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                            <div style="padding:3px;">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Household Code</p>
+                                        <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <SfGrid @ref="ReferralFormGrid" TValue="ReferralForm" Query="@(new Query().AddParams("HouseHoldId",BeneficiaryRegisterData.HouseHoldId))"
+                                                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                            <SfDataManager AdaptorInstance="@typeof(ReferralFormAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridEvents OnActionBegin="OnReferralFormActionBegin" OnActionComplete="@OnReferralFormActionComplete" TValue="ReferralForm"></GridEvents>
+                                            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                <Template Context="ReferralFormContext">
+                                                    @{
+                                                        ReferralFormReviewData = (ReferralFormContext as ReferralForm);
+                                                        <div style="padding:15px;">
+                                                            <div class="form-row">
+                                                                <div class="form-group col-md-12" hidden>
+                                                                    <SfNumericTextBox @bind-Value="@(ReferralFormReviewData.HouseHoldId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-12" hidden>
+                                                                    <SfNumericTextBox @bind-Value="@(ReferralFormReviewData.ReferralFormId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <p>Serial No</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.SerialNo)" Enabled="true" Placeholder="Pleses enter the Serial No" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <h4>1. DETAILS OF THE AGENCY REFERRING THE CHILD</h4>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the agency</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferringAgencyName)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Location</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferringAgencyLocation)" Enabled="true" Placeholder="Pleses enter the Location" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Agency phone number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferringAgencyPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>E-mail</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferringAgencyEmail)" Enabled="true" Placeholder="Pleses enter the Email" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <h4>2. DETAILS OF THE CASE REPORTED FOR WHICH REFERRAL IS BEING MADE</h4>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>NIN/unique identifier</p>
+                                                                    <SfDropDownList @bind-Value="@(ReferralFormReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                        <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                            <ItemTemplate>
+                                                                                <div style="margin-left:10px;">
+                                                                                    <table>
+                                                                                        <tr>
+                                                                                            <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                            <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                        </tr>
+                                                                                    </table>
+                                                                                </div>
+                                                                            </ItemTemplate>
+                                                                            <ValueTemplate>
+                                                                                @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                                @*<div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                                                    <table>
+                                                                                        <tr>
+                                                                                            <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                            <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                        </tr>
+                                                                                    </table>
+                                                                                </div>*@
+                                                                            </ValueTemplate>
+                                                                        </DropDownListTemplates>
+                                                                        <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                        <DropDownListEvents TItem="ViewHouseHoldMembers" TValue="int" ValueChange="OnHouseHoldMemberChange"></DropDownListEvents>
+                                                                    </SfDropDownList>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the child</p>
+                                                                    <p>@HouseHoldName</p>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Age</p>
+                                                                    <p>@HouseHoldAge</p>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Sex</p>
+                                                                    <p>@HouseHoldSex</p>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <p>Nature of the case reported and/or referred:</p>
+                                                                    <SfMultiSelect @ref="CaseNatureReportedObj" TValue="int[]" TItem="ACaseNatureReported" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@CaseNatureReportedData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Case" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                        <MultiSelectFieldSettings Value="@nameof(ACaseNatureReported.CaseNatureReportedId)" Text="@nameof(ACaseNatureReported.CaseNatureReportedDesc)"></MultiSelectFieldSettings>
+                                                                        <MultiSelectEvents TValue="int[]" TItem="ACaseNatureReported" ValueChange="OnCaseNatureReportedChange" DataBound="OnCaseNatureReportedDataBound"></MultiSelectEvents>
+                                                                    </SfMultiSelect>
+                                                                    @*<SfTextBox Multiline="true" @bind-Value="@(ReferralFormReviewData.NatureofCaseReported)" Enabled="true" Placeholder="Pleses enter the case" FloatLabelType="FloatLabelType.Never"></SfTextBox>*@
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Date of occurrence</p>
+                                                                    <SfDatePicker @bind-Value="@(ReferralFormReviewData.DateofOccurancy)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Other risks/vulnerabilities/special needs</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.OtherRisk)" Enabled="true" Placeholder="Pleses enter the case" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Has the case been reported to the Uganda Child Helpline (116)?</p>
+                                                                    <SfDropDownList @bind-Value="@(ReferralFormReviewData.HasCaseBeenReportedToUgandaChildHelpline)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    </SfDropDownList>
+                                                                </div>
+                                                                @if (ReferralFormReviewData.HasCaseBeenReportedToUgandaChildHelpline == 1)
+                                                                {
+                                                                    <div class="form-group col-md-4">
+                                                                        <p>provide 116 case number</p>
+                                                                        <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.CaseNumber)" Enabled="true" Placeholder="Pleses enter the case No" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                    </div>
+                                                                }
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the person accompanying the child</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.NameOfPersonAccompanyingTheChild)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Residence</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ResidenceOfPersonAccompanyingTheChild)" Enabled="true" Placeholder="Pleses enter the Residence" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Phone number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.PhoneNumberOfPersonAccompanyingTheChild)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>E-mail</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.EmailOfPersonAccompanyingTheChild)" Enabled="true" Placeholder="Pleses enter the Email" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Relationship to child</p>
+                                                                    <SfDropDownList @bind-Value="@(ReferralFormReviewData.RelationshipToChild)" Enabled="true" TItem="ARelationship" TValue="int?" DataSource="@RelationshipData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                        <DropDownListFieldSettings Value="@nameof(ARelationship.RelationshipId)" Text="@nameof(ARelationship.RelationshipName)"></DropDownListFieldSettings>
+                                                                    </SfDropDownList>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>caregiver</p>
+                                                                    <SfDropDownList @bind-Value="@(ReferralFormReviewData.CareGiverHouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                        <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                            <ItemTemplate>
+                                                                                <div style="margin-left:10px;">
+                                                                                    <table>
+                                                                                        <tr>
+                                                                                            <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                            <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                        </tr>
+                                                                                    </table>
+                                                                                </div>
+                                                                            </ItemTemplate>
+                                                                            <ValueTemplate>
+                                                                                @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                            </ValueTemplate>
+                                                                        </DropDownListTemplates>
+                                                                        <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                    </SfDropDownList>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <h4>3. SERVICES TO THE CHILD</h4>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <p> Service(s)provided before referral</p>
+                                                                    <SfMultiSelect @ref="ServiceProvidedObj" TValue="int[]" TItem="AReferralServices" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@ServiceProvidedData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                        <MultiSelectFieldSettings Value="@nameof(AReferralServices.ReferralServiceId)" Text="@nameof(AReferralServices.ReferralServiceDesc)"></MultiSelectFieldSettings>
+                                                                        <MultiSelectEvents TValue="int[]" TItem="AReferralServices" ValueChange="OnServiceProvidedChange" DataBound="OnServiceProvidedCategoryBound"></MultiSelectEvents>
+                                                                    </SfMultiSelect>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <p>Reason for referral</p>
+                                                                    <SfTextBox Multiline="true" @bind-Value="@(ReferralFormReviewData.ReasonForReferral)" Enabled="true" Placeholder="Enter Place they are transfered to" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <p>Documents supporting referral that are enclosed</p>
+                                                                    <SfTextBox Multiline="true" @bind-Value="@(ReferralFormReviewData.DocumentsSupportingReferralEnclosed)" Enabled="true" Placeholder="Enter the Documents" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <p>Name of Informed Assent / Consent:</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ConsentName)" Enabled="true" Placeholder="Enter the Documents" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <h4>4. DETAILS OF THE AGENCY TO WHICH THE CHILD IS BEING REFERRED</h4>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the agency</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferredToAgencyName)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Location</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferredToAgencyLocation)" Enabled="true" Placeholder="Pleses enter the Residence" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the contact person</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferredToAgencyContactPersonName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Phone number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferredToAgencyPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>E-mail</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ReferredToAgencyEmail)" Enabled="true" Placeholder="Pleses enter the Email" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the Case Worker referring the child</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.CaseWorkerReferringChildName)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Title</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.CaseWorkerReferringChildTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Phone number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.CaseWorkerReferringChildPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>E-mail</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.CaseWorkerReferringChildEmail)" Enabled="true" Placeholder="Pleses enter the Email" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Date</p>
+                                                                    <SfDatePicker @bind-Value="@(ReferralFormReviewData.CaseWorkerReferringChildDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                </div>
+                                                                <div class="form-group col-md-12">
+                                                                    <h4>
+                                                                        5. FEEDBACK TO THE AGENCY FROM WHICH THE CHILD /FAMILY WAS REFERRED (To be torn off and returned to
+                                                                        the agency from which the child was referred)
+                                                                    </h4>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Case No</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointCaseNo)" Enabled="true" Placeholder="Pleses enter the Case No" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Date of arrival at service point</p>
+                                                                    <SfDatePicker @bind-Value="@(ReferralFormReviewData.ServicePointArrivalDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the agency</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointAgencyName)" Enabled="true" Placeholder="Pleses enter the Residence" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Contact person</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointContactPerson)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Service(s) provided by the referral agency</p>
+                                                                    <SfMultiSelect @ref="ServicePointServiceProvidedObj" TValue="int[]" TItem="AReferralServices" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@ServiceProvidedData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                        <MultiSelectFieldSettings Value="@nameof(AReferralServices.ReferralServiceId)" Text="@nameof(AReferralServices.ReferralServiceDesc)"></MultiSelectFieldSettings>
+                                                                        <MultiSelectEvents TValue="int[]" TItem="AReferralServices" ValueChange="OnServicePointServiceProvidedChange" DataBound="OnServicePointServiceProvidedCategoryBound"></MultiSelectEvents>
+                                                                    </SfMultiSelect>
+                                                                </div>
+                                                                @if(ServicePointServiceProvidedObj != null && ServicePointServiceProvidedObj.Value != null && ServicePointServiceProvidedObj.Value.Any(o=> o == 16))
+                                                                {
+                                                                    <div class="form-group col-md-4">
+                                                                        <p>HIV Status</p>
+                                                                        <SfDropDownList @bind-Value="@(ReferralFormReviewData.HivstatusId)" Enabled="true" TItem="AHivstatus" TValue="int?" DataSource="@HivstatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                            <DropDownListFieldSettings Value="@nameof(AHivstatus.HivstatusId)" Text="@nameof(AHivstatus.HivstatusDescription)"></DropDownListFieldSettings>
+                                                                        </SfDropDownList>
+                                                                    </div>
+                                                                    @if (ReferralFormReviewData.HivstatusId == 1)
+                                                                     {
+                                                                          <div class="form-group col-md-4">
+                                                                               <p>If HIV+, Currently on ART</p>
+                                                                               <SfDropDownList @bind-Value="@(ReferralFormReviewData.CurrentlyonArt)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                   <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                               </SfDropDownList>
+                                                                          </div>
+                                                                          @if (ReferralFormReviewData.CurrentlyonArt == 1)
+                                                                           {
+                                                                               <div class="form-group col-md-4">
+                                                                                  <p>ART Number </p>
+                                                                                  <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ArtNumber)" Enabled="true" Placeholder="Enter ART Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                               </div>
+                                                                               <div class="form-group col-md-4">
+                                                                                   <p>Cohort </p>
+                                                                                   <SfDatePicker @bind-Value="@(ReferralFormReviewData.Cohort)" Format="dd/MM/yyyy" Placeholder="select the Cohort" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                                                                               </div>
+                                                                           }
+                                                                     }
+                                                                }
+                                                                
+                                                                <div class="form-group col-md-12">
+                                                                    <p>Additional service(s) required / Any other critical information or documents enclosed</p>
+                                                                    <SfTextBox Multiline="true" @bind-Value="@(ReferralFormReviewData.ServicePointAdditionalServicesRequired)" Enabled="true" Placeholder="Pleses enter the Services" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Name of the person providing feedback</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointPersonPrividingFeedbackName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Title</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointPersonPrividingFeedbackTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Phone number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointPersonPrividingFeedbackPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>E-mail</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.ServicePointPersonPrividingFeedbackEmail)" Enabled="true" Placeholder="Pleses enter the E-mail" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Date</p>
+                                                                    <SfDatePicker @bind-Value="@(ReferralFormReviewData.ServicePointPersonPrividingFeedbackDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <p>Serial no</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ReferralFormReviewData.SerialNo)" Enabled="true" Placeholder="Pleses enter the Email" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </Template>
+                                            </GridEditSettings>
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                            <GridColumns>
+                                                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                <GridColumn HeaderText="Manage Records" Width="140">
+                                                    <GridCommandColumns>
+                                                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                    </GridCommandColumns>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.ReferralFormId) HeaderText="HouseHold Member Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                <GridColumn Visible="true" HeaderText="HouseHold Member Code" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="200">
+                                                    <Template>
+                                                        @{
+                                                            var data = (context as ReferralForm);
+                                                            string HouseHoldMemberCode = null;
+                                                            var record = HouseHoldMembersData.FirstOrDefault(o => o.HouseHoldMemberId == data.HouseHoldMemberId);
+                                                            if (record != null)
+                                                            {
+                                                                HouseHoldMemberCode = record.HouseHoldMemberCode;
+                                                            }
+                                                            <p>@HouseHoldMemberCode</p>
+                                                        }
+                                                    </Template>
+                                                </GridColumn>
+                                                <GridColumn Visible="true" HeaderText="HouseHold Member" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="200">
+                                                    <Template>
+                                                        @{
+                                                            var data = (context as ReferralForm);
+                                                            string fullname = null;
+                                                            var record = HouseHoldMembersData.FirstOrDefault(o => o.HouseHoldMemberId == data.HouseHoldMemberId);
+                                                            if (record != null)
+                                                            {
+                                                                fullname = record.Surname + " " + record.Givenname;
+                                                            }
+                                                            <p>@fullname</p>
+                                                        }
+                                                    </Template>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.SerialNo) HeaderText="Serial No" Width="140"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.CaseNumber) HeaderText="Case No" Width="140"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.DateofOccurancy) HeaderText="Date of occurrence" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                                @*<GridColumn Field=@nameof(ReferralForm.NatureofCaseReported) HeaderText="Nature of the case reported and/or referred" Width="220"></GridColumn>*@
+                                                <GridColumn Visible="true" HeaderText="Nature of the case reported and/or referred" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="200">
+                                                    <Template>
+                                                        @{
+                                                            var data = (context as ReferralForm);
+                                                            string Cases = null;
+                                                            if (!string.IsNullOrEmpty(data.CaseNatureReportedId))
+                                                            {
+                                                                var a = data.CaseNatureReportedId.Split(",");
+                                                                foreach(var n in a)
+                                                                {
+                                                                    if (!string.IsNullOrEmpty(n))
+                                                                    {
+                                                                        int b = Convert.ToInt32(n.Trim());
+                                                                        var _case = CaseNatureReportedData.FirstOrDefault(o => o.CaseNatureReportedId == b);
+                                                                        if(_case != null)
+                                                                        {
+                                                                            if (string.IsNullOrEmpty(Cases))
+                                                                            {
+                                                                                Cases = _case.CaseNatureReportedDesc;
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                Cases += ", "+_case.CaseNatureReportedDesc;
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            <p>@Cases</p>
+                                                        }
+                                                    </Template>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.NameOfPersonAccompanyingTheChild) HeaderText="Name of the person accompanying the child" Width="220"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.CaseWorkerReferringChildName) HeaderText="Name of the Case Worker referring the child" Width="220"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.ReferringAgencyName) HeaderText="Name of the Referring agency" Width="220"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.ReferredToAgencyName) HeaderText="Name of the Referred To agency" Width="220"></GridColumn>
+                                                @*<GridForeignColumn Field=@nameof(ReferralForm.RegistrationStatusId) HeaderText="Registration Status" ForeignKeyField="@nameof(ARegistrationStatus.RegistrationStatusId)" ForeignKeyValue="@nameof(ARegistrationStatus.RegistrationStatusDesc)" ForeignDataSource="@RegistrationStatusData" Width="150"></GridForeignColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.Surname) HeaderText="Surname"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.Givenname) HeaderText="Given name"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.Age) HeaderText="Age"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.GenderId) HeaderText="Gender" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" DataSource="@GenderData"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.ProgramParticipationId) HeaderText="Program Participation" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AProgramParticipationStatus.ProgramParticipationId)" ForeignKeyValue="@nameof(AProgramParticipationStatus.ProgramParticipationDescription)" DataSource="@ProgramParticipationData"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.KnownRiskFactorId) HeaderText="Known Risk Factor" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AKnownRiskFactors.KnownRiskFactorId)" ForeignKeyValue="@nameof(AKnownRiskFactors.KnownRiskFactorDescription)" DataSource="@KnownRiskFactorsData"></GridColumn>
+                                                <GridColumn Field=@nameof(ReferralForm.IsCareGiver) HeaderText="Is Care Giver" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" DataSource="@YesNoData"></GridColumn>*@
+                                            </GridColumns>
+                                        </SfGrid>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </Template>
+                    <FooterTemplate>
+                        <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                        <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                    </FooterTemplate>
+                </GridEditSettings>
+                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                <GridPageSettings PageSize="20"></GridPageSettings>
+                <GridColumns>
+                    @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                    <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                    @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                    <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                        <GridCommandColumns>
+                            <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="view" })" Title="view"></GridCommandColumn>
+                        </GridCommandColumns>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+
+    @code {
+        #region Toasters
+        public static string ToastContent { get; set; }
+        SfToast ToastObj;
+        SfToast DeleteToastObj;
+        private string ToastPosition = "Right";
+        private int AlarmTimeout { get; set; } = 120000;
+        private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+        #endregion Toasters
+        SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+        private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+
+        SfGrid<ReferralForm> ReferralFormGrid;
+        private ReferralForm ReferralFormReviewData { get; set; }
+        string HouseHoldName { get; set; }
+        string HouseHoldAge { get; set; }
+        string HouseHoldSex { get; set; }
+
+        SfMultiSelect<int[], AReferralServices> ServiceProvidedObj;
+        SfMultiSelect<int[], AReferralServices> ServicePointServiceProvidedObj;
+        SfMultiSelect<int[], ACaseNatureReported> CaseNatureReportedObj;
+
+        List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+        List<AYesNo> YesNoData { get; set; }
+        List<ARelationship> RelationshipData { get; set; }
+        List<AReferralServices> ServiceProvidedData { get; set; }
+        List<AHivstatus> HivstatusData { get; set; }
+        List<ACaseNatureReported> CaseNatureReportedData { get; set; }
+
+        private SearchPanel InputModel = new();
+
+
+
+        List<AVillage> _VillageData { get; set; }
+        List<AParish> _ParishData { get; set; }
+        List<ASubcounty> _SubcountyData { get; set; }
+        List<ADistrict> _DistrictData { get; set; }
+        bool isEnabled { get; set; } = false;
+        private void SaveRegisterBtnClick()
+        {
+            BeneficiaryRegisterGrid.EndEdit();
+        }
+        private void CancelRegisterBtnClick()
+        {
+            BeneficiaryRegisterGrid.CloseEdit();
+        }
+
+        public Query MainQuery = new Query();
+        public Query ChildQuery = new Query();
+
+        protected override async Task OnInitializedAsync()
+        {
+            await base.OnInitializedAsync();
+            try
+            {
+                if (!userManagement.IsSignedIn())
+                {
+                    Navigation.NavigateTo("/", true);
+                }
+                else
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+
+                        YesNoData = db.AYesNo.AsNoTracking().ToList();
+                        ServiceProvidedData = db.AReferralServices.AsNoTracking().ToList();
+                        HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                        RelationshipData = db.ARelationship.AsNoTracking().ToList();
+                        CaseNatureReportedData = db.ACaseNatureReported.ToList();
+                        InputModel = new();
+                        _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                        HivstatusData = db.AHivstatus.AsNoTracking().ToList();
+                        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                       if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                        {
+                            var districtlist = userManagement.GetUserDistrict();
+                            if (districtlist != null && districtlist.Count > 0)
+                            {
+                                List<int?> m = new List<int?>();
+                                foreach (var n in districtlist)
+                                {
+                                    m.Add(n);
+                                }
+
+                                InputModel.DistrictId = m.ToArray();
+                                _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                                MainQuery = new Query();
+                                MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                            }
+                            var subcountyList = userManagement.GetUserSubcounty();
+                            if (subcountyList != null && subcountyList.Count > 0)
+                            {
+                                List<int?> m = new List<int?>();
+                                foreach (var n in subcountyList)
+                                {
+                                    m.Add(n);
+                                }
+                                InputModel.SubcountyId = m.ToArray();
+                                _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                                MainQuery = new Query();
+                                MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                            }
+                        }
+                        else
+                        {
+                            isEnabled = true;
+                        }
+
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+
+        private void SearchRecords()
+        {
+            try
+            {
+                MainQuery = new Query();
+                if (InputModel.DistrictId != null)
+                {
+                    MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+                }
+                if (InputModel.SubcountyId != null)
+                {
+                    MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+                }
+                if (InputModel.ParishId != null)
+                {
+                    MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+                }
+                if (InputModel.VillageId != null)
+                {
+                    MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        private void ClearSearchBtnClick()
+        {
+            InputModel = new();
+            MainQuery = new Query();
+            using (var db = new MUCOBADIContext())
+            {
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+               if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+        }
+
+
+        public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+
+        #region Beneficiary Register
+        public class ReferralBeneficiaryRegisterAdapter : DataAdaptor
+        {
+            public IToastService toastService;
+            //private UserManagement _userManagement;
+            public ReferralBeneficiaryRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+            {
+                //_userManagement = userManagement;
+                toastService = ts;
+            }
+            public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+            {
+                var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+                try
+                {
+                    string DistrictId = null;
+                    string SubcountyId = null;
+                    string ParishId = null;
+                    string VillageId = null;
+                    if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                    {
+                        var val = dataManagerRequest.Params;
+                        if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                        {
+                            DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                        {
+                            SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                        {
+                            ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                        {
+                            VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                        }
+                    }
+                    using (var dbContext = new SPToCoreContext())
+                    {
+                        data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message.ToString());
+                }
+
+                IEnumerable GridData = data;
+                int _count = data.Count;
+                if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+                {
+                    // Searching
+                    GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+                }
+                if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+                {
+                    // Filtering
+                    GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+                }
+                if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+                {
+                    GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+                }
+                if (dataManagerRequest.Skip != 0)
+                {
+                    GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+                }
+                if (dataManagerRequest.Take != 0)
+                {
+                    GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+                }
+                IDictionary<string, object> aggregates = new Dictionary<string, object>();
+                if (dataManagerRequest.Aggregates != null) // Aggregation
+                {
+                    aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+                }
+                if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+                {
+                    foreach (var group in dataManagerRequest.Group)
+                    {
+                        GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                    }
+                }
+                return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+            }
+            public override Object Insert(DataManager dataManager, object value, string key)
+            {
+                return value;
+            }
+            public override object Remove(DataManager dataManager, object value, string keyField, string key)
+            {
+                return value;
+            }
+            public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+            {
+                return value;
+            }
+        }
+        public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                BeneficiaryRegisterGrid.PreventRender(false);
+                ChildQuery = new Query().AddParams("HouseHoldId", args.Data.HouseHoldId);
+                using (var db = new MUCOBADIContext())
+                {
+                    HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == args.Data.HouseHoldId).AsNoTracking().ToList();
+                }
+            }
+        }
+        #endregion Beneficiary Register
+        #region HIV EXPOSED INFANTS
+        public class ReferralFormAdapter : DataAdaptor
+        {
+            public IToastService toastService;
+            //private UserManagement _userManagement;
+            public ReferralFormAdapter(IToastService ts/*, UserManagement userManagement*/)
+            {
+                //_userManagement = userManagement;
+                toastService = ts;
+            }
+            public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+            {
+                var data = new List<ReferralForm>();
+                try
+                {
+                    int? HouseHoldId = null;
+                    if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                    {
+                        var val = dataManagerRequest.Params;
+                        if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                        {
+                            HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                        }
+                    }
+                    using (var dbContext = new SPToCoreContext())
+                    {
+                        data = await dbContext.ReferralForm.Where(o => o.HouseHoldId == HouseHoldId).ToListAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message.ToString());
+                }
+
+                IEnumerable GridData = data;
+                int _count = data.Count;
+                if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+                {
+                    // Searching
+                    GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+                }
+                if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+                {
+                    // Filtering
+                    GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+                }
+                if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+                {
+                    GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+                }
+                if (dataManagerRequest.Skip != 0)
+                {
+                    GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+                }
+                if (dataManagerRequest.Take != 0)
+                {
+                    GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+                }
+                IDictionary<string, object> aggregates = new Dictionary<string, object>();
+                if (dataManagerRequest.Aggregates != null) // Aggregation
+                {
+                    aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+                }
+                if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+                {
+                    foreach (var group in dataManagerRequest.Group)
+                    {
+                        GridData = DataUtil.Group<ReferralForm>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                    }
+                }
+                return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+            }
+            public override Object Insert(DataManager dataManager, object value, string key)
+            {
+                try
+                {
+                    var val = (value as ReferralForm);
+                    using(var db = new MUCOBADIContext())
+                    {
+                        var exist = db.ReferralForm.FirstOrDefault(o => o.ReferralFormId == val.ReferralFormId);
+                        if(exist== null)
+                        {
+                            int id = 1;
+                            var last = db.ReferralForm.OrderBy(o => o.ReferralFormId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.ReferralFormId + 1);
+                            }
+                            val.ReferralFormId = id;
+                            db.ReferralForm.Add(val);
+                            db.SaveChanges();
+                            toastService.ShowSuccess("Record Saved Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+            public override object Remove(DataManager dataManager, object value, string keyField, string key)
+            {
+                return value;
+            }
+            public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+            {
+                try
+                {
+                    var val = (value as ReferralForm);
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.ReferralForm.FirstOrDefault(o => o.ReferralFormId == val.ReferralFormId);
+                        if (exist != null)
+                        {
+                            db.Entry(exist).CurrentValues.SetValues(val);
+                            db.Entry(exist).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            toastService.ShowSuccess("Record updated Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+        }
+        public void OnReferralFormActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<ReferralForm> args)
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                var data = HouseHoldMembersData.FirstOrDefault(o => o.HouseHoldMemberId == args.RowData.HouseHoldMemberId);
+                if (data != null)
+                {
+                    HouseHoldName = data.Surname + " " + data.Givenname;
+                    if (data.DoB.HasValue)
+                    {
+                        var age = (DateTime.Now.Year - data.DoB.Value.Year);
+                        HouseHoldAge = age.ToString();
+                    }
+                    else if(data.Age.HasValue)
+                    {
+                        HouseHoldAge = data.Age.Value.ToString();
+                    }
+
+                    HouseHoldSex = data.GenderDescription;
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            //{
+            //    if (args.Data.HouseHoldMemberId == 0)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the household Member", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.RegistrationDate == null)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Date of Registration", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.RegistrationStatusId == null)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Registration Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.SupportedToEnrollAndAdhereToPmtct == null)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select to indicate if the Client been supported to enroll and adhere to PMTCT", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.PmtctmotherProvidedWithTreatmentLiteracy == null)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the PMTCT mother been provided with treatment literacy", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.PmtctmotherProvidedWithTreatmentLiteracy == null)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the PMTCT mother been provided with treatment literacy", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //}
+        }
+        public void OnReferralFormActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<ReferralForm> args)
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                ReferralFormGrid.PreventRender(false);
+            }
+        }
+        private void OnServiceProvidedCategoryBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(ReferralFormReviewData.ServicesProvidedBeforeReferal))
+            {
+                var a = ReferralFormReviewData.ServicesProvidedBeforeReferal.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                ServiceProvidedObj.Value = c.ToArray();
+            }
+        }
+        private void OnServiceProvidedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value!=null)
+            {
+                ReferralFormReviewData.ServicesProvidedBeforeReferal = string.Join(",", args.Value);
+            }
+            else
+            {
+                ReferralFormReviewData.ServicesProvidedBeforeReferal = null;
+            }
+        }
+        private void OnServicePointServiceProvidedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                ReferralFormReviewData.ServicePointServicesProvided = string.Join(",", args.Value);
+            }
+            else
+            {
+                ReferralFormReviewData.ServicePointServicesProvided = null;
+            }
+        }
+        private void OnServicePointServiceProvidedCategoryBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(ReferralFormReviewData.ServicePointServicesProvided))
+            {
+                var a = ReferralFormReviewData.ServicePointServicesProvided.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                ServicePointServiceProvidedObj.Value = c.ToArray();
+            }
+        }
+        private void OnHouseHoldMemberChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, ViewHouseHoldMembers> args)
+        {
+            try
+            {
+                if (args.ItemData != null)
+                {
+                    HouseHoldName = args.ItemData.Surname + " " + args.ItemData.Givenname;
+                    if (args.ItemData.Age.HasValue)
+                    {
+                        HouseHoldAge = args.ItemData.Age.Value.ToString();
+                    }
+                    HouseHoldSex = args.ItemData.GenderDescription;
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+            finally { StateHasChanged(); }
+        }
+
+        private void OnCaseNatureReportedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                ReferralFormReviewData.CaseNatureReportedId = string.Join(",", args.Value);
+            }
+            else
+            {
+                ReferralFormReviewData.CaseNatureReportedId = null;
+            }
+        }
+        private void OnCaseNatureReportedDataBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(ReferralFormReviewData.CaseNatureReportedId))
+            {
+                var a = ReferralFormReviewData.CaseNatureReportedId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                CaseNatureReportedObj.Value = c.ToArray();
+            }
+        }
+        #endregion HIV EXPOSED INFANTS
+    }

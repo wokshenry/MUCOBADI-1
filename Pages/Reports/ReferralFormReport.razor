@@ -1,0 +1,883 @@
+﻿@page "/ReferralFormReport"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> REFERRAL FORM FOR CHILDREN IN NEED OF ADDITIONAL SERVICES REPORT</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <p>District</p>
+                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Sub-County</p>
+                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Parish</p>
+                    <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Village</p>
+                    <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Reporting Period Start date</p>
+                    <SfDatePicker @bind-Value="@InputModel.Startdate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+                 <div class="form-group col-md-3">
+                    <p>Reporting Period End date</p>
+                    <SfDatePicker @bind-Value="@InputModel.Enddate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+               @* <div class="form-group col-md-3">
+                    <p>Reporting Period</p>
+                    <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Financial Year</p>
+                    <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>*@
+                <div class="form-group col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+                <div class="form-group col-md-12">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                </div>
+                @if (!string.IsNullOrEmpty(outComeResult))
+                {
+                    <div class="form-group col-md-12">
+                        @if (outComeResult.Contains("No Record"))
+                        {
+                            <p class="alert alert-danger" style="padding:10px;">@outComeResult</p>
+                        }
+                        else if (outComeResult.Contains("Warning"))
+                        {
+                            <p class="alert alert-warning" style="padding:10px;">@outComeResult</p>
+                        }
+                        else
+                        {
+                            <p class="alert alert-success" style="padding:10px;">@outComeResult</p>
+                        }
+                    </div>
+                }
+                <div class="form-group col-md-12">
+                    <SfSpinner @ref="ReportSpinner" Label="downloading the report please wait..." Size="70" Visible="false"></SfSpinner>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfSpinner ReportSpinner;
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    bool isEnabled { get; set; } = false;
+    string outComeResult { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    FianacialYearData = new List<FianacialYear>();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    //QuarterData = db.AQuarter.AsNoTracking().ToList();
+                    //int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o=> o.DateofIdentification.HasValue==true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                    InputModel = new();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+    private async Task SearchRecords()
+    {
+        try
+        {
+            await ReportSpinner.ShowAsync();
+            outComeResult = null;
+            string district = null;
+            string Subcounty = null;
+            string parish = null;
+            string village = null;
+            if (InputModel.DistrictId != null)
+            {
+                district = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                Subcounty = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null)
+            {
+                parish = string.Join(",", InputModel.ParishId);
+            }
+            if (InputModel.VillageId != null)
+            {
+                village = string.Join(",", InputModel.VillageId);
+            }
+            //if (InputModel.QuarterId == null || InputModel.YearId == null)
+            //{
+            //    outComeResult = "Please select the reporting period and the financial year";
+            //}
+            if (InputModel.Startdate == null || InputModel.Enddate == null)
+            {
+                outComeResult = "Please select the reporting period (both start date & End date)";
+            }
+            else
+            {
+                DateTime? startdate = null;
+                DateTime? enddate = null;
+                //var quarter = QuarterData.FirstOrDefault(o => o.QuarterId == InputModel.QuarterId);
+                //if (quarter != null)
+                //{
+                //    startdate = new DateTime(InputModel.YearId.Value, quarter.StartMonthId.Value, 1);
+                //    if (quarter.EndMonthId < quarter.StartMonthId)
+                //    {
+                //        enddate = new DateTime((InputModel.YearId.Value + 1), quarter.EndMonthId.Value, DateTime.DaysInMonth((InputModel.YearId.Value + 1), quarter.EndMonthId.Value));
+                //    }
+                //    else
+                //    {
+                //        enddate = new DateTime(InputModel.YearId.Value, quarter.EndMonthId.Value, DateTime.DaysInMonth(InputModel.YearId.Value, quarter.EndMonthId.Value));
+                //    }
+                //}
+                using (var db = new SPToCoreContext())
+                {
+                    var data = await db.spReferral_FormReportGetAllAsync(district, Subcounty, parish, village, null, InputModel.Startdate, InputModel.Enddate);
+                    if (data.Count > 0)
+                    {
+                        using (ExcelEngine excelEngine = new ExcelEngine())
+                        {
+                            IApplication application = excelEngine.Excel;
+                            application.DefaultVersion = ExcelVersion.Excel2013;
+                            IWorkbook workbook = application.Workbooks.Create(1);
+                            IWorksheet worksheet = workbook.Worksheets[0];
+                            worksheet.Name = "REFERRAL FORM REPORT";
+
+                            #region Styles
+                            var headerStyle = workbook.Styles.Add("headerStyle");
+
+                            headerStyle.BeginUpdate();
+                            headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                            headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            headerStyle.Font.Bold = true;
+                            headerStyle.Font.FontName = "Arial";
+                            headerStyle.Font.Size = 8f;
+                            headerStyle.Font.Color = ExcelKnownColors.White;
+
+                            headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            headerStyle.Borders.Color = ExcelKnownColors.White;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                            headerStyle.WrapText = true;
+
+                            headerStyle.EndUpdate();
+
+                            var Style = workbook.Styles.Add("bodyStyle");
+
+                            Style.BeginUpdate();
+                            Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                            Style.Font.Bold = false;
+                            Style.Font.FontName = "Arial";
+                            Style.Font.Size = 8f;
+                            Style.Font.Color = ExcelKnownColors.Black;
+                            Style.WrapText = true;
+                            Style.Borders.Color = ExcelKnownColors.Black;
+                            Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            Style.EndUpdate();
+
+
+                            var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                            CategoryStyle.BeginUpdate();
+                            CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                            /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                            CategoryStyle.Font.Bold = true;
+                            CategoryStyle.Font.FontName = "Arial";
+                            CategoryStyle.Font.Size = 10f;
+                            CategoryStyle.Font.Color = ExcelKnownColors.White;
+                            CategoryStyle.WrapText = true;
+                            CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.EndUpdate();
+
+                            var CategoryTotalStyle = workbook.Styles.Add("CategoryTotalStyle");
+
+                            CategoryTotalStyle.BeginUpdate();
+                            CategoryTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            CategoryTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            CategoryTotalStyle.Color = Syncfusion.Drawing.Color.DarkBlue;
+                            CategoryTotalStyle.Font.Bold = true;
+                            CategoryTotalStyle.Font.FontName = "Arial";
+                            CategoryTotalStyle.Font.Size = 8f;
+                            CategoryTotalStyle.Font.Color = ExcelKnownColors.White;
+                            CategoryTotalStyle.WrapText = true;
+                            CategoryTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            CategoryTotalStyle.EndUpdate();
+
+                            var DivisionStyle = workbook.Styles.Add("DivisionStyle");
+
+                            DivisionStyle.BeginUpdate();
+                            DivisionStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            DivisionStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 0, 0); //RED
+                            DivisionStyle.Font.Bold = true;
+                            DivisionStyle.Font.FontName = "Arial";
+                            DivisionStyle.Font.Size = 8f;
+                            DivisionStyle.Font.Color = ExcelKnownColors.White;
+                            DivisionStyle.WrapText = true;
+                            DivisionStyle.Borders.Color = ExcelKnownColors.White;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            DivisionStyle.EndUpdate();
+
+                            var DivisionTotalStyle = workbook.Styles.Add("DivisionTotalStyle");
+
+                            DivisionTotalStyle.BeginUpdate();
+                            DivisionTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            DivisionTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            DivisionTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                            DivisionTotalStyle.Font.Bold = true;
+                            DivisionTotalStyle.Font.FontName = "Arial";
+                            DivisionTotalStyle.Font.Size = 8f;
+                            DivisionTotalStyle.Font.Color = ExcelKnownColors.White;
+                            DivisionTotalStyle.WrapText = true;
+                            DivisionTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            DivisionTotalStyle.EndUpdate();
+
+
+                            var TopicStyle = workbook.Styles.Add("TopicStyle");
+
+                            TopicStyle.BeginUpdate();
+                            TopicStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            TopicStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88); //AUBERGINE
+                            TopicStyle.Font.Bold = true;
+                            TopicStyle.Font.FontName = "Arial";
+                            TopicStyle.Font.Size = 8f;
+                            TopicStyle.Font.Color = ExcelKnownColors.White;
+                            TopicStyle.WrapText = true;
+                            TopicStyle.Borders.Color = ExcelKnownColors.White;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            TopicStyle.EndUpdate();
+
+                            var TopicTotalStyle = workbook.Styles.Add("TopicTotalStyle");
+
+                            TopicTotalStyle.BeginUpdate();
+                            TopicTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            TopicTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            TopicTotalStyle.Color = Syncfusion.Drawing.Color.DarkRed;
+                            TopicTotalStyle.Font.Bold = true;
+                            TopicTotalStyle.Font.FontName = "Arial";
+                            TopicTotalStyle.Font.Size = 8f;
+                            TopicTotalStyle.Font.Color = ExcelKnownColors.White;
+                            TopicTotalStyle.WrapText = true;
+                            TopicTotalStyle.Borders.Color = ExcelKnownColors.White;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            TopicTotalStyle.EndUpdate();
+                            #endregion
+
+                            int row = 1;
+                            worksheet.Range["A" + row].Text = "REFERRAL FORM FOR CHILDREN IN NEED OF ADDITIONAL SERVICES REPORT";
+                            worksheet.Range["A" + row + ":AZ" + row].CellStyle = CategoryStyle;
+                            worksheet.Range["A" + row + ":AZ" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["A" + row + ":AZ" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 30;
+                            worksheet.Range["A" + row + ":AZ" + row].Merge();
+                            row++;
+                            row++;
+                            worksheet.Range["G" + row].Text = "1. DETAILS OF THE AGENCY REFERRING THE CHILD";
+                            worksheet.Range["G" + row + ":J" + row].Merge();
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(155, 194, 230);
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.Font.Size = 12f;
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.Font.Bold = true;
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+                            worksheet.Range["G" + row + ":J" + row].CellStyle.WrapText = true;
+                            worksheet.Range["A" + row].RowHeight = 30;
+
+
+                            worksheet.Range["H" + row].Text = "2. DETAILS OF THE CASE REPORTED FOR WHICH REFERRAL IS BEING MADE";
+                            worksheet.Range["H" + row + ":Z" + row].CellStyle = DivisionStyle;
+                            worksheet.Range["H" + row + ":Z" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["H" + row + ":Z" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["H" + row + ":Z" + row].Merge();
+                            worksheet.Range["H" + row + ":Z" + row].CellStyle.WrapText = true;
+
+                            worksheet.Range["AA" + row].Text = "3. SERVICES TO THE CHILD";
+                            worksheet.Range["AA" + row + ":AD" + row].CellStyle = CategoryTotalStyle;
+                            worksheet.Range["AA" + row + ":AD" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["AA" + row + ":AD" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["AA" + row + ":AD" + row].Merge();
+                            worksheet.Range["AA" + row + ":AD" + row].CellStyle.WrapText = true;
+
+                            worksheet.Range["AE" + row].Text = "4. DETAILS OF THE AGENCY TO WHICH THE CHILD IS BEING REFERRED";
+                            worksheet.Range["AE" + row + ":AN" + row].CellStyle = TopicStyle;
+                            worksheet.Range["AE" + row + ":AN" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["AE" + row + ":AN" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["AE" + row + ":AN" + row].Merge();
+                            worksheet.Range["AE" + row + ":AN" + row].CellStyle.WrapText = true;
+
+                            worksheet.Range["AO" + row].Text = "5. FEEDBACK TO THE AGENCY FROM WHICH THE CHILD /FAMILY WAS REFERRED (To be torn off and returned to the agency from which the child was referred)";
+                            worksheet.Range["AO" + row + ":AZ" + row].CellStyle = TopicTotalStyle;
+                            worksheet.Range["AO" + row + ":AZ" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["AO" + row + ":AZ" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["AO" + row + ":AZ" + row].Merge();
+                            worksheet.Range["AO" + row + ":AZ" + row].CellStyle.WrapText = true;
+                            row++;
+                            #region Header row
+                            worksheet.Range["A" + row].Text = "HH UiD";
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = "District";
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = "Sub county";
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = "Parish";
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = "Village";
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = "Serial No";
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            //1. DETAILS OF THE AGENCY REFERRING THE CHILD
+                            worksheet.Range["G" + row].Text = "Name of the agency";
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = "Location";
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = "Agency phone number";
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = "E-mail";
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            //2. DETAILS OF THE CASE REPORTED FOR WHICH REFERRAL IS BEING MADE
+                            worksheet.Range["K" + row].Text = "unique identifier";
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = "Name";
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = "Date of Birth";
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            worksheet.Range["N" + row].Text = "Age";
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            worksheet.Range["O" + row].Text = "Gender";
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = "Nature of the case reported and/or referred";
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = "Date of occurrence";
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = "Other risks/vulnerabilities/special needs";
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = "Has the case been reported to the Uganda Child Helpline (116)?";
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            worksheet.Range["T" + row].Text = "Provide 116 case number";
+                            worksheet.Range["T" + row].ColumnWidth = 20;
+
+                            worksheet.Range["U" + row].Text = "Name of the person accompanying the child";
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["V" + row].Text = "Residence";
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            worksheet.Range["W" + row].Text = "Phone number";
+                            worksheet.Range["W" + row].ColumnWidth = 20;
+
+                            worksheet.Range["X" + row].Text = "E-mail";
+                            worksheet.Range["X" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Y" + row].Text = "Relationship to child";
+                            worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Z" + row].Text = "caregiver";
+                            worksheet.Range["Z" + row].ColumnWidth = 20;
+
+
+                            //3. SERVICES TO THE CHILD
+                            worksheet.Range["AA" + row].Text = "Service(s)provided before referral";
+                            worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AB" + row].Text = "Reason for referral";
+                            worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AC" + row].Text = "Documents supporting referral that are enclosed";
+                            worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AD" + row].Text = "Name of Informed Assent / Consent";
+                            worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                            //4. DETAILS OF THE AGENCY TO WHICH THE CHILD IS BEING REFERRED
+
+                            worksheet.Range["AE" + row].Text = "Name of the agency";
+                            worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AF" + row].Text = "Location";
+                            worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AG" + row].Text = "Name of the contact person";
+                            worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AH" + row].Text = "Phone number";
+                            worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AI" + row].Text = "E-mail";
+                            worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AJ" + row].Text = "Name of the Case Worker referring the child";
+                            worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AK" + row].Text = "Title";
+                            worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AL" + row].Text = "Phone Number";
+                            worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AM" + row].Text = "E-Mail";
+                            worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AN" + row].Text = "Date";
+                            worksheet.Range["AN" + row].ColumnWidth = 20;
+
+                            //5. FEEDBACK TO THE AGENCY FROM WHICH THE CHILD /FAMILY WAS REFERRED (To be torn off and returned to the agency from which the child was referred)
+
+                            worksheet.Range["AO" + row].Text = "Case No";
+                            worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AP" + row].Text = "Date of arrival at service point";
+                            worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AQ" + row].Text = "Name of the agency";
+                            worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AR" + row].Text = "Contact person";
+                            worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AS" + row].Text = "Service(s) provided by the referral agency";
+                            worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AT" + row].Text = "HIV Status";
+                            worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AU" + row].Text = "Additional service(s) required / Any other critical information or documents enclosed";
+                            worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AV" + row].Text = "Name of the person providing feedback";
+                            worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AW" + row].Text = "Title";
+                            worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AX" + row].Text = "Phone number";
+                            worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AY" + row].Text = "E-mail";
+                            worksheet.Range["AY" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AZ" + row].Text = "Date";
+                            worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":AZ" + row].CellStyle = headerStyle;
+                            row++;
+                            #endregion Header row
+
+                            foreach (var n in data)
+                            {
+                                worksheet.Range["A" + row].Text = n.HouseHoldCode;
+
+                                worksheet.Range["B" + row].Text = n.DistrictDescription;
+
+                                worksheet.Range["C" + row].Text = n.SubcountyDescription;
+
+                                worksheet.Range["D" + row].Text = n.ParishDescription;
+
+                                worksheet.Range["E" + row].Text = n.VillageDescription;
+
+                                worksheet.Range["F" + row].Text = n.SerialNo;
+
+                                //1. DETAILS OF THE AGENCY REFERRING THE CHILD
+                                worksheet.Range["G" + row].Text = n.ReferringAgencyName;
+
+                                worksheet.Range["H" + row].Text = n.ReferringAgencyLocation;
+
+                                worksheet.Range["I" + row].Text = n.ReferringAgencyPhoneNumber;
+
+                                worksheet.Range["J" + row].Text = n.ReferringAgencyEmail;
+
+                                //2. DETAILS OF THE CASE REPORTED FOR WHICH REFERRAL IS BEING MADE
+                                worksheet.Range["K" + row].Text = n.HouseHoldMemberCode;
+
+                                worksheet.Range["L" + row].Text = n.FullName;
+
+                                if (n.DoB.HasValue)
+                                {
+                                    worksheet.Range["M" + row].Text = n.DoB.Value.ToString("dd/MM/yyyy");
+                                }
+
+                                if (n.Age.HasValue)
+                                {
+                                    worksheet.Range["N" + row].Number = n.Age.Value;
+                                }
+
+                                worksheet.Range["O" + row].Text = n.GenderDescription;
+
+                                worksheet.Range["P" + row].Text = n.CaseNatureReportedDesc;
+
+                                if (n.DateofOccurancy.HasValue)
+                                {
+                                    worksheet.Range["Q" + row].Text = n.DateofOccurancy.Value.ToString("dd/MM/yyyy");
+                                }
+
+                                worksheet.Range["R" + row].Text = n.Other_Risk;
+
+                                worksheet.Range["S" + row].Text =n.HasCaseBeenReportedToUgandaChildHelplineDesc;
+
+                                worksheet.Range["T" + row].Text = n.Case_Number;
+
+                                worksheet.Range["U" + row].Text = n.NameOfPersonAccompanyingTheChild;
+
+                                worksheet.Range["V" + row].Text = n.ResidenceOfPersonAccompanyingTheChild;
+
+                                worksheet.Range["W" + row].Text = n.PhoneNumberOfPersonAccompanyingTheChild;
+
+                                worksheet.Range["X" + row].Text = n.EmailOfPersonAccompanyingTheChild;
+
+                                worksheet.Range["Y" + row].Text = n.RelationshipName;
+
+                                worksheet.Range["Z" + row].Text = n.CareGiverHouseHoldMemberCode +" "+ n.CareGiverHouseHoldMemberName;
+
+
+                                //3. SERVICES TO THE CHILD
+                                worksheet.Range["AA" + row].Text = n.ServicesProvidedBeforeReferalDesc;
+
+                                worksheet.Range["AB" + row].Text = n.ReasonForReferral;
+
+                                worksheet.Range["AC" + row].Text = n.Documents_Supporting_Referral_Enclosed;
+
+                                worksheet.Range["AD" + row].Text = n.Consent_Name;
+
+                                //4. DETAILS OF THE AGENCY TO WHICH THE CHILD IS BEING REFERRED
+
+                                worksheet.Range["AE" + row].Text = n.ReferredToAgencyName;
+
+                                worksheet.Range["AF" + row].Text = n.ReferredToAgencyLocation;
+
+                                worksheet.Range["AG" + row].Text = n.ReferredToAgencyContactPersonName;
+
+                                worksheet.Range["AH" + row].Text = n.ReferredToAgencyPhoneNumber;
+
+                                worksheet.Range["AI" + row].Text = n.ReferredToAgencyEmail;
+
+                                worksheet.Range["AJ" + row].Text = n.CaseWorkerReferringChildName;
+
+                                worksheet.Range["AK" + row].Text = n.CaseWorkerReferringChildTitle;
+
+                                worksheet.Range["AL" + row].Text = n.CaseWorkerReferringChildPhoneNumber;
+
+                                worksheet.Range["AM" + row].Text = n.CaseWorkerReferringChildEmail;
+
+                                if (n.CaseWorkerReferringChildDate.HasValue)
+                                {
+                                    worksheet.Range["AN" + row].Text = n.CaseWorkerReferringChildDate.Value.ToString("dd/MM/yyyy");
+                                }
+
+                                //5. FEEDBACK TO THE AGENCY FROM WHICH THE CHILD /FAMILY WAS REFERRED (To be torn off and returned to the agency from which the child was referred)
+
+                                worksheet.Range["AO" + row].Text = n.ServicePointCaseNo;
+
+                                if (n.ServicePointArrivalDate.HasValue)
+                                {
+                                    worksheet.Range["AP" + row].Text = n.ServicePointArrivalDate.Value.ToString("dd/MM/yyyy");
+                                }
+
+                                worksheet.Range["AQ" + row].Text = n.ServicePointAgencyName;
+
+                                worksheet.Range["AR" + row].Text = n.ServicePointContactPerson;
+
+                                worksheet.Range["AS" + row].Text = n.ServicePointServicesProvidedDesc;
+
+                                worksheet.Range["AT" + row].Text = n.HIVStatusDescription;
+
+                                worksheet.Range["AU" + row].Text =n.ServicePointAdditionalServicesRequired;
+
+                                worksheet.Range["AV" + row].Text = n.ServicePointPersonPrividingFeedbackName;
+
+                                worksheet.Range["AW" + row].Text = n.ServicePointPersonPrividingFeedbackTitle;
+
+                                worksheet.Range["AX" + row].Text = n.ServicePointPersonPrividingFeedbackPhoneNumber;
+
+                                worksheet.Range["AY" + row].Text = n.ServicePointPersonPrividingFeedbackEmail;
+
+                                if (n.ServicePointPersonPrividingFeedbackDate.HasValue)
+                                {
+                                    worksheet.Range["AZ" + row].Text = n.ServicePointPersonPrividingFeedbackDate.Value.ToString("dd/MM/yyyy");
+                                }
+
+                                worksheet.Range["A" + row + ":AZ" + row].CellStyle = Style;
+                                row++;
+                            }
+
+                            MemoryStream ms = new MemoryStream();
+                            // Save and close the document.
+                            workbook.SaveAs(ms);
+                            //Reset the memory stream position.
+                            ms.Position = 0;
+                            await JS.SaveAs("REFERRAL FORM REPORT.xlsx", ms.ToArray());
+                            ms.Dispose();
+                            workbook.Close();
+                            //excelEngine.Dispose();
+                            outComeResult = "Success:- The report was successfully downloaded.";
+                        }
+                    }
+                    else
+                    {
+                        outComeResult = "No Record:- There were no records found for this search";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await ReportSpinner.HideAsync();
+        }
+    }
+}

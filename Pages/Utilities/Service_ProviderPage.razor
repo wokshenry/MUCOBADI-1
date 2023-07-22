@@ -1,0 +1,445 @@
+﻿@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject IToastService toastService;
+
+<style>
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Service Provider Descriptions</strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+<SfGrid @ref="AServiceProviderGrid" TValue="AServiceProvider"
+        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" ShowColumnChooser="true" AllowTextWrap="true"
+        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+
+    <SfDataManager AdaptorInstance="@typeof(AServiceProviderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+    <GridEvents 
+        OnActionComplete="ActionCompleteMain"
+        OnActionBegin="OnAServiceProviderActionBegin"
+        TValue="AServiceProvider">
+    </GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+
+        <HeaderTemplate>
+            @{
+                var text = GetAServiceProvider((context as AServiceProvider));
+                <div class="headerbandimg" /><span>@text</span>
+            }
+        </HeaderTemplate>
+        <Template Context="AServiceProviderContext">
+            @{
+                AServiceProviderData = (AServiceProviderContext as AServiceProvider);
+                <div style="padding:15px;">
+                    <div class="form-row">
+                        <div class="form-group col-md-12" hidden>
+                            <SfNumericTextBox ID="ServiceProviderId" @bind-Value="@(AServiceProviderData.ServiceProviderId)" Enabled="false" Placeholder="id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <p><h7>Service Provider<span style="color:red;">*</span></h7></p>
+                            <SfTextBox Multiline="false" ID="ServiceProviderDesc" @bind-Value="@(AServiceProviderData.ServiceProviderDesc)" Enabled="true" FloatLabelType="FloatLabelType.Always"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <p><h7>District(s) of Operation<span style="color:red;">*</span></h7></p>
+                            <SfMultiSelect @ref="@DisDatasourceObj" TValue="int[]" TItem="ADistrict" AllowFiltering="true" Enabled="true" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FloatLabelType="FloatLabelType.Always"
+                                       FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" PopupHeight="350px">
+                                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                <MultiSelectEvents TValue="int[]" TItem="ADistrict" ValueChange="OnDistrictDatasourceChange" DataBound="OnDistrictDatasourceBound"></MultiSelectEvents>
+                            </SfMultiSelect>
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </Template>
+    </GridEditSettings>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+    <GridPageSettings PageSize="20"></GridPageSettings>
+    <GridColumns>
+        <GridColumn Type="ColumnType.CheckBox" Width="20"></GridColumn>
+        <GridColumn Field=@nameof(AServiceProvider.ServiceProviderId) HeaderText=" Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+        <GridColumn Field=@nameof(AServiceProvider.ServiceProviderDesc) HeaderText="Service Provider" Width="50"></GridColumn>
+        <GridColumn HeaderText="District" Width="100" ClipMode="ClipMode.EllipsisWithTooltip">
+            <EditTemplate>
+                @{
+                    List<int> c = new List<int>();
+                    if (!string.IsNullOrEmpty((context as AServiceProvider).OperatingDistrict))
+                    {
+                        var a = (context as AServiceProvider).OperatingDistrict.Split(',');
+                        foreach (var n in a)
+                        {
+                            int b = Convert.ToInt32(n.Trim());
+                            c.Add(b);
+                        }
+                    }                
+                }
+                <SfMultiSelect Value="c.ToArray()" TValue="int[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px" PopupWidth="200%">
+                    <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                    <MultiSelectEvents TValue="int[]" TItem="ADistrict" ValueChange="@((Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)=>{
+                         if (args.Value != null)
+                         {
+                            (context as AServiceProvider).OperatingDistrict = string.Join(",", args.Value);
+                         }
+                         else 
+                         {
+                            (context as AServiceProvider).OperatingDistrict = null;
+                         }
+                       })">
+                    </MultiSelectEvents>
+                </SfMultiSelect>
+            </EditTemplate>
+            <Template>
+                @{
+                    var data = (context as AServiceProvider);
+                    if (!string.IsNullOrEmpty(data.OperatingDistrict))
+                    {
+                        string result = string.Empty;
+                        var a = data.OperatingDistrict.Split(",");
+                        int count = 1;
+                        foreach (var n in a)
+                        {
+                            int b = Convert.ToInt32(n.Trim());
+                            var x = DistrictData.FirstOrDefault(o => o.DistrictId == b);
+                            if (x != null)
+                            {
+                                if (count != a.Length)
+                                {
+                                    result += x.DistrictDescription + ", ";
+                                }
+                                else
+                                {
+                                    result += x.DistrictDescription;
+                                }
+                            }
+                            count++;
+                        }
+                        <p>@result</p>
+                    }
+                    else
+                    {
+                        <p></p>
+                    }
+                }
+            </Template>
+        </GridColumn>
+
+    </GridColumns>
+</SfGrid>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private SfGrid<AServiceProvider> AServiceProviderGrid;
+
+    public string ButtonText { get; set; }
+    private SfMultiSelect<int[], ADistrict> DisDatasourceObj;
+    private static AServiceProvider AServiceProviderData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {                
+                DistrictData = _context.ADistrict.ToList();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    #region AServiceProvider
+
+    public class AServiceProviderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public AServiceProviderAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<AServiceProvider>();
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    data = await dbContext.AServiceProvider.ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<AServiceProvider>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override async Task<Object> InsertAsync(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AServiceProvider);
+                    var exists = dbContext.AServiceProvider.FirstOrDefault(o => o.ServiceProviderId == val.ServiceProviderId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.AServiceProvider.OrderBy(o => o.ServiceProviderId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.ServiceProviderId + 1);
+                        }
+                        val.ServiceProviderId = id;
+
+                        dbContext.AServiceProvider.Add(val);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.AServiceProvider.FirstOrDefault(o => o.ServiceProviderId == data);
+                    if (exists != null)
+                    {
+                        dbContext.AServiceProvider.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AServiceProvider);
+                    var exists = dbContext.AServiceProvider.FirstOrDefault(o => o.ServiceProviderId == val.ServiceProviderId);
+                    if (exists != null)
+                    {
+                        dbContext.Entry(exists).CurrentValues.SetValues(val);
+                        dbContext.Entry(exists).State = EntityState.Modified;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+
+    public void ActionCompleteMain(ActionEventArgs<AServiceProvider> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) ||
+        args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            AServiceProviderGrid.PreventRender(false);
+        }
+    }
+
+    public void OnAServiceProviderActionBegin(ActionEventArgs<AServiceProvider> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (string.IsNullOrEmpty(args.Data.ServiceProviderDesc))
+            {
+                toastService.ShowWarning("Please fill in the Service Provider Description before saving this record.");
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.OperatingDistrict))
+            {
+                toastService.ShowWarning("Please select the district(s) of operation.");
+                args.Cancel = true;
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.AServiceProvider.FirstOrDefault(o => o.ServiceProviderDesc.ToLower() == args.Data.ServiceProviderDesc.ToLower());
+                    if (exists != null && exists.ServiceProviderId != args.Data.ServiceProviderId)
+                    {
+                        toastService.ShowWarning("This Service Provider Description already exists in the database and will not be saved.");
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetAServiceProvider(AServiceProvider Value)
+    {
+        if (Value.ServiceProviderId == 0)
+        {
+            ButtonText = "Insert";
+            return "Add a New Service Provider Description";
+        }
+        else
+        {
+            ButtonText = "Save Changes";
+            return "Edit Details for " + Value.ServiceProviderDesc;
+        }
+    }
+
+    public void OnDistrictDatasourceBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(AServiceProviderData.OperatingDistrict))
+        {
+            var a = AServiceProviderData.OperatingDistrict.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            DisDatasourceObj.Value = c.ToArray();
+        }
+    }
+    public void OnDistrictDatasourceChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            AServiceProviderData.OperatingDistrict = string.Join(",", args.Value);
+        }
+        else
+        {
+            AServiceProviderData.OperatingDistrict = null;
+        }
+    }
+
+
+    #endregion Service_Provider
+
+
+
+}
+
+
+
+
+
+
+

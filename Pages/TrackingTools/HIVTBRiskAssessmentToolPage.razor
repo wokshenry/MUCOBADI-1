@@ -1,0 +1,1761 @@
+﻿@page "/HIVTBRiskAssessmentToolPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID/ICARE |</strong> HIV and TB Risk Assessment Tool</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager AdaptorInstance="@typeof(HIVTBRiskAssessmentBeneficiaryRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="RegisterContext">
+                    @{
+                        BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                        <div style="padding:3px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Household Code</p>
+                                    <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4>USAID/ICARE HIV and TB Risk Assessment Tool For adults (18 years and above)</h4>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    @*Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})"*@
+                                    <SfGrid @ref="AdultRiskAssessmentGrid" TValue="spAdultHIVTBRisKAssessmentToolGetAllResult" Query="@ChildQuery"
+                                            AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true" FrozenColumns="5">
+                                        @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                                        <SfDataManager AdaptorInstance="@typeof(AdultRiskAssessmentAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <GridEvents OnActionBegin="OnReviewHeaderActionBegin" OnActionComplete="ActionComplete" TValue="spAdultHIVTBRisKAssessmentToolGetAllResult"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="ReviewHeaderContext">
+                                                @{
+                                                    AdultRiskAssessmentData = (ReviewHeaderContext as spAdultHIVTBRisKAssessmentToolGetAllResult);
+                                                    <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@AdultRiskAssessmentData.TBRiskAssessmentId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>HIV and TB Risk Assessment Tool</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>District</p>
+                                                                <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Sub-County</p>
+                                                                <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Parish</p>
+                                                                <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Village</p>
+                                                                <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Code</p>
+                                                                <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Member Code</p>
+                                                                <p><b>@AdultRiskAssessmentData.HouseHoldMemberCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Name</p>
+                                                                <p><b>@AdultRiskAssessmentData.FullName</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Date of birth</p>
+                                                                @if (AdultRiskAssessmentData.DoB.HasValue)
+                                                                {
+                                                                    <p><b>@AdultRiskAssessmentData.DoB.Value.ToString("dd/MM/yyyy")</b></p>
+                                                                }
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Age</p>
+                                                                <p><b>@AdultRiskAssessmentData.Age</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Gender</p>
+                                                                <p><b>@AdultRiskAssessmentData.GenderDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Program Participation Status</p>
+                                                                <p><b>@AdultRiskAssessmentData.ProgramParticipationDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Risk Factor</p>
+                                                                <p><b>@AdultRiskAssessmentData.KnownRiskFactorDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-lg-12"></div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>HIV Status</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.HIVStatusId)" Enabled="true" TItem="AHivstatus" TValue="int?" DataSource="@HivstatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AHivstatus.HivstatusId)" Text="@nameof(AHivstatus.HivstatusDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Is on ART?</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.CurrentlyonART)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                    <p>Art Number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(AdultRiskAssessmentData.ARTNumber)" Enabled="true" Placeholder="Pleses enter the Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>HIV Risk Screening Questions (Perinatal Exposure)  ASK: Primary caregiver </h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Viral Load test done  (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.IsVirallaodTestDone)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p> Viral Load Level (H, L,DK,W)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ViralLoadLevelId)" Enabled="true" TItem="AViralLoadLevel" TValue="int?" DataSource="@ViralLoadLevelData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AViralLoadLevel.ViralLoadLevelId)" Text="@nameof(AViralLoadLevel.ViralLoadLevelDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client had unprotected sex with partner(s) of unknown HIV status or known HIV positive status within the last three months (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientHadUnprotectedSexInPastThreeMonth)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client falls in the category of sex workers, MSM, truckers, fisher folks, alcohol & drug users, prisoners) and has not had an HIV test in the last three months (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientFallsInSexWorkersCategory)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>HIV negative partner(s) in a discordant relationship and has not had an HIV test within the past 3 months (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.HIVNegativePartnerInDiscordantRelationship)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client has current or previous sexually transmitted infection (STI) after previous negative HIV test (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientWithSexuallyTransmittedInfection)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client has presumptive of active TB disease (current cough, fever, weight loss or night sweet) (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientHasPresumptiveActiveTBDisease)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client has new hepatitis B diagnosis after previous negative HIV test (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientHasNewHepatitisBDiagnosis)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client has history of ill/poor or sickly health and had HIV test over 3 months ago (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientHasHistoryOfIllness)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client has a history of loss of a sexual partner(s) due to ill health but has not tested for HIV in the last three months (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientHasLossOfSexualPartnerHistory)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Client is male (25 years) and female (35-49year) has not tested for HIV in the last three months (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ClientIsMaleOrFemaleWithnoHIVTest)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>TB Screening </h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Have you been coughing for 2 weeks or more? (Yes/No)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.BeenCoughingForTwoWeek)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Have you had persistent fever for 2 weeks or more?  (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.PersistentFeverForTwoWeeks)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Have you lost weight? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.HaveYouLostWeight)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Have you experienced excessive night sweats (sweating more than usual) for 3 weeks or more?  (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(AdultRiskAssessmentData.ExperiencedExcessiveNightSweats)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                            <FooterTemplate>
+                                                <SfButton CssClass="e-btn e-success" OnClick="SaveFormBtnClick"> Save Form</SfButton>
+                                                <SfButton CssClass="e-btn e-danger" OnClick="CancelFormBtnClick"> Cancel</SfButton>
+                                            </FooterTemplate>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.TBRiskAssessmentId) HeaderText="TB RiskAssessment Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.FullName) HeaderText="Name" Width="180"></GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.HouseHoldMemberCode) Visible="true" HeaderText="HouseHold Member Code" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.HIVStatusDescription) Visible="true" HeaderText="Current HIV status" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.CurrentlyonARTDesc) Visible="true" HeaderText="If HIV + on ART? (Y/N)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ARTNumber) Visible="true" HeaderText="ART No (if HIV+ & on ART)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.IsVirallaodTestDone) HeaderText="Viral Load test done  (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ViralLoadLevelId) HeaderText="Viral Load Level (H, L,DK,W)" ForeignKeyField="@nameof(AViralLoadLevel.ViralLoadLevelId)" ForeignKeyValue="@nameof(AViralLoadLevel.ViralLoadLevelDesc)" ForeignDataSource="@ViralLoadLevelData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientHadUnprotectedSexInPastThreeMonth) HeaderText="Client had unprotected sex with partner(s) of unknown HIV status or known HIV positive status within the last three months (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientFallsInSexWorkersCategory) HeaderText="Client falls in the category of sex workers, MSM, truckers, fisher folks, alcohol & drug users, prisoners) and has not had an HIV test in the last three months" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.HIVNegativePartnerInDiscordantRelationship) HeaderText="HIV negative partner(s) in a discordant relationship and has not had an HIV test within the past 3 months (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientWithSexuallyTransmittedInfection) HeaderText="Client has current or previous sexually transmitted infection (STI) after previous negative HIV test (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientHasPresumptiveActiveTBDisease) HeaderText="Client has presumptive of active TB disease (current cough, fever, weight loss or night sweet) (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientHasNewHepatitisBDiagnosis) HeaderText="Client has new hepatitis B diagnosis after previous negative HIV test (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientHasHistoryOfIllness) HeaderText="Client has history of ill/poor or sickly health and had HIV test over 3 months ago (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientHasLossOfSexualPartnerHistory) HeaderText="Client has a history of loss of a sexual partner(s) due to ill health but has not tested for HIV in the last three months (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ClientIsMaleOrFemaleWithnoHIVTest) HeaderText="Client is male (25 years) and female (35-49year) has not tested for HIV in the last three months (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.BeenCoughingForTwoWeek) HeaderText="Have you been coughing for 2 weeks or more? (Yes/No)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.PersistentFeverForTwoWeeks) HeaderText="Have you had persistent fever for 2 weeks or more?  (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.HaveYouLostWeight) HeaderText="Have you lost weight? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spAdultHIVTBRisKAssessmentToolGetAllResult.ExperiencedExcessiveNightSweats) HeaderText="Have you experienced excessive night sweats (sweating more than usual) for 3 weeks or more?  (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4>USAID/ICARE HIV and TB Risk Assessment Tool for Children (below 18 years)</h4>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="ChildrenRiskAssessmentGrid" TValue="spChildrenHIVTBRisKAssessmentToolGetAllResult" Query="@ChildQuery"
+                                            AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true" FrozenColumns="5">
+                                        @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                                        <SfDataManager AdaptorInstance="@typeof(ChildrenRiskAssessmentAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <GridEvents OnActionBegin="OnChildrenActionBegin" OnActionComplete="ChildrenActionComplete" TValue="spChildrenHIVTBRisKAssessmentToolGetAllResult"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="ReviewHeaderContext">
+                                                @{
+                                                    ChildrenRiskAssessmentData = (ReviewHeaderContext as spChildrenHIVTBRisKAssessmentToolGetAllResult);
+                                                    <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@ChildrenRiskAssessmentData.TBRiskAssessmentId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Home Visit Service Reporting Tool</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>District</p>
+                                                                <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Sub-County</p>
+                                                                <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Parish</p>
+                                                                <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Village</p>
+                                                                <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Code</p>
+                                                                <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Member Code</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.HouseHoldMemberCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Name</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.FullName</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Date of birth</p>
+                                                                @if (ChildrenRiskAssessmentData.DoB.HasValue)
+                                                                {
+                                                                    <p><b>@ChildrenRiskAssessmentData.DoB.Value.ToString("dd/MM/yyyy")</b></p>
+                                                                }
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Age</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.Age</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Gender</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.GenderDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Program Participation Status</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.ProgramParticipationDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Risk Factor</p>
+                                                                <p><b>@ChildrenRiskAssessmentData.KnownRiskFactorDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-lg-12"></div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>HIV Status</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.HIVStatusId)" Enabled="true" TItem="AHivstatus" TValue="int?" DataSource="@HivstatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AHivstatus.HivstatusId)" Text="@nameof(AHivstatus.HivstatusDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Is on ART?</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.CurrentlyonART)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                    <p>Art Number</p>
+                                                                    <SfTextBox Multiline="false" @bind-Value="@(ChildrenRiskAssessmentData.ARTNumber)" Enabled="true" Placeholder="Pleses enter the Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>HIV Risk Screening Questions (Perinatal Exposure) ASK: Does the child have…/Has the child had… (ONLY FOR CHILDREN 0-17 years) </h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Viral Load test done  (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.IsVirallaodTestDone)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p> Viral Load Level (H, L,DK,W)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ViralLoadLevelId)" Enabled="true" TItem="AViralLoadLevel" TValue="int?" DataSource="@ViralLoadLevelData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AViralLoadLevel.ViralLoadLevelId)" Text="@nameof(AViralLoadLevel.ViralLoadLevelDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child been admitted to hospital in the last 6 months? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildAdmittedToHospitalInSixMonths)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Does the child have or live with an HIV positive mother /father? (Yes/No)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildLivesWithHIVPositiveMotherOrFather)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Is the child symptomatic for HIV? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHIVSymptomatic)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Is the child malnourished? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildMalnourished)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child been diagnosed with tuberculosis (presumptive or confirmed) or does the child have a history of tuberculosis treatment? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildDignosedWithTuberculosis)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Does the child have a history of sexual abuse or sexual activity? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHasSexualAbuseHistory)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child had an accidental exposure by needle, stick injury, or sharp object? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHasAccidentalExposure)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Does child abuse drugs or alcohol? (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildDrugAbuseOrAlcohol)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>TB Screening for children </h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child been coughing for 2 weeks or more?</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildCoughingForTwoWeeks)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child had persistent history of fever?</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHadPersistentFeverHstory)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child had poor weight gain or weight loss in the past 1 month?</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHasPoorWeightGain)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Has the child had contact with an adult with active TB disease or chronic cough(cough more than 2 weeks)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildHadContactWithActiveTBDiseaseAdult)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Have you experienced excessive night sweats (sweating more than usual) for 3 weeks or more?  (Y/N)</p>
+                                                                <SfDropDownList @bind-Value="@(ChildrenRiskAssessmentData.ChildExperiencedExcessiveNightSweeting)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                            <FooterTemplate>
+                                                <SfButton CssClass="e-btn e-success" OnClick="SaveChildrenFormBtnClick"> Save Form</SfButton>
+                                                <SfButton CssClass="e-btn e-danger" OnClick="CancelChildrenFormBtnClick"> Cancel</SfButton>
+                                            </FooterTemplate>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.TBRiskAssessmentId) HeaderText="TB RiskAssessment Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.FullName) HeaderText="Name" Width="180"></GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.HouseHoldMemberCode) Visible="true" HeaderText="HouseHold Member Code" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.HIVStatusDescription) Visible="true" HeaderText="Current HIV status" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.CurrentlyonARTDesc) Visible="true" HeaderText="If HIV + on ART? (Y/N)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ARTNumber) Visible="true" HeaderText="ART No (if HIV+ & on ART)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.IsVirallaodTestDone) HeaderText="Viral Load test done  (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ViralLoadLevelId) HeaderText="Viral Load Level (H, L,DK,W)" ForeignKeyField="@nameof(AViralLoadLevel.ViralLoadLevelId)" ForeignKeyValue="@nameof(AViralLoadLevel.ViralLoadLevelDesc)" ForeignDataSource="@ViralLoadLevelData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildAdmittedToHospitalInSixMonths) HeaderText="Has the child been admitted to hospital in the last 6 months? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildLivesWithHIVPositiveMotherOrFather) HeaderText="Does the child have or live with an HIV positive mother /father? (Yes/No)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHIVSymptomatic) HeaderText="Is the child symptomatic for HIV? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildMalnourished) HeaderText="Is the child malnourished? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildDignosedWithTuberculosis) HeaderText="Has the child been diagnosed with tuberculosis (presumptive or confirmed) or does the child have a history of tuberculosis treatment? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHasSexualAbuseHistory) HeaderText="Does the child have a history of sexual abuse or sexual activity? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHasAccidentalExposure) HeaderText="Has the child had an accidental exposure by needle, stick injury, or sharp object? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildDrugAbuseOrAlcohol) HeaderText="Does child abuse drugs or alcohol? (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildCoughingForTwoWeeks) HeaderText="Has the child been coughing for 2 weeks or more?" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHadPersistentFeverHstory) HeaderText="Has the child had persistent history of fever?" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHasPoorWeightGain) HeaderText="Has the child had poor weight gain or weight loss in the past 1 month?" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildHadContactWithActiveTBDiseaseAdult) HeaderText="Has the child had contact with an adult with active TB disease or chronic cough(cough more than 2 weeks)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(spChildrenHIVTBRisKAssessmentToolGetAllResult.ChildExperiencedExcessiveNightSweeting) HeaderText="Have you experienced excessive night sweats (sweating more than usual) for 3 weeks or more?  (Y/N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="view" })" Title="view"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+    private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+    SfGrid<spAdultHIVTBRisKAssessmentToolGetAllResult> AdultRiskAssessmentGrid;
+    SfGrid<spChildrenHIVTBRisKAssessmentToolGetAllResult> ChildrenRiskAssessmentGrid;
+
+    private spAdultHIVTBRisKAssessmentToolGetAllResult AdultRiskAssessmentData { get; set; }
+    private spChildrenHIVTBRisKAssessmentToolGetAllResult ChildrenRiskAssessmentData { get; set; }
+    List<HouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AViralLoadLevel> ViralLoadLevelData { get; set; }
+    List<AHivstatus> HivstatusData { get; set; }
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+
+    private void SaveRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.EndEdit();
+    }
+    private void CancelRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.CloseEdit();
+    }
+    private void SaveFormBtnClick()
+    {
+        AdultRiskAssessmentGrid.EndEdit();
+    }
+    private void CancelFormBtnClick()
+    {
+        AdultRiskAssessmentGrid.CloseEdit();
+    }
+    private void SaveChildrenFormBtnClick()
+    {
+        ChildrenRiskAssessmentGrid.EndEdit();
+    }
+    private void CancelChildrenFormBtnClick()
+    {
+        ChildrenRiskAssessmentGrid.CloseEdit();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            using (var db = new MUCOBADIContext())
+            {
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                ViralLoadLevelData = db.AViralLoadLevel.AsNoTracking().ToList();
+                HivstatusData = db.AHivstatus.AsNoTracking().ToList();
+
+
+
+                InputModel = new();
+                _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+               if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    #region Beneficiary Register
+    public class HIVTBRiskAssessmentBeneficiaryRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public HIVTBRiskAssessmentBeneficiaryRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryRegisterGrid.PreventRender(false);
+            ChildQuery = new Query().AddParams("HouseHoldId", args.Data.HouseHoldId);
+        }
+    }
+    #endregion Beneficiary Register
+
+    #region Review Header
+    public class AdultRiskAssessmentAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public AdultRiskAssessmentAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spAdultHIVTBRisKAssessmentToolGetAllResult>();
+            try
+            {
+                string HouseHoldId = null;
+                double? OperatorId = null;
+                string ReferenceNumber = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "OperatorId").Value != null)
+                    {
+                        OperatorId = Convert.ToDouble(val.FirstOrDefault(o => o.Key == "OperatorId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ReferenceNumber").Value != null)
+                    {
+                        ReferenceNumber = val.FirstOrDefault(o => o.Key == "ReferenceNumber").Value.ToString();
+                    }
+                }
+                //if (string.IsNullOrEmpty(ApplicationStatusid))
+                //{
+                //    ApplicationStatusid = "2,3";
+                //}
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spAdultHIVTBRisKAssessmentToolGetAllAsync(HouseHoldId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spAdultHIVTBRisKAssessmentToolGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as spAdultHIVTBRisKAssessmentToolGetAllResult);
+                    var exists = dbContext.HivTbRisKassessmentTool.FirstOrDefault(o => o.HouseHoldMemberId == val.HouseHoldMemberId);
+                    if (exists == null)
+                    {
+                        HivTbRisKassessmentTool m = new HivTbRisKassessmentTool();
+                        int id = 1;
+                        var last = dbContext.HivTbRisKassessmentTool.OrderBy(o => o.TbriskAssessmentId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TbriskAssessmentId + 1);
+                        }
+                        m.TbriskAssessmentId = id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            m.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            m.HivstatusId = 3;
+                        }
+                        m.IsOnArt = val.CurrentlyonART;
+                        m.ArtNumber = val.ARTNumber;
+                        m.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        m.ViralLoadLevelId = val.ViralLoadLevelId;
+                        m.ClientHadUnprotectedSexInPastThreeMonth = val.ClientHadUnprotectedSexInPastThreeMonth;
+                        m.ClientFallsInSexWorkersCategory = val.ClientFallsInSexWorkersCategory;
+                        m.HivnegativePartnerInDiscordantRelationship = val.HIVNegativePartnerInDiscordantRelationship;
+                        m.ClientWithSexuallyTransmittedInfection = val.ClientWithSexuallyTransmittedInfection;
+                        m.ClientHasPresumptiveActiveTbdisease = val.ClientHasPresumptiveActiveTBDisease;
+                        m.ClientHasNewHepatitisBdiagnosis = val.ClientHasNewHepatitisBDiagnosis;
+                        m.ClientHasHistoryOfIllness = val.ClientHasHistoryOfIllness;
+                        m.ClientHasLossOfSexualPartnerHistory = val.ClientHasLossOfSexualPartnerHistory;
+                        m.ClientIsMaleOrFemaleWithnoHivtest = val.ClientIsMaleOrFemaleWithnoHIVTest;
+                        m.BeenCoughingForTwoWeek = val.BeenCoughingForTwoWeek;
+                        m.PersistentFeverForTwoWeeks = val.PersistentFeverForTwoWeeks;
+                        m.HaveYouLostWeight = val.HaveYouLostWeight;
+                        m.ExperiencedExcessiveNightSweats = val.ExperiencedExcessiveNightSweats;
+
+                        dbContext.HivTbRisKassessmentTool.Add(m);
+                        dbContext.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    //var exists = dbContext.spAdultHIVTBRisKAssessmentToolGetAllResult.FirstOrDefault(o => o.spAdultHIVTBRisKAssessmentToolGetAllResultId == data);
+                    //if (exists != null)
+                    //{
+                    //    dbContext.spAdultHIVTBRisKAssessmentToolGetAllResult.Remove(exists);
+                    //}
+                    //await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as spAdultHIVTBRisKAssessmentToolGetAllResult);
+                    var exist = db.HivTbRisKassessmentTool.FirstOrDefault(o => o.HouseHoldMemberId == val.HouseHoldMemberId);
+                    if (exist == null)
+                    {
+                        HivTbRisKassessmentTool m = new HivTbRisKassessmentTool();
+                        int id = 1;
+                        var last = db.HivTbRisKassessmentTool.OrderBy(o => o.TbriskAssessmentId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TbriskAssessmentId + 1);
+                        }
+                        m.TbriskAssessmentId = id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            m.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            m.HivstatusId = 3;
+                        }
+                        m.IsOnArt = val.CurrentlyonART;
+                        m.ArtNumber = val.ARTNumber;
+                        m.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        m.ViralLoadLevelId = val.ViralLoadLevelId;
+                        m.ClientHadUnprotectedSexInPastThreeMonth = val.ClientHadUnprotectedSexInPastThreeMonth;
+                        m.ClientFallsInSexWorkersCategory = val.ClientFallsInSexWorkersCategory;
+                        m.HivnegativePartnerInDiscordantRelationship = val.HIVNegativePartnerInDiscordantRelationship;
+                        m.ClientWithSexuallyTransmittedInfection = val.ClientWithSexuallyTransmittedInfection;
+                        m.ClientHasPresumptiveActiveTbdisease = val.ClientHasPresumptiveActiveTBDisease;
+                        m.ClientHasNewHepatitisBdiagnosis = val.ClientHasNewHepatitisBDiagnosis;
+                        m.ClientHasHistoryOfIllness = val.ClientHasHistoryOfIllness;
+                        m.ClientHasLossOfSexualPartnerHistory = val.ClientHasLossOfSexualPartnerHistory;
+                        m.ClientIsMaleOrFemaleWithnoHivtest = val.ClientIsMaleOrFemaleWithnoHIVTest;
+                        m.BeenCoughingForTwoWeek = val.BeenCoughingForTwoWeek;
+                        m.PersistentFeverForTwoWeeks = val.PersistentFeverForTwoWeeks;
+                        m.HaveYouLostWeight = val.HaveYouLostWeight;
+                        m.ExperiencedExcessiveNightSweats = val.ExperiencedExcessiveNightSweats;
+
+                        db.HivTbRisKassessmentTool.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            exist.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            exist.HivstatusId = 3;
+                        }
+                        exist.IsOnArt = val.CurrentlyonART;
+                        exist.ArtNumber = val.ARTNumber;
+                        exist.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        exist.ViralLoadLevelId = val.ViralLoadLevelId;
+                        exist.ClientHadUnprotectedSexInPastThreeMonth = val.ClientHadUnprotectedSexInPastThreeMonth;
+                        exist.ClientFallsInSexWorkersCategory = val.ClientFallsInSexWorkersCategory;
+                        exist.HivnegativePartnerInDiscordantRelationship = val.HIVNegativePartnerInDiscordantRelationship;
+                        exist.ClientWithSexuallyTransmittedInfection = val.ClientWithSexuallyTransmittedInfection;
+                        exist.ClientHasPresumptiveActiveTbdisease = val.ClientHasPresumptiveActiveTBDisease;
+                        exist.ClientHasNewHepatitisBdiagnosis = val.ClientHasNewHepatitisBDiagnosis;
+                        exist.ClientHasHistoryOfIllness = val.ClientHasHistoryOfIllness;
+                        exist.ClientHasLossOfSexualPartnerHistory = val.ClientHasLossOfSexualPartnerHistory;
+                        exist.ClientIsMaleOrFemaleWithnoHivtest = val.ClientIsMaleOrFemaleWithnoHIVTest;
+                        exist.BeenCoughingForTwoWeek = val.BeenCoughingForTwoWeek;
+                        exist.PersistentFeverForTwoWeeks = val.PersistentFeverForTwoWeeks;
+                        exist.HaveYouLostWeight = val.HaveYouLostWeight;
+                        exist.ExperiencedExcessiveNightSweats = val.ExperiencedExcessiveNightSweats;
+
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+        //public void saveLog(int HouseHoldId, string Editedcolumn, string previousvalue, string newvalue, string actiontaken)
+        //{
+        //    try
+        //    {
+        //        using (var db = new MUCOBADIContext())
+        //        {
+        //            double id = 1;
+        //            var exist = db.spAdultHIVTBRisKAssessmentToolGetAllResultLog.OrderBy(o => o.HouseHoldLogId).LastOrDefault();
+        //            if (exist != null)
+        //            {
+        //                id = (exist.HouseHoldLogId + 1);
+        //            }
+        //            spAdultHIVTBRisKAssessmentToolGetAllResultLog m = new spAdultHIVTBRisKAssessmentToolGetAllResultLog()
+        //            {
+        //                HouseHoldLogId = id,
+        //                ColumnEdited = Editedcolumn,
+        //                HouseHoldId = HouseHoldId,
+        //                PreviousValue = previousvalue,
+        //                NewValue = newvalue,
+        //                // ActionMadeBy = _userManagement.GetStaffName(),
+        //                ActionDate = DateTime.Now,
+        //                ActionTaken = actiontaken
+        //            };
+        //            db.spAdultHIVTBRisKAssessmentToolGetAllResultLog.Add(m);
+        //            db.SaveChanges();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        toastService.ShowError(ex.Message.ToString());
+        //    }
+        //}
+    }
+    public async Task OnReviewHeaderActionBegin(ActionEventArgs<spAdultHIVTBRisKAssessmentToolGetAllResult> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    HouseHoldMembersData = db.HouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+                using (var db = new SPToCoreContext())
+                {
+                    HouseHoldMembersData = db.HouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                }
+                //ChildQuery = new Query().AddParams("spAdultHIVTBRisKAssessmentToolGetAllResultId", args.RowData.spAdultHIVTBRisKAssessmentToolGetAllResultId);
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.IsVirallaodTestDone == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the Viral Load test done ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ViralLoadLevelId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Viral Load Level", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientHadUnprotectedSexInPastThreeMonth == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client had unprotected sex with partner(s) of unknown HIV status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientFallsInSexWorkersCategory == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client falls in the category of sex workers", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HIVNegativePartnerInDiscordantRelationship == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether HIV negative partner(s) in a discordant relationship", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientWithSexuallyTransmittedInfection == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client has current or previous sexually transmitted infection (STI)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientHasPresumptiveActiveTBDisease == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client has presumptive of active TB disease", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientHasNewHepatitisBDiagnosis == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client has new hepatitis B diagnosis", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientHasHistoryOfIllness == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client has history of ill/poor or sickly health.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientHasLossOfSexualPartnerHistory == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client has a history of loss of a sexual partner(s).", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ClientIsMaleOrFemaleWithnoHIVTest == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether Client is male (25 years) and female (35-49year) has not tested for HIV in the last three months.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.BeenCoughingForTwoWeek == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether you been coughing for 2 weeks or more.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.PersistentFeverForTwoWeeks == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether  you had persistent fever for 2 weeks or more.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HaveYouLostWeight == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether you Have lost weight.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ExperiencedExcessiveNightSweats == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether you Have experienced excessive night sweats.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    public void ActionComplete(ActionEventArgs<spAdultHIVTBRisKAssessmentToolGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            AdultRiskAssessmentGrid.PreventRender(false);
+        }
+    }
+    #endregion Review Header
+
+    #region Review Header
+    public class ChildrenRiskAssessmentAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public ChildrenRiskAssessmentAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spChildrenHIVTBRisKAssessmentToolGetAllResult>();
+            try
+            {
+                string HouseHoldId = null;
+                double? OperatorId = null;
+                string ReferenceNumber = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "OperatorId").Value != null)
+                    {
+                        OperatorId = Convert.ToDouble(val.FirstOrDefault(o => o.Key == "OperatorId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ReferenceNumber").Value != null)
+                    {
+                        ReferenceNumber = val.FirstOrDefault(o => o.Key == "ReferenceNumber").Value.ToString();
+                    }
+                }
+                //if (string.IsNullOrEmpty(ApplicationStatusid))
+                //{
+                //    ApplicationStatusid = "2,3";
+                //}
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spChildrenHIVTBRisKAssessmentToolGetAllAsync(HouseHoldId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spChildrenHIVTBRisKAssessmentToolGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as spChildrenHIVTBRisKAssessmentToolGetAllResult);
+                    var exists = dbContext.HivTbRisKassessmentTool.FirstOrDefault(o => o.HouseHoldMemberId == val.HouseHoldMemberId);
+                    if (exists == null)
+                    {
+                        HivTbRisKassessmentTool m = new HivTbRisKassessmentTool();
+                        int id = 1;
+                        var last = dbContext.HivTbRisKassessmentTool.OrderBy(o => o.TbriskAssessmentId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TbriskAssessmentId + 1);
+                        }
+                        m.TbriskAssessmentId = id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            m.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            m.HivstatusId = 3;
+                        }
+                        m.IsOnArt = val.CurrentlyonART;
+                        m.ArtNumber = val.ARTNumber;
+                        m.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        m.ViralLoadLevelId = val.ViralLoadLevelId;
+                        m.ChildAdmittedToHospitalInSixMonths = val.ChildAdmittedToHospitalInSixMonths;
+                        m.ChildLivesWithHivpositiveMotherOrFather = val.ChildLivesWithHIVPositiveMotherOrFather;
+                        m.ChildHivsymptomatic = val.ChildHIVSymptomatic;
+                        m.ChildMalnourished = val.ChildMalnourished;
+                        m.ChildDignosedWithTuberculosis = val.ChildDignosedWithTuberculosis;
+                        m.ChildHasSexualAbuseHistory = val.ChildHasSexualAbuseHistory;
+                        m.ChildHasAccidentalExposure = val.ChildHasAccidentalExposure;
+                        m.ChildDrugAbuseOrAlcohol = val.ChildDrugAbuseOrAlcohol;
+                        m.ChildCoughingForTwoWeeks = val.ChildCoughingForTwoWeeks;
+                        m.ChildHadPersistentFeverHstory = val.ChildHadPersistentFeverHstory;
+                        m.ChildHasPoorWeightGain = val.ChildHasPoorWeightGain;
+                        m.ChildHadContactWithActiveTbdiseaseAdult = val.ChildHadContactWithActiveTBDiseaseAdult;
+                        m.ChildExperiencedExcessiveNightSweeting = val.ChildExperiencedExcessiveNightSweeting;
+
+
+                        dbContext.HivTbRisKassessmentTool.Add(m);
+                        dbContext.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    //var exists = dbContext.spChildrenHIVTBRisKAssessmentToolGetAllResult.FirstOrDefault(o => o.spChildrenHIVTBRisKAssessmentToolGetAllResultId == data);
+                    //if (exists != null)
+                    //{
+                    //    dbContext.spChildrenHIVTBRisKAssessmentToolGetAllResult.Remove(exists);
+                    //}
+                    //await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as spChildrenHIVTBRisKAssessmentToolGetAllResult);
+                    var exist = db.HivTbRisKassessmentTool.FirstOrDefault(o => o.HouseHoldMemberId == val.HouseHoldMemberId);
+                    if (exist == null)
+                    {
+                        HivTbRisKassessmentTool m = new HivTbRisKassessmentTool();
+                        int id = 1;
+                        var last = db.HivTbRisKassessmentTool.OrderBy(o => o.TbriskAssessmentId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TbriskAssessmentId + 1);
+                        }
+                        m.TbriskAssessmentId = id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            m.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            m.HivstatusId = 3;
+                        }
+
+                        m.IsOnArt = val.CurrentlyonART;
+                        m.ArtNumber = val.ARTNumber;
+                        m.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        m.ViralLoadLevelId = val.ViralLoadLevelId;
+                        m.ChildAdmittedToHospitalInSixMonths = val.ChildAdmittedToHospitalInSixMonths;
+                        m.ChildLivesWithHivpositiveMotherOrFather = val.ChildLivesWithHIVPositiveMotherOrFather;
+                        m.ChildHivsymptomatic = val.ChildHIVSymptomatic;
+                        m.ChildMalnourished = val.ChildMalnourished;
+                        m.ChildDignosedWithTuberculosis = val.ChildDignosedWithTuberculosis;
+                        m.ChildHasSexualAbuseHistory = val.ChildHasSexualAbuseHistory;
+                        m.ChildHasAccidentalExposure = val.ChildHasAccidentalExposure;
+                        m.ChildDrugAbuseOrAlcohol = val.ChildDrugAbuseOrAlcohol;
+                        m.ChildCoughingForTwoWeeks = val.ChildCoughingForTwoWeeks;
+                        m.ChildHadPersistentFeverHstory = val.ChildHadPersistentFeverHstory;
+                        m.ChildHasPoorWeightGain = val.ChildHasPoorWeightGain;
+                        m.ChildHadContactWithActiveTbdiseaseAdult = val.ChildHadContactWithActiveTBDiseaseAdult;
+                        m.ChildExperiencedExcessiveNightSweeting = val.ChildExperiencedExcessiveNightSweeting;
+
+
+                        db.HivTbRisKassessmentTool.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        if (val.HIVStatusId.HasValue)
+                        {
+                            exist.HivstatusId = val.HIVStatusId.Value;
+                        }
+                        else
+                        {
+                            exist.HivstatusId = 3;
+                        }
+                        exist.IsOnArt = val.CurrentlyonART;
+                        exist.ArtNumber = val.ARTNumber;
+                        exist.IsVirallaodTestDone = val.IsVirallaodTestDone;
+                        exist.ViralLoadLevelId = val.ViralLoadLevelId;
+                        exist.ChildAdmittedToHospitalInSixMonths = val.ChildAdmittedToHospitalInSixMonths;
+                        exist.ChildLivesWithHivpositiveMotherOrFather = val.ChildLivesWithHIVPositiveMotherOrFather;
+                        exist.ChildHivsymptomatic = val.ChildHIVSymptomatic;
+                        exist.ChildMalnourished = val.ChildMalnourished;
+                        exist.ChildDignosedWithTuberculosis = val.ChildDignosedWithTuberculosis;
+                        exist.ChildHasSexualAbuseHistory = val.ChildHasSexualAbuseHistory;
+                        exist.ChildHasAccidentalExposure = val.ChildHasAccidentalExposure;
+                        exist.ChildDrugAbuseOrAlcohol = val.ChildDrugAbuseOrAlcohol;
+                        exist.ChildCoughingForTwoWeeks = val.ChildCoughingForTwoWeeks;
+                        exist.ChildHadPersistentFeverHstory = val.ChildHadPersistentFeverHstory;
+                        exist.ChildHasPoorWeightGain = val.ChildHasPoorWeightGain;
+                        exist.ChildHadContactWithActiveTbdiseaseAdult = val.ChildHadContactWithActiveTBDiseaseAdult;
+                        exist.ChildExperiencedExcessiveNightSweeting = val.ChildExperiencedExcessiveNightSweeting;
+
+
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+        //public void saveLog(int HouseHoldId, string Editedcolumn, string previousvalue, string newvalue, string actiontaken)
+        //{
+        //    try
+        //    {
+        //        using (var db = new MUCOBADIContext())
+        //        {
+        //            double id = 1;
+        //            var exist = db.spChildrenHIVTBRisKAssessmentToolGetAllResultLog.OrderBy(o => o.HouseHoldLogId).LastOrDefault();
+        //            if (exist != null)
+        //            {
+        //                id = (exist.HouseHoldLogId + 1);
+        //            }
+        //            spChildrenHIVTBRisKAssessmentToolGetAllResultLog m = new spChildrenHIVTBRisKAssessmentToolGetAllResultLog()
+        //            {
+        //                HouseHoldLogId = id,
+        //                ColumnEdited = Editedcolumn,
+        //                HouseHoldId = HouseHoldId,
+        //                PreviousValue = previousvalue,
+        //                NewValue = newvalue,
+        //                // ActionMadeBy = _userManagement.GetStaffName(),
+        //                ActionDate = DateTime.Now,
+        //                ActionTaken = actiontaken
+        //            };
+        //            db.spChildrenHIVTBRisKAssessmentToolGetAllResultLog.Add(m);
+        //            db.SaveChanges();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        toastService.ShowError(ex.Message.ToString());
+        //    }
+        //}
+    }
+    public async Task OnChildrenActionBegin(ActionEventArgs<spChildrenHIVTBRisKAssessmentToolGetAllResult> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    HouseHoldMembersData = db.HouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+                using (var db = new SPToCoreContext())
+                {
+                    HouseHoldMembersData = db.HouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                }
+                //ChildQuery = new Query().AddParams("spChildrenHIVTBRisKAssessmentToolGetAllResultId", args.RowData.spChildrenHIVTBRisKAssessmentToolGetAllResultId);
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.IsVirallaodTestDone == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the Viral Load test done ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ViralLoadLevelId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Viral Load Level", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildAdmittedToHospitalInSixMonths == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child has been admitted to hospital", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildLivesWithHIVPositiveMotherOrFather == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child have or live with an HIV positive mother /father", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHIVSymptomatic == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child symptomatic for HIV.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildMalnourished == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child malnourished", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildDignosedWithTuberculosis == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child been diagnosed with tuberculosis", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHasSexualAbuseHistory == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether  child have a history of sexual abuse or sexual activity?", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHasAccidentalExposure == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child had an accidental exposure by needle, stick injury, or sharp object.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildDrugAbuseOrAlcohol == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether child abuse drugs or alcohol.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildCoughingForTwoWeeks == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child been coughing for 2 weeks or more.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHadPersistentFeverHstory == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child had persistent history of fever", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHasPoorWeightGain == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child had poor weight gain or weight loss.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildHadContactWithActiveTBDiseaseAdult == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether the child had poor weight gain or weight loss.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ChildExperiencedExcessiveNightSweeting == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select to indicate whether you experienced excessive night sweats.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    public void ChildrenActionComplete(ActionEventArgs<spChildrenHIVTBRisKAssessmentToolGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            ChildrenRiskAssessmentGrid.PreventRender(false);
+        }
+    }
+    #endregion Review Header
+}

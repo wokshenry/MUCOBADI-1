@@ -1,0 +1,204 @@
+﻿@page "/MapsPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+
+<style>
+    h5 {
+        color: red;
+        text-align: center;
+        font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif;
+        background-color: whitesmoke;
+    }
+</style>
+
+<h5>Area of Operation</h5>
+
+<button @onclick="PrintMap">Print Map</button>
+<button @onclick="ExportMap">Export Image</button>
+
+@if (CountryShapeData != null)
+{
+    <SfMaps @ref="maps" AllowPrint="true" AllowImageExport="true" BaseLayerIndex="1" Height="80vh">
+        <MapsZoomSettings Enable="true" EnablePanning="true">
+            <MapsZoomToolbarSettings BackgroundColor="black" BorderColor="red" BorderOpacity="1" BorderWidth="3" Orientation="Syncfusion.Blazor.Maps.Orientation.Horizontal"
+                                     HorizontalAlignment="Syncfusion.Blazor.Maps.Alignment.Far" VerticalAlignment="Syncfusion.Blazor.Maps.Alignment.Near"></MapsZoomToolbarSettings>
+        </MapsZoomSettings>
+        <MapsEvents Loaded="@LoadedEvent"></MapsEvents>
+        <MapsLayers>
+
+            <MapsLayer TValue="string" ShapeData="CountryShapeData">
+                <MapsShapeSettings Fill="#E5E5E5">
+                    <MapsShapeBorder Color="black" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="JinjaShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="IgangaShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="MayugeShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="KamuliShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="NamayingoShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="BugiriShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="BugweriShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="KayungaShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="BuikweShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+
+            <MapsLayer ShapeData="MukonoShapeData"
+                       Type="Syncfusion.Blazor.Maps.Type.SubLayer" TValue="string">
+                <MapsShapeSettings Fill="purple">
+                    <MapsShapeBorder Color="#1a9cff" Width="0.25"></MapsShapeBorder>
+                </MapsShapeSettings>
+                <MapsDataLabelSettings Visible="false" LabelPath="DName2019"></MapsDataLabelSettings>
+                <MapsLayerTooltipSettings Visible="true" ValuePath="DName2019"></MapsLayerTooltipSettings>
+            </MapsLayer>
+        </MapsLayers>
+    </SfMaps>
+
+    <SfSpinner @ref="UploadingSpinner" Visible="true" Label="Map Loading....." Size="50"></SfSpinner>
+}
+@code{
+
+    public object CountryShapeData { get; set; }
+    public object JinjaShapeData { get; set; }
+    public object IgangaShapeData { get; set; }
+    public object MayugeShapeData { get; set; }
+    public object KamuliShapeData { get; set; }
+    public object NamayingoShapeData { get; set; }
+    public object BugiriShapeData { get; set; }
+    public object BugweriShapeData { get; set; }
+    public object KayungaShapeData { get; set; }
+    public object BuikweShapeData { get; set; }
+    public object MukonoShapeData { get; set; }
+
+    SfSpinner UploadingSpinner;
+    SfMaps maps;
+
+    //Printing Map
+    void PrintMap()
+    {
+        // using Maps component reference call 'Print' method
+        this.maps.Print();
+    }
+
+    //Exporting Map as Image
+    void ExportMap()
+    {
+        this.maps.Export(Syncfusion.Blazor.Maps.ExportType.PNG, "Maps");
+    }
+
+    public async void LoadedEvent(Syncfusion.Blazor.Maps.LoadedEventArgs args)
+    {
+        await UploadingSpinner.HideAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        string countrymap = System.IO.File.ReadAllText("wwwroot/Maps/UG_Districts-2019.geojson");
+        CountryShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(countrymap);
+
+        string jinjamap = System.IO.File.ReadAllText("wwwroot/Maps/Jinja.geojson");
+        JinjaShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(jinjamap);
+
+        string igangamap = System.IO.File.ReadAllText("wwwroot/Maps/Iganga.geojson");
+        IgangaShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(igangamap);
+
+        string mayugemap = System.IO.File.ReadAllText("wwwroot/Maps/Mayuge.geojson");
+        MayugeShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(mayugemap);
+
+        string kamulimap = System.IO.File.ReadAllText("wwwroot/Maps/Kamuli.geojson");
+        KamuliShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(kamulimap);
+
+        string namayingomap = System.IO.File.ReadAllText("wwwroot/Maps/Namayingo.geojson");
+        NamayingoShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(namayingomap);
+
+        string bugirimap = System.IO.File.ReadAllText("wwwroot/Maps/Bugiri.geojson");
+        BugiriShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(bugirimap);
+
+        string bugwerimap = System.IO.File.ReadAllText("wwwroot/Maps/Bugweri.geojson");
+        BugweriShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(bugwerimap);
+
+        string kayungamap = System.IO.File.ReadAllText("wwwroot/Maps/Kayunga.geojson");
+        KayungaShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(kayungamap);
+
+        string buikwemap = System.IO.File.ReadAllText("wwwroot/Maps/Buikwe.geojson");
+        BuikweShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(buikwemap);
+
+        string mukonomap = System.IO.File.ReadAllText("wwwroot/Maps/Mukono.geojson");
+        MukonoShapeData = Newtonsoft.Json.JsonConvert.DeserializeObject(mukonomap);
+
+    }
+
+}

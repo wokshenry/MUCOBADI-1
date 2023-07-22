@@ -1,0 +1,2074 @@
+﻿@page "/CommunityTraingRegisterPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> COMMUNITY TRAINING REGISTER</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="CommunityTrainingRegisterGrid" TValue="CommunityTrainingRegister" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(CommunityTrainingRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnCommunityTrainingRegisterActionBegin" OnActionComplete="@OnCommunityTrainingRegisterActionComplete" TValue="CommunityTrainingRegister"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="CommunityTrainingRegisterContext">
+                    @{
+                        CommunityTrainingRegisterReviewData = (CommunityTrainingRegisterContext as CommunityTrainingRegister);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4 style="text-align:center;">USAID ICARE COMMUNITY TRAINING REGISTER</h4>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of IP/CSO</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="ChangeDistrict"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.SubcountyId)" Query="@DistricttQuery" Enabled="true" TItem="ASubcounty" TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of training/Curriculum </p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.CurriculumId)" Enabled="true" TItem="ATrainningCurriculum" TValue="int?" DataSource="@TrainningCurriculumData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ATrainningCurriculum.CurriculumId)" Text="@nameof(ATrainningCurriculum.CurriculumDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Group Name </p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.GroupId)" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="AGroups" TValue="int?" ValueChange="OnGroupsChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Group Code</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.GroupCode)" Enabled="true" TItem="ViewGroupCode" TValue="string" DataSource="@ViewGroupCodeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ViewGroupCode.GroupCode)" Text="@nameof(ViewGroupCode.GroupCode)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ViewGroupCode" TValue="string" ValueChange="OnGroupCodeChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4" hidden>
+                                    <p>Group</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTrainingRegisterReviewData.GroupCompositionCode)" PopupWidth="150%" Enabled="true" TItem="ViewGroupComposition" TValue="int" DataSource="@GroupCompositionData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListTemplates TItem="ViewGroupComposition">
+                                            <ItemTemplate>
+                                                <div style="margin-left:10px;">
+                                                    <table>
+                                                        <tr>
+                                                            <td><p>Code:@((context as ViewGroupComposition).GroupCode)</p></td>
+                                                            <td><p style="margin-left:10px;">Name: @((context as ViewGroupComposition).GroupName)</p></td>
+                                                            <td><p style="margin-left:10px;">Cycle :@((context as ViewGroupComposition).GroupCycleDesc)</p></td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </ItemTemplate>
+                                            <ValueTemplate>
+                                                <div>
+                                                    <p style="margin-left:10px;">@((context as ViewGroupComposition).GroupCode) | @((context as ViewGroupComposition).GroupName) | @((context as ViewGroupComposition).GroupCycleDesc)</p>
+                                                </div>
+                                            </ValueTemplate>
+                                        </DropDownListTemplates>
+                                        <DropDownListFieldSettings Value="@nameof(ViewGroupComposition.GroupCompositionCode)" Text="@nameof(ViewGroupComposition.GroupName)" GroupBy="@(nameof(ViewGroupComposition.GroupTypeDesc))"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Total No. of sessions/Modules covered</p>
+                                    <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterReviewData.TotalNoSessions" Enabled="true" Placeholder="Pleses enter the No" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Dates of Training (DD/MM/YYYY): from</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTrainingRegisterReviewData.TrainingStartDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>To</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTrainingRegisterReviewData.TrainingEndDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Training Venue</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.TrainingVenue)" Enabled="true" Placeholder="Pleses enter the Venue" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Trainer/Artisan/Facilitator</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.Trainer)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                @if (CommunityTrainingRegisterReviewData.GroupCompositionCode > 0 && CommunityTrainingRegisterReviewData.CurriculumId != null
+                                   && !string.IsNullOrEmpty(CommunityTrainingRegisterReviewData.Trainer) && !string.IsNullOrEmpty(CommunityTrainingRegisterReviewData.TrainingVenue))
+                                {
+                                    <div class="form-group col-md-12">
+                                        <SfGrid TValue="ATrainingSession" Query="@(new Query().AddParams("Curriculum_Id", CommunityTrainingRegisterReviewData.CurriculumId))" AllowGrouping="true" AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true">
+                                            <SfDataManager AdaptorInstance="@typeof(CommunityTrainingSessionsAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                            @if (CommunityTrainingRegisterReviewData.CurriculumId == 4)
+                                            {
+                                                Grouping = (new string[] { "SessionCategory" });
+                                                <GridGroupSettings Columns="@Grouping" ShowDropArea="false">
+                                                    <CaptionTemplate>
+                                                        @{
+                                                            var dvn = (context as CaptionTemplateContext);
+                                                            <div><p class="pp"><strong>@dvn.Key @*: @dvn.Count Decisions*@</strong></p></div>
+                                                        }
+                                                    </CaptionTemplate>
+                                                </GridGroupSettings>
+                                            }
+                                            else
+                                            {
+                                                Grouping = (new string[] { });
+                                                <GridGroupSettings Columns="@Grouping" ShowDropArea="false">
+                                                    <CaptionTemplate>
+                                                        @{
+                                                            var dvn = (context as CaptionTemplateContext);
+                                                            <div><p class="pp"><strong>@dvn.Key @*: @dvn.Count Decisions*@</strong></p></div>
+                                                        }
+                                                    </CaptionTemplate>
+                                                </GridGroupSettings>
+                                            }
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(ATrainingSession.SessionId) Visible="false" ShowInColumnChooser="false" IsPrimaryKey="true" HeaderText="Parenting Group Session Id" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                <GridColumn Field=@nameof(ATrainingSession.SessionCategory) Visible="false" HeaderText="Session Category" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                <GridColumn Field=@nameof(ATrainingSession.SessionDesc) Visible="true" HeaderText="Training Session" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                            </GridColumns>
+                                            <GridTemplates>
+                                                <DetailTemplate Context="DetailContext">
+                                                    @{
+                                                        var session = (DetailContext as ATrainingSession);
+                                                        var mQuery = new Query().AddParams("GroupCompositionCode", CommunityTrainingRegisterReviewData.GroupCompositionCode);
+                                                        if (CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId > 0)
+                                                        {
+                                                            mQuery.AddParams("CommunityTrainingRegisterId", CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                                                        }
+                                                        mQuery.AddParams("SessionId", session.SessionId);
+
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Direct Beneficiaries</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="CommunityTrainingRegisterDirectMemberGrid" TValue="spCommunityTrainingRegisterDirectMemberGetAllResult" Query="@(mQuery)"
+                                                                        AllowPaging="true" AllowFiltering="true"
+                                                                        GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="false" Toolbar="@(new string[] {"Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <SfDataManager AdaptorInstance="@typeof(CommunityTrainingRegisterDirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                    <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Batch">
+                                                                        <Template Context="CommunityTrainingRegisterDirectMemberContext">
+                                                                            @{
+                                                                                var CommunityTrainingRegisterDirectMemberReviewData = (CommunityTrainingRegisterDirectMemberContext as spCommunityTrainingRegisterDirectMemberGetAllResult);
+                                                                                <div class="form-row" style="padding:10px;">
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterDirectMemberReviewData.CommunityTrainingRegisterId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterDirectMemberReviewData.CommunityTrainingRegisterDirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterDirectMemberReviewData.VSLA_Group_Direct_Member_Id" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            HH INDIVIDUAL CODE AND NAME
+                                                                                        </p>
+                                                                                        <p>@CommunityTrainingRegisterDirectMemberReviewData.HouseHoldMemberCode  @CommunityTrainingRegisterDirectMemberReviewData.FullName</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Sex
+                                                                                        </p>
+                                                                                        <p>@CommunityTrainingRegisterDirectMemberReviewData.GenderDescription</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Age
+                                                                                        </p>
+                                                                                        <p>@CommunityTrainingRegisterDirectMemberReviewData.Age</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <p>Session No.</p>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterDirectMemberReviewData.SessionId" Enabled="true" Placeholder="Pleses enter the No" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Session Category</p>
+                                                                                        <p>@session.SessionCategory</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Session</p>
+                                                                                        <p>@session.SessionDesc</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Date</p>
+                                                                                        <SfDatePicker @bind-Value="@(CommunityTrainingRegisterDirectMemberReviewData.SessionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Day </p>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterDirectMemberReviewData.SessionDay" Enabled="true" Placeholder="Pleses enter the No" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                    </GridEditSettings>
+                                                                    @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                    <GridEvents OnActionComplete="@TemplateActionComplete" CellSaved="DirectMemberCellSavedHandler" CellSelected="DirectMemberCellSelectHandler" OnActionBegin="@CommunityTrainingRegisterDirectMemberActionBegin" TValue="spCommunityTrainingRegisterDirectMemberGetAllResult"></GridEvents>
+                                                                    @*<GridEvents CellSaved="OnCellSaved" OnActionComplete="TemplateActionComplete" OnBatchSave="BatchSaveHandler" QueryCellInfo="QueryCellInfoHandler" TValue="CouncilofDecisionsCountry"></GridEvents>*@
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn HeaderText="Manage Records" Width="80" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>*@
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.CommunityTrainingRegisterDirectMemberId) Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.HouseHoldMemberCode) HeaderText="Household/ Member Code" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.FullName) HeaderText="Name of participant" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.GenderDescription) Visible="true" HeaderText="Sex" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.Age) HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.SessionId) Visible="false" HeaderText="Session No" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.SessionDate) Visible="true" HeaderText="Session Date" EditType="Syncfusion.Blazor.Grids.EditType.DatePickerEdit" TextAlign="TextAlign.Left" Width="140" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.SessionDay) Visible="true" HeaderText="Session Day" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="140" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Indirect Beneficiaries</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="CommunityTrainingRegisterIndirectMemberGrid" Query="@mQuery" TValue="spCommunityTrainingRegisterIndirectMemberGetAllResult" AllowPaging="true" AllowFiltering="true"
+                                                                        GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <GridGroupSettings Columns="@Grouping" ShowDropArea="false">
+                                                                        <CaptionTemplate>
+                                                                            @{
+                                                                                var dvn = (context as CaptionTemplateContext);
+                                                                                <div><p class="pp"><strong>@dvn.Key @*: @dvn.Count Decisions*@</strong></p></div>
+                                                                            }
+                                                                        </CaptionTemplate>
+                                                                    </GridGroupSettings>
+                                                                    <SfDataManager AdaptorInstance="@typeof(CommunityTrainingRegisterIndirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                    <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Batch">
+                                                                        <Template Context="CommunityTrainingRegisterIndirectMemberContext">
+                                                                            @{
+                                                                                var CommunityTrainingRegisterIndirectMemberReviewData = (CommunityTrainingRegisterIndirectMemberContext as spCommunityTrainingRegisterIndirectMemberGetAllResult);
+                                                                                <div class="form-row" style="padding:10px;">
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterIndirectMemberReviewData.CommunityTrainingRegisterId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterIndirectMemberReviewData.CommunityTrainingRegisterIndirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Indirect Member Code
+                                                                                        </p>
+                                                                                        <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterIndirectMemberReviewData.IndirectMemberCode)" Enabled="true" Placeholder="Pleses enter the Member Code" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Name</p>
+                                                                                        <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterIndirectMemberReviewData.MemberName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <p>Session No.</p>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterIndirectMemberReviewData.SessionId" Enabled="true" Placeholder="Pleses enter the No" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Session Category</p>
+                                                                                        <p>@session.SessionCategory</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Session</p>
+                                                                                        <p>@session.SessionDesc</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Date</p>
+                                                                                        <SfDatePicker @bind-Value="@(CommunityTrainingRegisterIndirectMemberReviewData.SessionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <p>Day </p>
+                                                                                        <SfNumericTextBox @bind-Value="@CommunityTrainingRegisterIndirectMemberReviewData.SessionDay" Enabled="true" Placeholder="Pleses enter the No" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                    </GridEditSettings>
+                                                                    @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                    <GridEvents OnActionComplete="@CommunityTrainingRegisterIndirectMemberActionComplete" CellSaved="IndirectMemberCellSavedHandler" CellSelected="IndirectMemberCellSelectHandler" OnActionBegin="@CommunityTrainingRegisterIndirectMemberActionBegin" TValue="spCommunityTrainingRegisterIndirectMemberGetAllResult"></GridEvents>
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn HeaderText="Manage Records" Width="80" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>*@
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.CommunityTrainingRegisterIndirectMemberId) Visible="false" HeaderText="CommunityTrainingRegisterIndirectMemberId" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.IndirectMemberCode) HeaderText="Household/ Member Code" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.MemberName) HeaderText="Name of participant" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.GenderDescription) Visible="true" HeaderText="Sex" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.Age) HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.SessionId) Visible="false" HeaderText="Session No" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.SessionDate) Visible="true" HeaderText="Session Date" EditType="Syncfusion.Blazor.Grids.EditType.DatePickerEdit" TextAlign="TextAlign.Left" Width="160" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.SessionDay) Visible="true" HeaderText="Session Day" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="140" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </DetailTemplate>
+                                            </GridTemplates>
+
+                                        </SfGrid>
+                                    </div>
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                }
+                                <div class="form-group col-md-4">
+                                    <p>Coordinated by </p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.CoodinatedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTrainingRegisterReviewData.CoordinatorDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Tel</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.CoordinatorPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Reviewed by </p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.ReviewedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTrainingRegisterReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Tel</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTrainingRegisterReviewData.ReviewerPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveCommunityTrainingRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelCommunityTrainingRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(CommunityTrainingRegister.CommunityTrainingRegisterId) HeaderText="Community Training Register Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.ImplementingPartnerId) HeaderText="Name of IP/CSO" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.CurriculumId) HeaderText="Name of training/Curriculum " Width="220" ForeignKeyField="@nameof(ATrainningCurriculum.CurriculumId)" ForeignKeyValue="@nameof(ATrainningCurriculum.CurriculumDesc)" ForeignDataSource="@TrainningCurriculumData"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.GroupCompositionCode) HeaderText="Group Name" ForeignKeyField="@nameof(ViewGroupComposition.GroupCompositionCode)" ForeignKeyValue="@nameof(ViewGroupComposition.GroupName)" ForeignDataSource="@GroupCompositionData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTrainingRegister.GroupCompositionCode) HeaderText="VSLA+ Code" ForeignKeyField="@nameof(ViewGroupComposition.GroupCompositionCode)" ForeignKeyValue="@nameof(ViewGroupComposition.GroupCode)" ForeignDataSource="@GroupCompositionData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(CommunityTrainingRegister.TotalNoSessions) HeaderText="Total No. of sessions/Modules covered" Width="220"></GridColumn>
+                <GridColumn HeaderText="Dates of Training" Width="320">
+                    <GridColumns>
+                        <GridColumn Field=@nameof(CommunityTrainingRegister.TrainingStartDate) HeaderText="From" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                        <GridColumn Field=@nameof(CommunityTrainingRegister.TrainingEndDate) HeaderText="To" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                    </GridColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(CommunityTrainingRegister.TrainingVenue) HeaderText="Training Venue" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(CommunityTrainingRegister.Trainer) HeaderText="Trainer/Artisan/Facilitator" Width="220"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+    string[] Grouping = (new string[] { "Session_Category" });
+    //string[] _Grouping = (new string[] { "MemberName" });
+
+    SfGrid<CommunityTrainingRegister> CommunityTrainingRegisterGrid;
+    private CommunityTrainingRegister CommunityTrainingRegisterReviewData { get; set; }
+
+    SfGrid<spCommunityTrainingRegisterDirectMemberGetAllResult> CommunityTrainingRegisterDirectMemberGrid;
+    List<spCommunityTrainingRegisterDirectMemberGetAllResult> CommunityTrainingRegisterDirectMemberDatasource = new();
+
+    SfGrid<spCommunityTrainingRegisterIndirectMemberGetAllResult> CommunityTrainingRegisterIndirectMemberGrid;
+    List<spCommunityTrainingRegisterIndirectMemberGetAllResult> CommunityTrainingRegisterIndirectMemberDatasource = new();
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<AGroupPosition> GroupPositionData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+    List<ViewGroupComposition> GroupCompositionData { get; set; }
+    List<ATrainningCurriculum> TrainningCurriculumData { get; set; }
+    List<AGroups> GroupsData { get; set; }
+    List<ViewGroupCode> ViewGroupCodeData { get; set; }
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+    public Query DistricttQuery { get; set; } = null;
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    private async Task SaveCommunityTrainingRegisterBtnClick()
+    {
+        await CommunityTrainingRegisterDirectMemberGrid.EndEditAsync();
+        await CommunityTrainingRegisterGrid.EndEditAsync();
+    }
+    private async Task CancelCommunityTrainingRegisterBtnClick()
+    {
+        await CommunityTrainingRegisterDirectMemberGrid.EndEditAsync();
+        await CommunityTrainingRegisterGrid.CloseEditAsync();
+    }
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    GenderData = db.AGender.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+                    GroupPositionData = db.AGroupPosition.AsNoTracking().ToList();
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    ViewGroupCodeData = db.ViewGroupCode.AsNoTracking().ToList();
+                    //HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                    GroupCompositionData = db.ViewGroupComposition.AsNoTracking().ToList();
+                    TrainningCurriculumData = db.ATrainningCurriculum.AsNoTracking().ToList();
+
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                    if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+            if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+    private void OnGroupsChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AGroups> args)
+    {
+        if (args.ItemData != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                ViewGroupCodeData = db.ViewGroupCode.Where(o => o.GroupId == args.Value).AsNoTracking().ToList();
+                GroupCompositionData = db.ViewGroupComposition.Where(o => o.GroupId == args.Value).OrderBy(o=> o.GroupCompositionCode).AsNoTracking().ToList();
+                var last = GroupCompositionData.LastOrDefault();
+                if(last != null)
+                {
+                    CommunityTrainingRegisterReviewData.GroupCompositionCode = last.GroupCompositionCode;
+                    CommunityTrainingRegisterReviewData.GroupCode = last.GroupCode;
+                }
+            }
+        }
+    }
+    private void OnGroupCodeChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, ViewGroupCode> args)
+    {
+        if (args.ItemData != null)
+        {
+            CommunityTrainingRegisterReviewData.GroupId = args.ItemData.GroupId;
+            using (var db = new MUCOBADIContext())
+            {
+                GroupCompositionData = db.ViewGroupComposition.Where(o => o.GroupId == args.ItemData.GroupId).OrderBy(o => o.GroupCompositionCode).AsNoTracking().ToList();
+                var last = GroupCompositionData.LastOrDefault();
+                if (last != null)
+                {
+                    CommunityTrainingRegisterReviewData.GroupCompositionCode = last.GroupCompositionCode;
+                }
+            }
+        }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    #region Graduation Checklist Header
+    public class CommunityTrainingRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CommunityTrainingRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<CommunityTrainingRegister>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+
+                string[] _district = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _district = DistrictId.Split(',');
+                }
+                string[] _SubcountyId = new string[] { };
+                if (!string.IsNullOrEmpty(SubcountyId))
+                {
+                    _SubcountyId = SubcountyId.Split(',');
+                }
+                string[] _ParishId = new string[] { };
+                if (!string.IsNullOrEmpty(ParishId))
+                {
+                    _ParishId = ParishId.Split(',');
+                }
+                string[] _VillageId = new string[] { };
+                if (!string.IsNullOrEmpty(VillageId))
+                {
+                    _VillageId = VillageId.Split(',');
+                }
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.CommunityTrainingRegister.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+                (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true))).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<CommunityTrainingRegister>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as CommunityTrainingRegister);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterId + 1);
+                        }
+                        val.CommunityTrainingRegisterId = id;
+                        db.CommunityTrainingRegister.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as CommunityTrainingRegister);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnCommunityTrainingRegisterActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<CommunityTrainingRegister> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.RowData.DistrictId, IgnoreCase = false, IgnoreAccent = false });
+                using (var db = new SPToCoreContext())
+                {
+                    //CommunityTrainingRegisterDirectMemberDatasource = await db.CommunityTrainingRegisterDirectMember.Where(o => o.CommunityTrainingRegisterId == args.RowData.CommunityTrainingRegisterId).ToListAsync();
+                    // CommunityTrainingRegisterIndirectMemberDatasource = await db.CommunityTrainingRegisterIndirectMember.Where(o => o.CommunityTrainingRegisterId == args.RowData.CommunityTrainingRegisterId).ToListAsync();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    //CommunityTrainingRegisterDirectMemberDatasource = await db.CommunityTrainingRegisterDirectMember.Where(o => o.CommunityTrainingRegisterId == args.RowData.CommunityTrainingRegisterId).ToListAsync();
+                    //CommunityTrainingRegisterIndirectMemberDatasource = await db.CommunityTrainingRegisterIndirectMember.Where(o => o.CommunityTrainingRegisterId == args.RowData.CommunityTrainingRegisterId).ToListAsync();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the IP/CSO.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DistrictId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Subcounty.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.GroupCompositionCode== 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the group name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (String.IsNullOrEmpty(args.Data.GroupCode))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the VSLA+ Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else if (args.Data.TotalNoSessions == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter there Total No. of sessions/Modules covered.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.TrainingStartDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the training start date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.TrainingEndDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the training end date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.TrainingVenue))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Training Venue", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.Trainer))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Trainer/Artisan/Facilitator", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CoodinatedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Coordinator", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.CoordinatorDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the coodinated date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CoordinatorPhoneNumber))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter thecoordinator's phone number.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.ReviewedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Person that reviewed this record ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.ReviewerPhoneNumber))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone number of the Person that reviewed this record .", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ReviewDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date of review.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == args.Data.CommunityTrainingRegisterId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CommunityTrainingRegisterId + 1);
+                            }
+                            args.Data.CommunityTrainingRegisterId = id;
+                            db.CommunityTrainingRegister.Add(args.Data);
+                            db.SaveChanges();
+                        }
+                        foreach (var n in CommunityTrainingRegisterDirectMemberDatasource)
+                        {
+                            var _exist = db.CommunityTrainingRegisterDirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == args.Data.CommunityTrainingRegisterId && o.VslaGroupDirectMemberId == n.VSLA_Group_Direct_Member_Id);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterDirectMember m = new();
+                                m.CommunityTrainingRegisterId = args.Data.CommunityTrainingRegisterId;
+                                m.VslaGroupDirectMemberId = Convert.ToInt32(n.VSLA_Group_Direct_Member_Id);
+                                m.SessionId = n.SessionId;
+                                m.SessionDay = n.SessionDay;
+                                m.SessionDate = n.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterDirectMember.OrderBy(o => o.CommunityTrainingRegisterDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterDirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterDirectMemberId = id;
+                                db.CommunityTrainingRegisterDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = n.SessionId;
+                                _exist.SessionDay = n.SessionDay;
+                                _exist.SessionDate = n.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                        foreach (var n in CommunityTrainingRegisterIndirectMemberDatasource)
+                        {
+                            var _exist = db.CommunityTrainingRegisterIndirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == args.Data.CommunityTrainingRegisterId && o.VslaGroupIndirectMemberId == n.VSLA_Group_Indirect_Member_Id);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterIndirectMember m = new();
+                                m.CommunityTrainingRegisterId = args.Data.CommunityTrainingRegisterId;
+                                m.VslaGroupIndirectMemberId = n.VSLA_Group_Indirect_Member_Id;
+                                m.SessionId = n.SessionId;
+                                m.SessionDay = n.SessionDay;
+                                m.SessionDate = n.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterIndirectMember.OrderBy(o => o.CommunityTrainingRegisterIndirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterIndirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterIndirectMemberId = id;
+                                db.CommunityTrainingRegisterIndirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = n.SessionId;
+                                _exist.SessionDay = n.SessionDay;
+                                _exist.SessionDate = n.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnCommunityTrainingRegisterActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<CommunityTrainingRegister> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CommunityTrainingRegisterGrid.PreventRender(false);
+        }
+    }
+
+    public async Task CellSelectHandler(CellSelectEventArgs<CommunityTrainingRegisterDirectMember> args)
+    {
+        //get selected cell index
+        var CellIndexes = await CommunityTrainingRegisterDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await CommunityTrainingRegisterDirectMemberGrid.GetColumnFieldNames();
+        //await CommunityTrainingRegisterDirectMemberGrid.ClearSelectionAsync();
+        // edit the selected cell using the cell index and column name
+        await CommunityTrainingRegisterDirectMemberGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public void TemplateActionComplete(ActionEventArgs<spCommunityTrainingRegisterDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CommunityTrainingRegisterDirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public void CommunityTrainingRegisterIndirectMemberActionComplete(ActionEventArgs<spCommunityTrainingRegisterIndirectMemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CommunityTrainingRegisterIndirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public async Task DirectMemberCellSelectHandler(CellSelectEventArgs<spCommunityTrainingRegisterDirectMemberGetAllResult> args)
+    {
+        //get selected cell index
+        var CellIndexes = await CommunityTrainingRegisterDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await CommunityTrainingRegisterDirectMemberGrid.GetColumnFieldNames();
+        // edit the selected cell using the cell index and column name
+        await CommunityTrainingRegisterDirectMemberGrid.EditCell(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public async Task IndirectMemberCellSelectHandler(CellSelectEventArgs<spCommunityTrainingRegisterIndirectMemberGetAllResult> args)
+    {
+        //get selected cell index
+        var CellIndexes = await CommunityTrainingRegisterIndirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await CommunityTrainingRegisterIndirectMemberGrid.GetColumnFieldNames();
+        // edit the selected cell using the cell index and column name
+        await CommunityTrainingRegisterIndirectMemberGrid.EditCell(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public async Task DirectMemberCellSavedHandler(CellSaveArgs<spCommunityTrainingRegisterDirectMemberGetAllResult> args)
+    {
+        try
+        {
+            var index = await CommunityTrainingRegisterDirectMemberGrid.GetRowIndexByPrimaryKey(args.RowData.CommunityTrainingRegisterDirectMemberId);
+
+            if (CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId == 0)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterId + 1);
+                        }
+                        CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId = id;
+                        args.Data.CommunityTrainingRegisterId = id;
+                        db.CommunityTrainingRegister.Add(CommunityTrainingRegisterReviewData);
+                        db.SaveChanges();
+                    }
+                    await CommunityTrainingRegisterDirectMemberGrid.UpdateCell(index, nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.CommunityTrainingRegisterId), CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                }
+            }
+            else
+            {
+                args.Data.CommunityTrainingRegisterId =  CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId;
+                await CommunityTrainingRegisterDirectMemberGrid.UpdateCell(index, nameof(spCommunityTrainingRegisterDirectMemberGetAllResult.CommunityTrainingRegisterId), CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+            }
+
+            //if (args.ColumnName == nameof(OrderDetails.ProductId) || args.ColumnName == nameof(OrderDetails.OrderQuantity))
+            //{
+
+            //    await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.OrderHeaderId), OrderHeaderReviewData.OrderHeaderId);
+            //    if (args.ColumnName == nameof(OrderDetails.OrderQuantity))
+            //    {
+            //        if (args.Value != null)
+            //        {
+            //            await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.QuantityAllocated), Convert.ToDouble(args.Value));
+            //        }
+            //        if (args.Value != null && args.RowData.ProductId != null)
+            //        {
+            //            var a = ProductData.FirstOrDefault(o => o.ProductId == args.RowData.ProductId);
+            //            if (a != null && a.UnitPrice != null)
+            //            {
+            //                await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.TotalPrice), (Convert.ToDouble(args.Value) * a.UnitPrice));
+            //            }
+
+            //        }
+            //    }
+            //}
+            //else if (args.ColumnName == nameof(OrderDetails.QuantityAllocated))
+            //{
+            //    if (args.Value != null && args.RowData.ProductId != null)
+            //    {
+            //        var a = ProductData.FirstOrDefault(o => o.ProductId == args.RowData.ProductId);
+            //        if (a != null && a.UnitPrice != null)
+            //        {
+            //            await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.TotalPrice), (Convert.ToDouble(args.Value) * a.UnitPrice));
+            //        }
+
+            //    }
+            //}
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await CommunityTrainingRegisterDirectMemberGrid.EndEditAsync();
+            //await OnDetailDataBound();
+             StateHasChanged();
+        }
+    }
+    public async Task IndirectMemberCellSavedHandler(CellSaveArgs<spCommunityTrainingRegisterIndirectMemberGetAllResult> args)
+    {
+        try
+        {
+            var index = await CommunityTrainingRegisterIndirectMemberGrid.GetRowIndexByPrimaryKey(args.RowData.CommunityTrainingRegisterIndirectMemberId);
+            if (CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId == 0)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterId + 1);
+                        }
+                        CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId = id;
+                        args.Data.CommunityTrainingRegisterId = id;
+                        db.CommunityTrainingRegister.Add(CommunityTrainingRegisterReviewData);
+                        db.SaveChanges();
+                    }
+                    await CommunityTrainingRegisterIndirectMemberGrid.UpdateCell(index, nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.CommunityTrainingRegisterId), CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                }
+            }
+            else
+            {
+                args.Data.CommunityTrainingRegisterId =  CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId;
+                await CommunityTrainingRegisterIndirectMemberGrid.UpdateCell(index, nameof(spCommunityTrainingRegisterIndirectMemberGetAllResult.CommunityTrainingRegisterId), CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+            }
+            //if (args.ColumnName == nameof(OrderDetails.ProductId) || args.ColumnName == nameof(OrderDetails.OrderQuantity))
+            //{
+
+            //    await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.OrderHeaderId), OrderHeaderReviewData.OrderHeaderId);
+            //    if (args.ColumnName == nameof(OrderDetails.OrderQuantity))
+            //    {
+            //        if (args.Value != null)
+            //        {
+            //            await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.QuantityAllocated), Convert.ToDouble(args.Value));
+            //        }
+            //        if (args.Value != null && args.RowData.ProductId != null)
+            //        {
+            //            var a = ProductData.FirstOrDefault(o => o.ProductId == args.RowData.ProductId);
+            //            if (a != null && a.UnitPrice != null)
+            //            {
+            //                await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.TotalPrice), (Convert.ToDouble(args.Value) * a.UnitPrice));
+            //            }
+
+            //        }
+            //    }
+            //}
+            //else if (args.ColumnName == nameof(OrderDetails.QuantityAllocated))
+            //{
+            //    if (args.Value != null && args.RowData.ProductId != null)
+            //    {
+            //        var a = ProductData.FirstOrDefault(o => o.ProductId == args.RowData.ProductId);
+            //        if (a != null && a.UnitPrice != null)
+            //        {
+            //            await OrderDetailsGrid.UpdateCell(index, nameof(OrderDetails.TotalPrice), (Convert.ToDouble(args.Value) * a.UnitPrice));
+            //        }
+
+            //    }
+            //}
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await CommunityTrainingRegisterIndirectMemberGrid.EndEditAsync();
+            //await OnDetailDataBound();
+            StateHasChanged();
+        }
+    }
+    public async Task CommunityTrainingRegisterDirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spCommunityTrainingRegisterDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Direct_Member_Id == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Household member", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.SessionDate == null && args.Data.SessionDay==null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date/Day ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.SessionId== 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Session no", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId == 0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CommunityTrainingRegisterId + 1);
+                            }
+                            CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId = id;
+                            args.Data.CommunityTrainingRegisterId = id;
+                            db.CommunityTrainingRegister.Add(CommunityTrainingRegisterReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.CommunityTrainingRegisterId = CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId;
+                }
+            }
+        }
+    }
+    public async Task CommunityTrainingRegisterIndirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spCommunityTrainingRegisterIndirectMemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Indirect_Member_Id== null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.SessionDate == null && args.Data.SessionDay == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date/Day ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.SessionId == 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Session no", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId == 0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.CommunityTrainingRegister.FirstOrDefault(o => o.CommunityTrainingRegisterId == CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.CommunityTrainingRegister.OrderBy(o => o.CommunityTrainingRegisterId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CommunityTrainingRegisterId + 1);
+                            }
+                            CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId = id;
+                            args.Data.CommunityTrainingRegisterId = id;
+                            db.CommunityTrainingRegister.Add(CommunityTrainingRegisterReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.CommunityTrainingRegisterId = CommunityTrainingRegisterReviewData.CommunityTrainingRegisterId;
+                }
+            }
+        }
+    }
+    #endregion Graduation Checklist Header
+
+    #region Group Members
+    public class CommunityTrainingSessionsAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CommunityTrainingSessionsAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ATrainingSession>();
+            try
+            {
+                int? Curriculum_Id = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "Curriculum_Id").Value != null)
+                    {
+                        Curriculum_Id = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "Curriculum_Id").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.ATrainingSession.Where(o => o.CurriculumId == Curriculum_Id).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ATrainingSession>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public class CommunityTrainingRegisterDirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CommunityTrainingRegisterDirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spCommunityTrainingRegisterDirectMemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? CommunityTrainingRegisterId = null;
+                int? SessionId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "SessionId").Value != null)
+                    {
+                        SessionId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "SessionId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "CommunityTrainingRegisterId").Value != null)
+                    {
+                        CommunityTrainingRegisterId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "CommunityTrainingRegisterId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spCommunityTrainingRegisterDirectMemberGetAllAsync(CommunityTrainingRegisterId, GroupCompositionCode, SessionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spCommunityTrainingRegisterDirectMemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spCommunityTrainingRegisterDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.CommunityTrainingRegisterDirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id && o.SessionId == val.SessionId);
+                    if (_exist == null)
+                    {
+                        CommunityTrainingRegisterDirectMember m = new();
+                        m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                        m.VslaGroupDirectMemberId = Convert.ToInt32(val.VSLA_Group_Direct_Member_Id);
+                        m.SessionId = val.SessionId;
+                        m.SessionDay = val.SessionDay;
+                        m.SessionDate = val.SessionDate;
+                        int id = 1;
+                        var last = db.CommunityTrainingRegisterDirectMember.OrderBy(o => o.CommunityTrainingRegisterDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterDirectMemberId + 1);
+                        }
+                        m.CommunityTrainingRegisterDirectMemberId = id;
+                        db.CommunityTrainingRegisterDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.SessionId = val.SessionId;
+                        _exist.SessionDay = val.SessionDay;
+                        _exist.SessionDate = val.SessionDate;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spCommunityTrainingRegisterDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.CommunityTrainingRegisterDirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id && o.SessionId == val.SessionId);
+                    if (_exist == null)
+                    {
+                        CommunityTrainingRegisterDirectMember m = new();
+                        m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                        m.VslaGroupDirectMemberId = Convert.ToInt32(val.VSLA_Group_Direct_Member_Id);
+                        m.SessionId = val.SessionId;
+                        m.SessionDay = val.SessionDay;
+                        m.SessionDate = val.SessionDate;
+                        int id = 1;
+                        var last = db.CommunityTrainingRegisterDirectMember.OrderBy(o => o.CommunityTrainingRegisterDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterDirectMemberId + 1);
+                        }
+                        m.CommunityTrainingRegisterDirectMemberId = id;
+                        db.CommunityTrainingRegisterDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.SessionId = val.SessionId;
+                        _exist.SessionDay = val.SessionDay;
+                        _exist.SessionDate = val.SessionDate;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override async Task<object> BatchUpdateAsync(DataManager dm, object Changed, object Added, object Deleted, string KeyField, string Key, int? dropIndex)
+        {
+            object products = null;
+            try
+            {
+                if (Changed != null)
+                {
+                    products = Changed;
+                    foreach (var val in (List<spCommunityTrainingRegisterDirectMemberGetAllResult>)Changed)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.CommunityTrainingRegisterDirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id && o.SessionId == val.SessionId);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterDirectMember m = new();
+                                m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                                m.VslaGroupDirectMemberId = Convert.ToInt32(val.VSLA_Group_Direct_Member_Id);
+                                m.SessionId = val.SessionId;
+                                m.SessionDay = val.SessionDay;
+                                m.SessionDate = val.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterDirectMember.OrderBy(o => o.CommunityTrainingRegisterDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterDirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterDirectMemberId = id;
+                                db.CommunityTrainingRegisterDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = val.SessionId;
+                                _exist.SessionDay = val.SessionDay;
+                                _exist.SessionDate = val.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Added != null)
+                {
+                    products = Added;
+                    foreach (var val in (List<spCommunityTrainingRegisterDirectMemberGetAllResult>)Added)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.CommunityTrainingRegisterDirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupDirectMemberId == val.VSLA_Group_Direct_Member_Id && o.SessionId == val.SessionId);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterDirectMember m = new();
+                                m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                                m.VslaGroupDirectMemberId = Convert.ToInt32(val.VSLA_Group_Direct_Member_Id);
+                                m.SessionId = val.SessionId;
+                                m.SessionDay = val.SessionDay;
+                                m.SessionDate = val.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterDirectMember.OrderBy(o => o.CommunityTrainingRegisterDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterDirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterDirectMemberId = id;
+                                db.CommunityTrainingRegisterDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = val.SessionId;
+                                _exist.SessionDay = val.SessionDay;
+                                _exist.SessionDate = val.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Deleted != null)
+                {
+                    products = Deleted;
+                    //foreach (var rec in (List<OrderDetails>)Deleted)
+                    //{
+                    //    Orders.Remove(Orders.Where(or => or.OrderID == rec.OrderID).FirstOrDefault());
+                    //}
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return products;
+        }
+    }
+    public class CommunityTrainingRegisterIndirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CommunityTrainingRegisterIndirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spCommunityTrainingRegisterIndirectMemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? CommunityTrainingRegisterId = null;
+                int? SessionId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "SessionId").Value != null)
+                    {
+                        SessionId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "SessionId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "CommunityTrainingRegisterId").Value != null)
+                    {
+                        CommunityTrainingRegisterId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "CommunityTrainingRegisterId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spCommunityTrainingRegisterIndirectMemberGetAllAsync(CommunityTrainingRegisterId, GroupCompositionCode, SessionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spCommunityTrainingRegisterIndirectMemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spCommunityTrainingRegisterIndirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.CommunityTrainingRegisterIndirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id && o.SessionId == val.SessionId);
+                    if (_exist == null)
+                    {
+                        CommunityTrainingRegisterIndirectMember m = new();
+                        m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.SessionId = val.SessionId;
+                        m.SessionDay = val.SessionDay;
+                        m.SessionDate = val.SessionDate;
+                        int id = 1;
+                        var last = db.CommunityTrainingRegisterIndirectMember.OrderBy(o => o.CommunityTrainingRegisterIndirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterIndirectMemberId + 1);
+                        }
+                        m.CommunityTrainingRegisterIndirectMemberId = id;
+                        db.CommunityTrainingRegisterIndirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.SessionId = val.SessionId;
+                        _exist.SessionDay = val.SessionDay;
+                        _exist.SessionDate = val.SessionDate;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spCommunityTrainingRegisterIndirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.CommunityTrainingRegisterIndirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id && o.SessionId == val.SessionId);
+                    if (_exist == null)
+                    {
+                        CommunityTrainingRegisterIndirectMember m = new();
+                        m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.SessionId = val.SessionId;
+                        m.SessionDay = val.SessionDay;
+                        m.SessionDate = val.SessionDate;
+                        int id = 1;
+                        var last = db.CommunityTrainingRegisterIndirectMember.OrderBy(o => o.CommunityTrainingRegisterIndirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CommunityTrainingRegisterIndirectMemberId + 1);
+                        }
+                        m.CommunityTrainingRegisterIndirectMemberId = id;
+                        db.CommunityTrainingRegisterIndirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.SessionId = val.SessionId;
+                        _exist.SessionDay = val.SessionDay;
+                        _exist.SessionDate = val.SessionDate;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override async Task<object> BatchUpdateAsync(DataManager dm, object Changed, object Added, object Deleted, string KeyField, string Key, int? dropIndex)
+        {
+            object products = null;
+            try
+            {
+                if (Changed != null)
+                {
+                    products = Changed;
+                    foreach (var val in (List<spCommunityTrainingRegisterIndirectMemberGetAllResult>)Changed)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.CommunityTrainingRegisterIndirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id && o.SessionId == val.SessionId);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterIndirectMember m = new();
+                                m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                                m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                                m.SessionId = val.SessionId;
+                                m.SessionDay = val.SessionDay;
+                                m.SessionDate = val.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterIndirectMember.OrderBy(o => o.CommunityTrainingRegisterIndirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterIndirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterIndirectMemberId = id;
+                                db.CommunityTrainingRegisterIndirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = val.SessionId;
+                                _exist.SessionDay = val.SessionDay;
+                                _exist.SessionDate = val.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Added != null)
+                {
+                    products = Added;
+                    foreach (var val in (List<spCommunityTrainingRegisterIndirectMemberGetAllResult>)Added)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.CommunityTrainingRegisterIndirectMember.FirstOrDefault(o => o.CommunityTrainingRegisterId == val.CommunityTrainingRegisterId && o.VslaGroupIndirectMemberId == val.VSLA_Group_Indirect_Member_Id && o.SessionId == val.SessionId);
+                            if (_exist == null)
+                            {
+                                CommunityTrainingRegisterIndirectMember m = new();
+                                m.CommunityTrainingRegisterId = val.CommunityTrainingRegisterId.Value;
+                                m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                                m.SessionId = val.SessionId;
+                                m.SessionDay = val.SessionDay;
+                                m.SessionDate = val.SessionDate;
+                                int id = 1;
+                                var last = db.CommunityTrainingRegisterIndirectMember.OrderBy(o => o.CommunityTrainingRegisterIndirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CommunityTrainingRegisterIndirectMemberId + 1);
+                                }
+                                m.CommunityTrainingRegisterIndirectMemberId = id;
+                                db.CommunityTrainingRegisterIndirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.SessionId = val.SessionId;
+                                _exist.SessionDay = val.SessionDay;
+                                _exist.SessionDate = val.SessionDate;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Deleted != null)
+                {
+                    products = Deleted;
+                    //foreach (var rec in (List<OrderDetails>)Deleted)
+                    //{
+                    //    Orders.Remove(Orders.Where(or => or.OrderID == rec.OrderID).FirstOrDefault());
+                    //}
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return products;
+        }
+    }
+    #endregion Group Members
+}

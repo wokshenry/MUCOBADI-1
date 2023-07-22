@@ -1,0 +1,2360 @@
+﻿@page "/AVATPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Adolescent Vulnerability Assessment Tool (AVAT) [OVCMIS FORM 007B]</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager AdaptorInstance="@typeof(AVATBeneficiaryRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="RegisterContext">
+                    @{
+                        BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                        <div style="padding:3px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Household Code</p>
+                                    <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="HVatGrid" TValue="spAVATGetAllResult" Query="@(new Query().AddParams("HouseHoldId",BeneficiaryRegisterData.HouseHoldId))"
+                                            AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true"
+                                            Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                        @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                                        <SfDataManager AdaptorInstance="@typeof(AvatAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <GridEvents OnActionBegin="OnHvatActionBegin" OnActionComplete="OnHvatActionComplete" TValue="spAVATGetAllResult"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="ReviewHeaderContext">
+                                                @{
+                                                    HVatReviewData = (ReviewHeaderContext as spAVATGetAllResult);
+                                                    <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@HVatReviewData.Avat_Id" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfAccordion ExpandMode="@ExpandMode.Single">
+                                                                    <AccordionItems>
+                                                                        <AccordionItem Expanded="true">
+                                                                            <HeaderTemplate>Introduction</HeaderTemplate>
+                                                                            <ContentTemplate>
+                                                                                <div style="padding:10px;">
+                                                                                    <div class="form-row">
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <h3>Adolescent Vulnerability Assessment Tool (AVAT) [OVCMIS FORM 007B]</h3>
+                                                                                            <p>
+                                                                                                The Adolescent Vulnerability Assessment Tool (AVAT) for Adolescents Aged 12–17 years is for assessment of
+                                                                                                adolescents in the households selected through the vulnerability prioritization process. The tool helps to target
+                                                                                                and obtain additional in-depth information about an adolescent’s level of vulnerability and is used to monitor the
+                                                                                                progression of vulnerability. The tool should only be used with adolescents identifi ed and prioritised using the
+                                                                                                Household Vulnerability Prioritization Tool (HVPT), and it should only be administered to adolescents who will be
+                                                                                                supported. The tool should be applied at enrolment, at the end of 12 months, at the end of a support programme,
+                                                                                                and/or as it may be required. It is recommended that the interviewer fi nds additional information and/or validates
+                                                                                                critical information from other sources like schools, health facilities, OVC service providers, community leaders,
+                                                                                                village health team members, and para-social workers, among others.
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <h3>SECTION I: BACKGROUND INFORMATION</h3>
+                                                                                            <p>
+                                                                                                <b>INSTRUCTION:</b>  Please provide background information for the adolescent. Fill in all the required information
+                                                                                                on the members of the household (HH), the required contact details, and the HH number as indicated on the
+                                                                                                Household <br /><br />
+                                                                                                Vulnerability Prioritization Tool (HVPT). For each of the vulnerability categories, enter Yes (Y), No (N), or Not
+                                                                                                Applicable (NA). For sex, indicate Male (M) or Female (F). For immunisation and birth registration, check immunisation
+                                                                                                card and birth registration certifi cate. While for date of birth, indicate the day, month, and year. For HIV status, indicate
+                                                                                                unique codes in case the use of positive (+), negative (-), or do not know (DK) could compromise confi dentiality.
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <h3>SECTION II: ADOLESCENT ASSESSMENT</h3>
+                                                                                            <p>
+                                                                                                <b>INSTRUCTION:</b>  Please administer this section to the adolescent. Ask each question and circle the appropriate
+                                                                                                response option. After circling the response, please write in the corresponding score in the far right-hand column
+                                                                                                (labelled “SCORE”). At the end of each priority area (PA), add the scores for all questions and write them down
+                                                                                                under the “PA TOTAL” row. Finally, add up all PA scores and enter them under “ADOLESCENT TOTAL SCORE”
+                                                                                                and compute the average SCORE per PA as indicated on the table for computation of PA SCORE. Pay attention to
+                                                                                                scores per PA as a basis for support.
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </ContentTemplate>
+                                                                        </AccordionItem>
+                                                                    </AccordionItems>
+                                                                </SfAccordion>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h3>SECTION I: BACKGROUND INFORMATION</h3>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>District</p>
+                                                                <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Sub-County</p>
+                                                                <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Parish</p>
+                                                                <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Village</p>
+                                                                <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Code</p>
+                                                                <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Name of Household Head:</p>
+                                                                <p><b>@BeneficiaryRegisterData.Surname @BeneficiaryRegisterData.GivenName</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Gender of HouseHold Head</p>
+                                                                @{
+                                                                    string gender = "N/A";
+                                                                    var _gender = GenderData.FirstOrDefault(o => o.GenderId == BeneficiaryRegisterData.GenderId);
+                                                                    if (_gender != null)
+                                                                    {
+                                                                        gender = _gender.GenderDescription;
+                                                                    }
+                                                                }
+                                                                <p><b>@gender</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Contact of HouseHold Head</p>
+                                                                <p><b>@BeneficiaryRegisterData.TelephoneContact</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Age of Household Head</p>
+                                                                <p><b>@BeneficiaryRegisterData.Age</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date of Interview</p>
+                                                                <SfDatePicker @bind-Value="@(HVatReviewData.InterviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never" />
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Name of Sub-County Community
+                                                                    Development Offi cer (CDO)
+                                                                </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(HVatReviewData.CDOName)" Enabled="true" Placeholder="Enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>
+                                                                    Tel Contact of Sub-County Community
+                                                                    Development Offi cer (CDO)
+                                                                </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(HVatReviewData.CDOContact)" Enabled="true" Placeholder="Enter the phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Phase of Administration</p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.AdministrationPhaseId)" Enabled="true" TItem="AAdministrationPhase" TValue="int?" DataSource="@AdministrationPhaseData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AAdministrationPhase.AdministrationPhaseId)" Text="@nameof(AAdministrationPhase.AdministrationPhaseDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Marital Status of HH Head</p>
+                                                                <SfDropDownList ID="HivstatusId" @bind-Value="@(HVatReviewData.MaritalStatusId)" Enabled="true" TItem="AMaritalStatus" TValue="int?" DataSource="@MaritalStatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AMaritalStatus.MaritalStatusId)" Text="@nameof(AMaritalStatus.MaritalStatusDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>HH Member</p>
+                                                                <SfDropDownList ID="HouseHoldMemberId" @bind-Value="@(HVatReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                        <ItemTemplate>
+                                                                            <div style="margin-left:10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>
+                                                                        </ItemTemplate>
+                                                                        <ValueTemplate>
+                                                                            @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                            @*<div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>*@
+                                                                        </ValueTemplate>
+                                                                    </DropDownListTemplates>
+                                                                    <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h3>SECTION II: ADOLESCENTS’ ASSESSMENT</h3>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>PRIORITY AREA 1: ECONOMIC STABILITY AND SECURITY</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>1.1 Are you engaged in any economic activity that contributes to your well-being and that of the HH?</p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.EconomicActivityId)" Enabled="true" TItem="AEconomicActivity" TValue="int?" DataSource="@EconomicActivityData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AEconomicActivity.EconomicActivityId)" Text="@nameof(AEconomicActivity.EconomicActivityDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AEconomicActivity" TValue="int?" ValueChange="OnEconomicActivityChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.EconomicActivityScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>1.2 Are you employed in any job that may be harmful to your:</p>
+                                                                <SfMultiSelect @ref="JobCausedHarmObj" TValue="int[]" TItem="AJobCausedHarm" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@JobCausedHarmData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(AJobCausedHarm.HarmfulId)" Text="@nameof(AJobCausedHarm.HarmfulDescription)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="AJobCausedHarm" ValueChange="OnJobCausedHarmChange" DataBound="OnJobCausedHarmBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.HarmfulScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>1.3 Are you a member of a savings group or association?</p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.IsSavingsGroupMember)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnSavingsGroupMemberChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.IsSavingsGroupMemberScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>1.4 Do you in any way benefit from the following programs?</p>
+                                                                <SfMultiSelect @ref="MemberBenefitObj" TValue="int[]" TItem="AMemberBenefits" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@MemberBenefitsData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(AMemberBenefits.MemberBenefitsId)" Text="@nameof(AMemberBenefits.MemberBenefitsDescription)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="AMemberBenefits" ValueChange="OnMemberBenefitChange" DataBound="OnMemberBenefitBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.MemberBenefitsScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">ECONOMIC STABILITY AND SECURITY TOTAL: @HVatReviewData.EconomicStabilityTotal</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>PRIORITY AREA 2: SURVIVAL AND HEALTH</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.1 How many meals do you have in a day?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.MealId)" Enabled="true" TItem="ADailyMeals" TValue="int?" DataSource="@DailyMealsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(ADailyMeals.MealId)" Text="@nameof(ADailyMeals.MealDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="ADailyMeals" TValue="int?" ValueChange="OnDailyMealChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.MealScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.2 In the past week, have you gone a whole day and night without eating anything at all due to lack of food?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.LackofFood)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnLackofFoodChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.LackofFoodScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.3 Have you been referred for health services for any chronic illnesses and/or disability that you might have
+                                                                    and are you receiving treatment?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.ReferredId)" Enabled="true" TItem="AAdolescentHealthServiceReferred" TValue="int?" DataSource="@AdolescentHealthServiceReferredData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AAdolescentHealthServiceReferred.ReferredId)" Text="@nameof(AAdolescentHealthServiceReferred.ReferredDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AAdolescentHealthServiceReferred" TValue="int?" ValueChange="OnAdolescentHealthServiceReferredChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.ReferredScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.4 Do you know your HIV status? Note: For adolescents with unknown HIV status, Refer for HTS
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.AdolescentWithKnownHIVStatus)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnAdolescentWithKnownHIVStatusChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.AdolescentWithKnownHIVStatusScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.5 Are you on antiretroviral therapy (ART) or tuberculosis treatment?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.AntiretroviralTherapy)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnAntiretroviralTherapyChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.AntiretroviralTherapyScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.6 Have you had a blood test called viral load in the last 12 months?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.HadViralLoadBloodTest)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnViralLoadBloodTestChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.HadViralLoadBloodTestScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.7 Is your viral load suppressed? Request to see viral load card. Yes/NA
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.IsViralloadSuppressed)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnViralloadSuppressedChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.IsViralloadSuppressedScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.8 Can you tell me about how a young person of your age living in your community might
+                                                                    become infected with HIV?
+                                                                </p>
+                                                                <SfMultiSelect @ref="InfectionWaysObj" TValue="int[]" TItem="AInfectionWays" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@InfectionWaysData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(AInfectionWays.InfectionWayId)" Text="@nameof(AInfectionWays.InfectionWayDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="AInfectionWays" ValueChange="OnInfectionWaysChange" DataBound="OnInfectionWaysBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.InfectionWayScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    2.9 Can you tell me how a young person your age living in your community might help protect
+                                                                    himself or herself from becoming infected with HIV?
+                                                                </p>
+                                                                <SfMultiSelect @ref="SelfProtectionObj" TValue="int[]" TItem="ASelfProtection" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SelfProtectionData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ASelfProtection.SelfProtectionId)" Text="@nameof(ASelfProtection.SelfProtectionDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ASelfProtection" ValueChange="OnSelfProtectionChange" DataBound="OnSelfProtectionBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.SelfProtectionScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">SURVIVAL AND HEALTH TOTAL: @HVatReviewData.SurvivalandHealthTotal</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>PRIORITY AREA 3: EDUCATION AND DEVELOPMENT</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    3.1 Are you currently enrolled and attending school, vocational training, or an apprenticeship?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.EnrolledId)" Enabled="true" TItem="AAdolescentEnrolledAttendingSchool" TValue="int?" DataSource="@AdolescentEnrolledAttendingSchoolData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AAdolescentEnrolledAttendingSchool.EnrolledId)" Text="@nameof(AAdolescentEnrolledAttendingSchool.EnrolledDesc)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AAdolescentEnrolledAttendingSchool" TValue="int?" ValueChange="OnEnrolledInSchoolChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.EnrolledScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    3.2 Have you attended school, vocational training, or an apprenticeship regularly(At least 4 days
+                                                                    a week on average) in the past 12 months?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.HasAttendedSchool)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnAttendedSchoolChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.HasAttendedSchoolScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p>
+                                                                    3.3 Has the Adolescent successfully progressed from one level to another at school, vocational training or
+                                                                    apprenticeship compared to last academic year?
+                                                                </p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    Not applicable (No Adolescent was in school in the previous year)
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.AdolescentProgressing)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Reason(s) for not progressing</p>
+                                                                <SfMultiSelect @ref="NotProgressingReasonObj" TValue="int[]" TItem="ASchoolNotProgressingReason" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@NotProgressingReasonData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ASchoolNotProgressingReason.ProgressingReasonId)" Text="@nameof(ASchoolNotProgressingReason.ProgressingReasonDescription)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ASchoolNotProgressingReason" ValueChange="OnNotProgressingReasonChange" DataBound="OnNotProgressingReasonBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.ProgressingReasonScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">EDUCATION AND DEVELOPMENT TOTAL: @HVatReviewData.EducationandDevelopmentTotal</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>PRIORITY AREA 4: CARE AND PROTECTION</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    4.1 In the past 12 months, have all the children in this HH been under the care of and lived with the same
+                                                                    adult primary Caregiver?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.SameAdultPrimaryCareGiver)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnAdultPrimaryCareGiverChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.SameAdultPrimaryCareGiverScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    4.2 In the past 6 months have you been feeling withdrawn or consistently sad, unhappy, or depressed, and not
+                                                                    able to participate in daily activities, including playing with friends and family?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.FeelingWithdrawn)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AYesNo" TValue="int?" ValueChange="OnFeelingWithdrawnChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.FeelingWithdrawnScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    4.3 What would you do if you experienced or became a victim of abuse or violence?
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.ChildAbuseId)" Enabled="true" TItem="AHhchildAbuse" TValue="int?" DataSource="@ChildAbuseData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AHhchildAbuse.ChildAbuseId)" Text="@nameof(AHhchildAbuse.ChildAbuseDescription)"></DropDownListFieldSettings>
+                                                                    <DropDownListEvents TItem="AHhchildAbuse" TValue="int?" ValueChange="OnChildAbuseChange"></DropDownListEvents>
+                                                                </SfDropDownList>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.ChildAbuseScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    4.4 In the past 6 months, have any following happened to you in or outside the HH? Indicate Yes/No.
+                                                                    Note: If you see an obvious issue of abuse or you already know about it, then indicate yes.
+                                                                </p>
+                                                                <SfMultiSelect @ref="AdolescentIssueOfAbuseObj" TValue="int[]" TItem="AAdolescentIssueOfAbuse" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@AdolescentIssueOfAbuseData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(AAdolescentIssueOfAbuse.IssueOfAbuseId)" Text="@nameof(AAdolescentIssueOfAbuse.IssueOfAbuseIdDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="AAdolescentIssueOfAbuse" ValueChange="OnAdolescentIssueOfAbuseChange" DataBound="OnAdolescentIssueOfAbuseBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.IssueOfAbuseScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    4.5 Have you experienced any of these forms of sexual and gender-based violence?
+                                                                </p>
+                                                                <SfMultiSelect @ref="GenderBasedViolenceObj" TValue="int[]" TItem="AGenderBasedViolence" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@GenderBasedViolenceData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(AGenderBasedViolence.ViolenceId)" Text="@nameof(AGenderBasedViolence.ViolenceDescription)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="AGenderBasedViolence" ValueChange="OnGenderBasedViolenceChange" DataBound="OnGenderBasedViolenceBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">Score: @HVatReviewData.ViolenceScore</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p style="color:forestgreen; font-size:16px; font-style:italic; font-weight:bolder;">CARE AND PROTECTION TOTAL: @HVatReviewData.CareandProtectionTotal</p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>SUMMARY SCORE PER PRIORITY AREAS</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <table class="table-bordered" style="min-width:99%;">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <td><p>PRIORITY AREAS</p></td>
+                                                                            <td>
+                                                                                <p>
+                                                                                    Maximum
+                                                                                    Possible
+                                                                                    Score
+                                                                                    (A)
+                                                                                </p>
+                                                                            </td>
+                                                                            <td>
+                                                                                <p>
+                                                                                    PA
+                                                                                    score
+                                                                                    (B)
+                                                                                </p>
+                                                                            </td>
+                                                                            <td>
+                                                                                <p>
+                                                                                    Percent PA
+                                                                                    score
+                                                                                    (C) = B/A X
+                                                                                    100
+                                                                                </p>
+                                                                            </td>
+                                                                            <td>
+                                                                                <p>
+                                                                                    PA
+                                                                                    Rank
+                                                                                </p>
+                                                                            </td>
+                                                                            <td>
+                                                                                <p>
+                                                                                    Priority areas (list
+                                                                                    all indicators that
+                                                                                    scored a 4 or 3,
+                                                                                    e.g., 1.2, 1.3, etc.)
+                                                                                </p>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td><p>1. Economic Stability and Security</p></td>
+                                                                            <td>13</td>
+                                                                            <td>@HVatReviewData.EconomicStabilityTotal</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    double EconomicStabilitypercentage = 0;
+                                                                                    if (HVatReviewData.EconomicStabilityTotal != null && HVatReviewData.EconomicStabilityTotal > 0)
+                                                                                    {
+                                                                                        EconomicStabilitypercentage = ((HVatReviewData.EconomicStabilityTotal.Value / 13) * 100);
+                                                                                    }
+                                                                                }
+                                                                                <p>@Math.Round(EconomicStabilitypercentage, 0)%</p>
+                                                                            </td>
+                                                                            <td><p>@EconomicStabilityPARanking()</p></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><p>2. Survival and Health</p></td>
+                                                                            <td>15</td>
+                                                                            <td>@HVatReviewData.SurvivalandHealthTotal</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    double SurvivalandHealthpercentage = 0;
+                                                                                    if (HVatReviewData.SurvivalandHealthTotal != null && HVatReviewData.SurvivalandHealthTotal > 0)
+                                                                                    {
+                                                                                        SurvivalandHealthpercentage = ((HVatReviewData.SurvivalandHealthTotal.Value / 15) * 100);
+                                                                                    }
+                                                                                }
+                                                                                <p>@Math.Round(SurvivalandHealthpercentage, 0)%</p>
+                                                                            </td>
+                                                                            <td><p>@SurvivalHealthPARanking()</p></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><p>3. Education and Development</p></td>
+                                                                            <td>09</td>
+                                                                            <td>@HVatReviewData.EducationandDevelopmentTotal</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    double EducationandDevelopmentpercentage = 0;
+                                                                                    if (HVatReviewData.EducationandDevelopmentTotal != null && HVatReviewData.EducationandDevelopmentTotal > 0)
+                                                                                    {
+                                                                                        EducationandDevelopmentpercentage = ((HVatReviewData.EducationandDevelopmentTotal.Value / 9) * 100);
+                                                                                    }
+                                                                                }
+                                                                                <p>@Math.Round(EducationandDevelopmentpercentage, 0)%</p>
+                                                                            </td>
+                                                                            <td><p>@EducationandDevelopmentPARanking()</p></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><p>4. Care and Protection</p></td>
+                                                                            <td>14</td>
+                                                                            <td>@HVatReviewData.CareandProtectionTotal</td>
+                                                                            <td>
+                                                                                @{
+                                                                                    double CareandProtectionpercentage = 0;
+                                                                                    if (HVatReviewData.CareandProtectionTotal != null && HVatReviewData.CareandProtectionTotal > 0)
+                                                                                    {
+                                                                                        CareandProtectionpercentage = ((HVatReviewData.CareandProtectionTotal.Value / 14) * 100);
+                                                                                    }
+                                                                                }
+                                                                                <p>@Math.Round(CareandProtectionpercentage, 0)%</p>
+                                                                            </td>
+                                                                            <td><p>@CareandProtectionPARanking()</p></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td><p>HH TOTAL SCORE</p></td>
+                                                                            <td>51</td>
+                                                                            <td>
+                                                                                @{HVatReviewData.HHTotalScore = HVatReviewData.EconomicStabilityTotal + HVatReviewData.SurvivalandHealthTotal + HVatReviewData.EducationandDevelopmentTotal + HVatReviewData.CareandProtectionTotal; }
+                                                                                <p>@HVatReviewData.HHTotalScore</p>
+                                                                            </td>
+                                                                            <td>
+                                                                                @{
+                                                                                    double totalPercentage = 0;
+                                                                                    double total = EconomicStabilitypercentage + SurvivalandHealthpercentage + EducationandDevelopmentpercentage + CareandProtectionpercentage;
+                                                                                    if (total > 0)
+                                                                                    {
+                                                                                        totalPercentage = (total / 4);
+                                                                                        HVatReviewData.AveragePercentage = totalPercentage;
+                                                                                    }
+                                                                                    if (totalPercentage <= 24.4)
+                                                                                    {
+                                                                                        HVatReviewData.AssessmentStatusId = 1;
+                                                                                    }
+                                                                                    else if (totalPercentage > 24.4 && totalPercentage <= 49.4)
+                                                                                    {
+                                                                                        HVatReviewData.AssessmentStatusId = 2;
+                                                                                    }
+                                                                                    else if (totalPercentage > 49.4 && totalPercentage <= 74.4)
+                                                                                    {
+                                                                                        HVatReviewData.AssessmentStatusId = 3;
+                                                                                    }
+                                                                                    else if (totalPercentage > 74.4 && totalPercentage <= 100)
+                                                                                    {
+                                                                                        HVatReviewData.AssessmentStatusId = 4;
+                                                                                    }
+                                                                                }
+                                                                                <p>@Math.Round(totalPercentage, 0) %</p>
+                                                                            </td>
+                                                                            <td></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td>
+                                                                                <p>
+                                                                                    Average Percentage = Percent PA
+                                                                                    score (Total for C) divided by 4 PAs
+                                                                                </p>
+                                                                            </td>
+                                                                            <td></td>
+                                                                            <td></td>
+                                                                            <td><p>@Math.Round(totalPercentage, 0)%</p></td>
+                                                                            <td></td>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    Assessment Status
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(HVatReviewData.AssessmentStatusId)" Enabled="true" TItem="AHhassessmentStatus" TValue="int?" DataSource="@HhassessmentStatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AHhassessmentStatus.AssessmentStatusId)" Text="@nameof(AHhassessmentStatus.AssessmentStatusDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Assessment Date</p>
+                                                                <SfDatePicker @bind-Value="@(HVatReviewData.AssessmentDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never" />
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Assessor’s Name:</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(HVatReviewData.AssessorName)" Enabled="true" Placeholder="Enter the person who Assessed the information" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Title:</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(HVatReviewData.AssessorTitle)" Enabled="true" Placeholder="Enter title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Tel: </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(HVatReviewData.AssessorContact)" Enabled="true" Placeholder="Enter Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p>Assessor’s Observations (a requirement for all assessments):</p>
+                                                                <SfTextBox Multiline="true" @bind-Value="@(HVatReviewData.AssessorObservation)" Enabled="true" Placeholder="Enter the observations" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                            <FooterTemplate>
+                                                <SfButton CssClass="e-btn e-success" OnClick="SaveFormBtnClick"> Save Form</SfButton>
+                                                <SfButton CssClass="e-btn e-danger" OnClick="CancelFormBtnClick"> Cancel</SfButton>
+                                            </FooterTemplate>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(spAVATGetAllResult.Avat_Id) HeaderText="Enrolment Register Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(spAVATGetAllResult.AssessmentDate) HeaderText="Assessment Date" Format="dd/MM/yyyy" Width="140"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(spAVATGetAllResult.HouseHoldMemberId) Visible="true" HeaderText="HouseHold Member Code" Width="140" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData"></GridForeignColumn>
+                                            <GridColumn Field=@nameof(spAVATGetAllResult.FullName) Visible="true" HeaderText="Name of Household Name" Width="180"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(spHVATGetAllResult.AdministrationPhaseId) AllowFiltering="false" Visible="true" HeaderText="Phase of Administration" ForeignKeyField="@nameof(AAdministrationPhase.AdministrationPhaseId)" ForeignKeyValue="@nameof(AAdministrationPhase.AdministrationPhaseDescription)" ForeignDataSource="@AdministrationPhaseData" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridForeignColumn>
+                                            <GridColumn Field=@nameof(spAVATGetAllResult.CDOName) HeaderText="Name Contact of Sub-County Community Development Officer (CDO)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridColumn>
+                                            <GridColumn Field=@nameof(spAVATGetAllResult.CDOContact) Visible="true" AllowFiltering="false" HeaderText="Tel Contact of Sub-County Community Development Officer (CDO)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(spHVATGetAllResult.AssessmentStatusId) AllowFiltering="false" Visible="true" HeaderText="Assessment Status" ForeignKeyField="@nameof(AHhassessmentStatus.AssessmentStatusId)" ForeignKeyValue="@nameof(AHhassessmentStatus.AssessmentStatusDescription)" ForeignDataSource="@HhassessmentStatusData" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="180"></GridForeignColumn>
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="view" })" Title="view"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+    SfGrid<spAVATGetAllResult> HVatGrid;
+    private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+    spAVATGetAllResult HVatReviewData { get; set; }
+
+    SfMultiSelect<int[], AJobCausedHarm> JobCausedHarmObj;
+    SfMultiSelect<int[], AMemberBenefits> MemberBenefitObj;
+    SfMultiSelect<int[], AInfectionWays> InfectionWaysObj;
+    SfMultiSelect<int[], ASelfProtection> SelfProtectionObj;
+    SfMultiSelect<int[], AAdolescentIssueOfAbuse> AdolescentIssueOfAbuseObj;
+
+    SfMultiSelect<int[], AHhassets> HouseholdAssetObj;
+    SfMultiSelect<int[], AHhincurredExpenses> HouseholdExpenseObj;
+    SfMultiSelect<int[], AFoodGroups> FoodGroupObj;
+    SfMultiSelect<int[], AHhapplicableOptions> ApplicableOptionObj;
+    SfMultiSelect<int[], ASchoolNotProgressingReason> NotProgressingReasonObj;
+    SfMultiSelect<int[], AGenderBasedViolence> GenderBasedViolenceObj;
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+    List<AGender> GenderData { get; set; }
+    List<AMemberBenefits> MemberBenefitsData { get; set; }
+    List<AAdministrationPhase> AdministrationPhaseData { get; set; }
+    List<AMaritalStatus> MaritalStatusData { get; set; }
+    List<AEducationLevel> EducationLevelData { get; set; }
+    List<AEconomicActivity> EconomicActivityData { get; set; }
+    List<AAdolescentIssueOfAbuse> AdolescentIssueOfAbuseData { get; set; }
+    List<AHhincomeSource> IncomeSourceData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AInfectionWays> InfectionWaysData { get; set; }
+    List<ASelfProtection> SelfProtectionData { get; set; }
+    List<AAdolescentEnrolledAttendingSchool> AdolescentEnrolledAttendingSchoolData { get; set; }
+    List<ASavingScheme> SavingSchemeData { get; set; }
+    List<AHhincome> IncomeData { get; set; }
+    List<AJobCausedHarm> JobCausedHarmData { get; set; }
+    List<AHhassets> HouseholdAssetData { get; set; }
+    List<AHhincurredExpenses> HouseholdExpenseData { get; set; }
+    List<AAdolescentHealthServiceReferred> AdolescentHealthServiceReferredData { get; set; }
+    List<ADailyMeals> DailyMealsData { get; set; }
+    List<AFoodGroups> FoodGroupsData { get; set; }
+    List<AMalnutritionSigns> MalnutritionSignData { get; set; }
+    List<AHhapplicableOptions> ApplicableOptionsData { get; set; }
+    List<AReferredDisability> ReferredDisabilityData { get; set; }
+    List<AHhknownHivstatus> knownHivstatusData { get; set; }
+    List<ATuberclosisTreatment> TuberclosisTreatmentData { get; set; }
+    List<AHhtreatmentAdherance> TreatmentAdheranceData { get; set; }
+    List<AHhviralLoadBloodTest> ViralLoadBloodTestData { get; set; }
+    List<AHhviralLoadSuppressed> HHViralLoadSuppressedData { get; set; }
+    List<AStableShelter> StableShelterData { get; set; }
+    List<AHhpreSchoolNotEnrolled> PreSchoolNotEnrolledData { get; set; }
+    List<ASchoolNotProgressingReason> NotProgressingReasonData { get; set; }
+    List<AHhchildrenComplications> ChildrenComplicationsData { get; set; }
+    List<AHhchildAbuse> ChildAbuseData { get; set; }
+    List<AChildAbuseOccurances> ChildAbuseOccurancesData { get; set; }
+    List<AGenderBasedViolence> GenderBasedViolenceData { get; set; }
+    List<AHhassessmentStatus> HhassessmentStatusData { get; set; }
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+    private void SaveRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.EndEdit();
+    }
+    private void CancelRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.CloseEdit();
+    }
+    private void SaveFormBtnClick()
+    {
+        HVatGrid.EndEdit();
+    }
+    private void CancelFormBtnClick()
+    {
+        HVatGrid.CloseEdit();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            using (var db = new MUCOBADIContext())
+            {
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                InfectionWaysData = db.AInfectionWays.AsNoTracking().ToList();
+                SelfProtectionData = db.ASelfProtection.AsNoTracking().ToList();
+                AdolescentEnrolledAttendingSchoolData = db.AAdolescentEnrolledAttendingSchool.AsNoTracking().ToList();
+                AdolescentIssueOfAbuseData = db.AAdolescentIssueOfAbuse.AsNoTracking().ToList();
+                GenderData = db.AGender.AsNoTracking().ToList();
+                AdministrationPhaseData = db.AAdministrationPhase.AsNoTracking().ToList();
+                MaritalStatusData = db.AMaritalStatus.AsNoTracking().ToList();
+                EconomicActivityData = db.AEconomicActivity.AsNoTracking().ToList();
+                MemberBenefitsData = db.AMemberBenefits.AsNoTracking().ToList();
+                IncomeSourceData = db.AHhincomeSource.AsNoTracking().ToList();
+                SavingSchemeData = db.ASavingScheme.AsNoTracking().ToList();
+                IncomeData = db.AHhincome.AsNoTracking().ToList();
+                JobCausedHarmData = db.AJobCausedHarm.AsNoTracking().ToList();
+                HouseholdAssetData = db.AHhassets.AsNoTracking().ToList();
+                HouseholdExpenseData = db.AHhincurredExpenses.AsNoTracking().ToList();
+                AdolescentHealthServiceReferredData = db.AAdolescentHealthServiceReferred.AsNoTracking().ToList();
+                DailyMealsData = db.ADailyMeals.AsNoTracking().ToList();
+                FoodGroupsData = db.AFoodGroups.AsNoTracking().ToList();
+                MalnutritionSignData = db.AMalnutritionSigns.AsNoTracking().ToList();
+                ApplicableOptionsData = db.AHhapplicableOptions.AsNoTracking().ToList();
+                ReferredDisabilityData = db.AReferredDisability.AsNoTracking().ToList();
+                knownHivstatusData = db.AHhknownHivstatus.AsNoTracking().ToList();
+                TuberclosisTreatmentData = db.ATuberclosisTreatment.AsNoTracking().ToList();
+                TreatmentAdheranceData = db.AHhtreatmentAdherance.AsNoTracking().ToList();
+                ViralLoadBloodTestData = db.AHhviralLoadBloodTest.AsNoTracking().ToList();
+                HHViralLoadSuppressedData = db.AHhviralLoadSuppressed.AsNoTracking().ToList();
+                StableShelterData = db.AStableShelter.AsNoTracking().ToList();
+                PreSchoolNotEnrolledData = db.AHhpreSchoolNotEnrolled.AsNoTracking().ToList();
+                NotProgressingReasonData = db.ASchoolNotProgressingReason.AsNoTracking().ToList();
+                ChildrenComplicationsData = db.AHhchildrenComplications.AsNoTracking().ToList();
+                ChildAbuseData = db.AHhchildAbuse.AsNoTracking().ToList();
+                ChildAbuseOccurancesData = db.AChildAbuseOccurances.AsNoTracking().ToList();
+                GenderBasedViolenceData = db.AGenderBasedViolence.AsNoTracking().ToList();
+                HhassessmentStatusData = db.AHhassessmentStatus.AsNoTracking().ToList();
+
+                InputModel = new();
+                _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+               if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    private void OnEconomicActivityChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AEconomicActivity> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                HVatReviewData.EconomicActivityScore = args.ItemData.EconomicActivityScore;
+            }
+            SumEconomicStability();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnJobCausedHarmChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.HarmfulId = string.Join(",", args.Value);
+        if (args.Value.Any(o => o == 5))
+        {
+            HVatReviewData.HarmfulScore = 0;
+        }
+        else if (args.Value.Length == 4 && args.Value.Any(o => o == 5)==false)
+        {
+            HVatReviewData.HarmfulScore = 4;
+        }
+        else if (args.Value.Any(o => o == 1 || o == 2 || o == 3)==true)
+        {
+            HVatReviewData.HarmfulScore = 3;
+        }
+        else if (args.Value.Length == 1 && args.Value.Any(o => o == 4)==true)
+        {
+            HVatReviewData.HarmfulScore = 2;
+        }
+        SumEconomicStability();
+        StateHasChanged();
+    }
+    private void OnJobCausedHarmBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.HarmfulId))
+        {
+            var a = HVatReviewData.HarmfulId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            JobCausedHarmObj.Value = c.ToArray();
+        }
+    }
+    private void OnSavingsGroupMemberChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.ItemData.YesNoId == 2)
+                {
+                    HVatReviewData.IsSavingsGroupMemberScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.IsSavingsGroupMemberScore = 0;
+                }
+
+            }
+            SumEconomicStability();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnMemberBenefitChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.MemberBenefitsId = string.Join(",", args.Value);
+        if (args.Value.Any(o => o == 9))
+        {
+            HVatReviewData.MemberBenefitsScore = 4;
+        }
+        else if (args.Value.Length == 6 && args.Value.Any(o => o == 9)==false && args.Value.Any(o => o == 4)==false)
+        {
+            HVatReviewData.MemberBenefitsScore = 3;
+        }
+        else if (args.Value.Length == 2 && args.Value.Any(o => o == 9) == false && args.Value.Any(o => o == 4) == false)
+        {
+            HVatReviewData.MemberBenefitsScore = 2;
+        }
+        else if (args.Value.Length >= 3 && args.Value.Any(o => o == 9) == false && args.Value.Any(o => o == 4) == false)
+        {
+            HVatReviewData.MemberBenefitsScore = 1;
+        }
+        else if (args.Value.Length > 0 && args.Value.Any(o => o == 4) == true)
+        {
+            HVatReviewData.MemberBenefitsScore = 0;
+        }
+        SumEconomicStability();
+        StateHasChanged();
+    }
+    private void OnMemberBenefitBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.MemberBenefitsId))
+        {
+            var a = HVatReviewData.MemberBenefitsId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            MemberBenefitObj.Value = c.ToArray();
+        }
+    }
+    private void OnDailyMealChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADailyMeals> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                HVatReviewData.MealScore = args.ItemData.MealScore;
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnLackofFoodChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 1)
+                {
+                    HVatReviewData.LackofFoodScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.LackofFoodScore = 0;
+                }
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnAdolescentHealthServiceReferredChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AAdolescentHealthServiceReferred> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                HVatReviewData.ReferredScore = args.ItemData.ReferredScore;
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnAdolescentWithKnownHIVStatusChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.AdolescentWithKnownHIVStatusScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.AdolescentWithKnownHIVStatusScore = 0;
+                }
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnAntiretroviralTherapyChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.AntiretroviralTherapyScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.AntiretroviralTherapyScore = 0;
+                }
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnViralLoadBloodTestChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.HadViralLoadBloodTestScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.HadViralLoadBloodTestScore = 0;
+                }
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnViralloadSuppressedChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.IsViralloadSuppressedScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.IsViralloadSuppressedScore = 0;
+                }
+            }
+            SumSurvivalHealth();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnInfectionWaysChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.InfectionWayId = string.Join(",", args.Value);
+        if (args.Value.Length < 2 || args.Value.Any(o => o == 8))
+        {
+            HVatReviewData.InfectionWayScore = 1;
+        }
+        else
+        {
+            HVatReviewData.InfectionWayScore = 0;
+        }
+        SumSurvivalHealth();
+        StateHasChanged();
+    }
+    private void OnInfectionWaysBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.InfectionWayId))
+        {
+            var a = HVatReviewData.InfectionWayId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            InfectionWaysObj.Value = c.ToArray();
+        }
+    }
+    private void OnSelfProtectionChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.SelfProtectionId = string.Join(",", args.Value);
+        if (args.Value.Length == 1 && args.Value.Any(o => o == 7))
+        {
+            HVatReviewData.SelfProtectionScore = 1;
+        }
+        else
+        {
+            HVatReviewData.SelfProtectionScore = 0;
+        }
+        SumSurvivalHealth();
+        StateHasChanged();
+    }
+    private void OnSelfProtectionBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.SelfProtectionId))
+        {
+            var a = HVatReviewData.SelfProtectionId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            SelfProtectionObj.Value = c.ToArray();
+        }
+    }
+
+    private void OnEnrolledInSchoolChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AAdolescentEnrolledAttendingSchool> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                HVatReviewData.EnrolledScore = args.ItemData.EnrolledScore;
+            }
+            SumEducationalDevelopment();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnAttendedSchoolChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.HasAttendedSchoolScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.HasAttendedSchoolScore = 0;
+                }
+            }
+            SumEducationalDevelopment();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnNotProgressingReasonChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.ProgressingReasonId = string.Join(",", args.Value);
+        if (args.Value.Any(o => o == 8))
+        {
+            HVatReviewData.ProgressingReasonScore = 0;
+        }
+        else if (args.Value.Length >= 4 && args.Value.Any(o => o == 8) == false)
+        {
+            HVatReviewData.ProgressingReasonScore = 4;
+        }
+        else if (args.Value.Length == 3 && args.Value.Any(o => o == 8) == false)
+        {
+            HVatReviewData.ProgressingReasonScore = 3;
+        }
+        else if (args.Value.Length == 2 && args.Value.Any(o => o == 8) == false)
+        {
+            HVatReviewData.ProgressingReasonScore = 2;
+        }
+        else if (args.Value.Length == 1 && args.Value.Any(o => o == 8) == false)
+        {
+            HVatReviewData.ProgressingReasonScore = 1;
+        }
+        SumEducationalDevelopment();
+    }
+    private void OnNotProgressingReasonBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.ProgressingReasonId))
+        {
+            var a = HVatReviewData.ProgressingReasonId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            NotProgressingReasonObj.Value = c.ToArray();
+        }
+    }
+    private void OnAdultPrimaryCareGiverChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.SameAdultPrimaryCareGiverScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.SameAdultPrimaryCareGiverScore = 0;
+                }
+            }
+            SumCareProtection();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnFeelingWithdrawnChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AYesNo> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                if (args.Value == 2)
+                {
+                    HVatReviewData.FeelingWithdrawnScore = 1;
+                }
+                else
+                {
+                    HVatReviewData.FeelingWithdrawnScore = 0;
+                }
+            }
+            SumCareProtection();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnChildAbuseChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AHhchildAbuse> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                HVatReviewData.ChildAbuseScore = args.ItemData.ChildAbuseScores;
+            }
+            SumCareProtection();
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    private void OnAdolescentIssueOfAbuseChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.IssueOfAbuseId = string.Join(",", args.Value);
+        if (args.Value.Length == 1 && args.Value.Any(o => o == 13))
+        {
+            HVatReviewData.IssueOfAbuseScore = 0;
+        }
+        if (args.Value.Length == 1 && args.Value.Any(o => o == 12))
+        {
+            HVatReviewData.IssueOfAbuseScore = 1;
+        }
+        else if (args.Value.Any(o => o == 1 || o == 2 || o == 3))
+        {
+            HVatReviewData.IssueOfAbuseScore = 4;
+        }
+        else if (args.Value.Any(o => o == 4 || o == 5 || o == 6 || o == 7 || o == 8 || o == 9))
+        {
+            HVatReviewData.IssueOfAbuseScore = 3;
+        }
+        else if (args.Value.Any(o => o == 10 || o == 11))
+        {
+            HVatReviewData.IssueOfAbuseScore = 2;
+        }
+        SumEducationalDevelopment();
+    }
+    private void OnAdolescentIssueOfAbuseBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.IssueOfAbuseId))
+        {
+            var a = HVatReviewData.IssueOfAbuseId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            AdolescentIssueOfAbuseObj.Value = c.ToArray();
+        }
+    }
+    private void OnGenderBasedViolenceChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        HVatReviewData.ViolenceId = string.Join(",", args.Value);
+        if (args.Value.Any(o => o == 6))
+        {
+            HVatReviewData.ViolenceScore = 0;
+        }
+        else if (args.Value.Length == 3 && args.Value.Any(o => o == 1) && args.Value.Any(o => o == 2) && args.Value.Any(o => o == 3))
+        {
+            HVatReviewData.ViolenceScore = 4;
+        }
+        else if (args.Value.Length >= 2 && args.Value.Any(o => o == 1 || o == 2 || o == 3) && args.Value.Any(o => o == 4 || o == 5))
+        {
+            HVatReviewData.ViolenceScore = 3;
+        }
+        else if (args.Value.Length <= 2 && args.Value.Any(o => o == 4 || o == 5))
+        {
+            HVatReviewData.ViolenceScore = 2;
+        }
+        SumCareProtection();
+    }
+    private void OnGenderBasedViolenceBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(HVatReviewData.ViolenceId))
+        {
+            var a = HVatReviewData.ViolenceId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            GenderBasedViolenceObj.Value = c.ToArray();
+        }
+    }
+
+    private void SumEconomicStability()
+    {
+        HVatReviewData.EconomicStabilityTotal = HVatReviewData.EconomicActivityScore + HVatReviewData.HarmfulScore + HVatReviewData.IsSavingsGroupMemberScore + HVatReviewData.MemberBenefitsScore;
+    }
+    private void SumSurvivalHealth()
+    {
+        HVatReviewData.SurvivalandHealthTotal = HVatReviewData.MealScore + HVatReviewData.LackofFoodScore + HVatReviewData.ReferredScore + HVatReviewData.AdolescentWithKnownHIVStatusScore + HVatReviewData.AntiretroviralTherapyScore + HVatReviewData.HadViralLoadBloodTestScore + HVatReviewData.IsViralloadSuppressedScore + HVatReviewData.InfectionWayScore + HVatReviewData.SelfProtectionScore;
+    }
+    private void SumEducationalDevelopment()
+    {
+        HVatReviewData.EducationandDevelopmentTotal = HVatReviewData.EnrolledScore + HVatReviewData.HasAttendedSchoolScore + HVatReviewData.ProgressingReasonScore;
+    }
+    private void SumCareProtection()
+    {
+        HVatReviewData.CareandProtectionTotal = HVatReviewData.SameAdultPrimaryCareGiverScore + HVatReviewData.ChildAbuseScore + HVatReviewData.FeelingWithdrawnScore + HVatReviewData.ViolenceScore + HVatReviewData.IssueOfAbuseScore;
+    }
+
+    private int EconomicStabilityPARanking()
+    {
+        int result = 1;
+        double EconomicStabilitypercentage = 0;
+        if (HVatReviewData.EconomicStabilityTotal != null && HVatReviewData.EconomicStabilityTotal > 0)
+        {
+            EconomicStabilitypercentage = ((HVatReviewData.EconomicStabilityTotal.Value / 13) * 100);
+        }
+        double SurvivalandHealthpercentage = 0;
+        if (HVatReviewData.SurvivalandHealthTotal != null && HVatReviewData.SurvivalandHealthTotal > 0)
+        {
+            SurvivalandHealthpercentage = ((HVatReviewData.SurvivalandHealthTotal.Value / 15) * 100);
+        }
+        double EducationandDevelopmentpercentage = 0;
+        if (HVatReviewData.EducationandDevelopmentTotal != null && HVatReviewData.EducationandDevelopmentTotal > 0)
+        {
+            EducationandDevelopmentpercentage = ((HVatReviewData.EducationandDevelopmentTotal.Value / 9) * 100);
+        }
+        double CareandProtectionpercentage = 0;
+        if (HVatReviewData.CareandProtectionTotal != null && HVatReviewData.CareandProtectionTotal > 0)
+        {
+            CareandProtectionpercentage = ((HVatReviewData.CareandProtectionTotal.Value / 14) * 100);
+        }
+
+        if (SurvivalandHealthpercentage > EconomicStabilitypercentage)
+        {
+            result++;
+        }
+        if (EducationandDevelopmentpercentage > EconomicStabilitypercentage)
+        {
+            result++;
+        }
+        if (CareandProtectionpercentage > EconomicStabilitypercentage)
+        {
+            result++;
+        }
+        return result;
+    }
+    private int SurvivalHealthPARanking()
+    {
+        int result = 1;
+        double EconomicStabilitypercentage = 0;
+        if (HVatReviewData.EconomicStabilityTotal != null && HVatReviewData.EconomicStabilityTotal > 0)
+        {
+            EconomicStabilitypercentage = ((HVatReviewData.EconomicStabilityTotal.Value / 13) * 100);
+        }
+        double SurvivalandHealthpercentage = 0;
+        if (HVatReviewData.SurvivalandHealthTotal != null && HVatReviewData.SurvivalandHealthTotal > 0)
+        {
+            SurvivalandHealthpercentage = ((HVatReviewData.SurvivalandHealthTotal.Value / 15) * 100);
+        }
+        double EducationandDevelopmentpercentage = 0;
+        if (HVatReviewData.EducationandDevelopmentTotal != null && HVatReviewData.EducationandDevelopmentTotal > 0)
+        {
+            EducationandDevelopmentpercentage = ((HVatReviewData.EducationandDevelopmentTotal.Value / 9) * 100);
+        }
+        double CareandProtectionpercentage = 0;
+        if (HVatReviewData.CareandProtectionTotal != null && HVatReviewData.CareandProtectionTotal > 0)
+        {
+            CareandProtectionpercentage = ((HVatReviewData.CareandProtectionTotal.Value / 14) * 100);
+        }
+
+        if (EconomicStabilitypercentage > SurvivalandHealthpercentage)
+        {
+            result++;
+        }
+        if (EducationandDevelopmentpercentage > SurvivalandHealthpercentage)
+        {
+            result++;
+        }
+        if (CareandProtectionpercentage > SurvivalandHealthpercentage)
+        {
+            result++;
+        }
+        return result;
+    }
+    private int EducationandDevelopmentPARanking()
+    {
+        int result = 1;
+        double EconomicStabilitypercentage = 0;
+        if (HVatReviewData.EconomicStabilityTotal != null && HVatReviewData.EconomicStabilityTotal > 0)
+        {
+            EconomicStabilitypercentage = ((HVatReviewData.EconomicStabilityTotal.Value / 13) * 100);
+        }
+        double SurvivalandHealthpercentage = 0;
+        if (HVatReviewData.SurvivalandHealthTotal != null && HVatReviewData.SurvivalandHealthTotal > 0)
+        {
+            SurvivalandHealthpercentage = ((HVatReviewData.SurvivalandHealthTotal.Value / 15) * 100);
+        }
+        double EducationandDevelopmentpercentage = 0;
+        if (HVatReviewData.EducationandDevelopmentTotal != null && HVatReviewData.EducationandDevelopmentTotal > 0)
+        {
+            EducationandDevelopmentpercentage = ((HVatReviewData.EducationandDevelopmentTotal.Value / 9) * 100);
+        }
+        double CareandProtectionpercentage = 0;
+        if (HVatReviewData.CareandProtectionTotal != null && HVatReviewData.CareandProtectionTotal > 0)
+        {
+            CareandProtectionpercentage = ((HVatReviewData.CareandProtectionTotal.Value / 14) * 100);
+        }
+
+        if (EconomicStabilitypercentage > EducationandDevelopmentpercentage)
+        {
+            result++;
+        }
+        if (SurvivalandHealthpercentage > EducationandDevelopmentpercentage)
+        {
+            result++;
+        }
+        if (CareandProtectionpercentage > EducationandDevelopmentpercentage)
+        {
+            result++;
+        }
+        return result;
+    }
+    private int CareandProtectionPARanking()
+    {
+        int result = 1;
+        double EconomicStabilitypercentage = 0;
+        if (HVatReviewData.EconomicStabilityTotal != null && HVatReviewData.EconomicStabilityTotal > 0)
+        {
+            EconomicStabilitypercentage = ((HVatReviewData.EconomicStabilityTotal.Value / 13) * 100);
+        }
+        double SurvivalandHealthpercentage = 0;
+        if (HVatReviewData.SurvivalandHealthTotal != null && HVatReviewData.SurvivalandHealthTotal > 0)
+        {
+            SurvivalandHealthpercentage = ((HVatReviewData.SurvivalandHealthTotal.Value / 15) * 100);
+        }
+        double EducationandDevelopmentpercentage = 0;
+        if (HVatReviewData.EducationandDevelopmentTotal != null && HVatReviewData.EducationandDevelopmentTotal > 0)
+        {
+            EducationandDevelopmentpercentage = ((HVatReviewData.EducationandDevelopmentTotal.Value / 9) * 100);
+        }
+        double CareandProtectionpercentage = 0;
+        if (HVatReviewData.CareandProtectionTotal != null && HVatReviewData.CareandProtectionTotal > 0)
+        {
+            CareandProtectionpercentage = ((HVatReviewData.CareandProtectionTotal.Value / 14) * 100);
+        }
+
+        if (EconomicStabilitypercentage > CareandProtectionpercentage)
+        {
+            result++;
+        }
+        if (SurvivalandHealthpercentage > CareandProtectionpercentage)
+        {
+            result++;
+        }
+        if (EducationandDevelopmentpercentage > CareandProtectionpercentage)
+        {
+            result++;
+        }
+        return result;
+    }
+
+    #region Beneficiary Register
+    public class AVATBeneficiaryRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public AVATBeneficiaryRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryRegisterGrid.PreventRender(false);
+            using (var db = new MUCOBADIContext())
+            {
+                HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == args.Data.HouseHoldId).AsNoTracking().ToList();
+            }
+        }
+    }
+    #endregion Beneficiary Register
+    #region Enrolment Register Header
+    public class AvatAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public AvatAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spAVATGetAllResult>();
+            try
+            {
+                string HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spAVATGetAllAsync(HouseHoldId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spAVATGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as spAVATGetAllResult);
+                    var exists = dbContext.Hvat.FirstOrDefault(o => o.Hvatid == val.Avat_Id);
+                    if (exists == null)
+                    {
+                        Avat m = new Avat();
+
+                        int id = 1;
+                        var last = dbContext.Avat.OrderBy(o => o.AvatId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.AvatId + 1);
+                        }
+                        m.AvatId = id;
+                        m.HouseHoldId = val.HouseHoldId;
+                        m.InterviewDate = val.InterviewDate;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        m.Cdoname = val.CDOName;
+                        m.Cdocontact = val.CDOContact;
+                        m.AdministrationPhaseId = val.AdministrationPhaseId;
+                        m.MaritalStatusId = val.MaritalStatusId;
+                        m.EconomicActivityId = val.EconomicActivityId;
+                        m.EconomicActivityScore = val.EconomicActivityScore;
+                        m.HarmfulId = val.HarmfulId;
+                        m.HarmfulScore = val.HarmfulScore;
+                        m.IsSavingsGroupMember = val.IsSavingsGroupMember;
+                        m.IsSavingsGroupMemberScore = val.IsSavingsGroupMemberScore;
+                        m.MemberBenefitsId = val.MemberBenefitsId;
+                        m.MemberBenefitsScore = val.MemberBenefitsScore;
+                        m.EconomicStabilityTotal = val.EconomicStabilityTotal;
+                        m.MealId = val.MealId;
+                        m.MealScore = val.MealScore;
+                        m.LackofFood = val.LackofFood;
+                        m.LackofFoodScore = val.LackofFoodScore;
+                        m.ReferredId = val.ReferredId;
+                        m.ReferredScore = val.ReferredScore;
+                        m.AdolescentWithKnownHivstatus = val.AdolescentWithKnownHIVStatus;
+                        m.AdolescentWithKnownHivstatusScore = val.AdolescentWithKnownHIVStatusScore;
+                        m.AntiretroviralTherapy = val.AntiretroviralTherapy;
+                        m.AntiretroviralTherapyScore = val.AntiretroviralTherapyScore;
+                        m.HadViralLoadBloodTest = val.HadViralLoadBloodTest;
+                        m.HadViralLoadBloodTestScore = val.HadViralLoadBloodTestScore;
+                        m.IsViralloadSuppressed = val.IsViralloadSuppressed;
+                        m.IsViralloadSuppressedScore = val.IsViralloadSuppressedScore;
+                        m.InfectionWayId = val.InfectionWayId;
+                        m.InfectionWayScore = val.InfectionWayScore;
+                        m.SelfProtectionId = val.SelfProtectionId;
+                        m.SelfProtectionScore = val.SelfProtectionScore;
+                        m.SurvivalandHealthTotal = val.SurvivalandHealthTotal;
+                        m.EnrolledId = val.EnrolledId;
+                        m.EnrolledScore = val.EnrolledScore;
+                        m.HasAttendedSchool = val.HasAttendedSchool;
+                        m.HasAttendedSchoolScore = val.HasAttendedSchoolScore;
+                        m.AdolescentProgressing = val.AdolescentProgressing;
+                        m.ProgressingReasonId = val.ProgressingReasonId;
+                        m.ProgressingReasonScore = val.ProgressingReasonScore;
+                        m.EducationandDevelopmentTotal = val.EducationandDevelopmentTotal;
+                        m.SameAdultPrimaryCareGiver = val.SameAdultPrimaryCareGiver;
+                        m.SameAdultPrimaryCareGiverScore = val.SameAdultPrimaryCareGiverScore;
+                        m.FeelingWithdrawn = val.FeelingWithdrawn;
+                        m.FeelingWithdrawnScore = val.FeelingWithdrawnScore;
+                        m.ChildAbuseId = val.ChildAbuseId;
+                        m.ChildAbuseScore = val.ChildAbuseScore;
+                        m.IssueOfAbuseId = val.IssueOfAbuseId;
+                        m.IssueOfAbuseScore = val.IssueOfAbuseScore;
+                        m.ViolenceId = val.ViolenceId;
+                        m.ViolenceScore = val.ViolenceScore;
+                        m.CareandProtectionTotal = val.CareandProtectionTotal;
+                        m.HhtotalScore = val.HHTotalScore;
+                        m.AveragePercentage = val.AveragePercentage;
+                        m.AssessmentStatusId = val.AssessmentStatusId;
+                        m.AssessmentDate = val.AssessmentDate;
+                        m.AssessorObservation = val.AssessorObservation;
+                        m.AssessorName = val.AssessorName;
+                        m.AssessorTitle = val.AssessorTitle;
+                        m.AssessorContact = val.AssessorContact;
+
+
+                        dbContext.Avat.Add(m);
+                        dbContext.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    //var exists = dbContext.spAVATGetAllResult.FirstOrDefault(o => o.spAVATGetAllResultId == data);
+                    //if (exists != null)
+                    //{
+                    //    dbContext.spAVATGetAllResult.Remove(exists);
+                    //}
+                    //await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as spAVATGetAllResult);
+                    var exist = db.Avat.FirstOrDefault(o => o.AvatId == val.Avat_Id);
+                    if (exist != null)
+                    {
+                        exist.HouseHoldId = val.HouseHoldId;
+                        exist.InterviewDate = val.InterviewDate;
+                        exist.HouseHoldMemberId = val.HouseHoldMemberId;
+                        exist.Cdoname = val.CDOName;
+                        exist.Cdocontact = val.CDOContact;
+                        exist.AdministrationPhaseId = val.AdministrationPhaseId;
+                        exist.MaritalStatusId = val.MaritalStatusId;
+                        exist.EconomicActivityId = val.EconomicActivityId;
+                        exist.EconomicActivityScore = val.EconomicActivityScore;
+                        exist.HarmfulId = val.HarmfulId;
+                        exist.HarmfulScore = val.HarmfulScore;
+                        exist.IsSavingsGroupMember = val.IsSavingsGroupMember;
+                        exist.IsSavingsGroupMemberScore = val.IsSavingsGroupMemberScore;
+                        exist.MemberBenefitsId = val.MemberBenefitsId;
+                        exist.MemberBenefitsScore = val.MemberBenefitsScore;
+                        exist.EconomicStabilityTotal = val.EconomicStabilityTotal;
+                        exist.MealId = val.MealId;
+                        exist.MealScore = val.MealScore;
+                        exist.LackofFood = val.LackofFood;
+                        exist.LackofFoodScore = val.LackofFoodScore;
+                        exist.ReferredId = val.ReferredId;
+                        exist.ReferredScore = val.ReferredScore;
+                        exist.AdolescentWithKnownHivstatus = val.AdolescentWithKnownHIVStatus;
+                        exist.AdolescentWithKnownHivstatusScore = val.AdolescentWithKnownHIVStatusScore;
+                        exist.AntiretroviralTherapy = val.AntiretroviralTherapy;
+                        exist.AntiretroviralTherapyScore = val.AntiretroviralTherapyScore;
+                        exist.HadViralLoadBloodTest = val.HadViralLoadBloodTest;
+                        exist.HadViralLoadBloodTestScore = val.HadViralLoadBloodTestScore;
+                        exist.IsViralloadSuppressed = val.IsViralloadSuppressed;
+                        exist.IsViralloadSuppressedScore = val.IsViralloadSuppressedScore;
+                        exist.InfectionWayId = val.InfectionWayId;
+                        exist.InfectionWayScore = val.InfectionWayScore;
+                        exist.SelfProtectionId = val.SelfProtectionId;
+                        exist.SelfProtectionScore = val.SelfProtectionScore;
+                        exist.SurvivalandHealthTotal = val.SurvivalandHealthTotal;
+                        exist.EnrolledId = val.EnrolledId;
+                        exist.EnrolledScore = val.EnrolledScore;
+                        exist.HasAttendedSchool = val.HasAttendedSchool;
+                        exist.HasAttendedSchoolScore = val.HasAttendedSchoolScore;
+                        exist.AdolescentProgressing = val.AdolescentProgressing;
+                        exist.ProgressingReasonId = val.ProgressingReasonId;
+                        exist.ProgressingReasonScore = val.ProgressingReasonScore;
+                        exist.EducationandDevelopmentTotal = val.EducationandDevelopmentTotal;
+                        exist.SameAdultPrimaryCareGiver = val.SameAdultPrimaryCareGiver;
+                        exist.SameAdultPrimaryCareGiverScore = val.SameAdultPrimaryCareGiverScore;
+                        exist.FeelingWithdrawn = val.FeelingWithdrawn;
+                        exist.FeelingWithdrawnScore = val.FeelingWithdrawnScore;
+                        exist.ChildAbuseId = val.ChildAbuseId;
+                        exist.ChildAbuseScore = val.ChildAbuseScore;
+                        exist.IssueOfAbuseId = val.IssueOfAbuseId;
+                        exist.IssueOfAbuseScore = val.IssueOfAbuseScore;
+                        exist.ViolenceId = val.ViolenceId;
+                        exist.ViolenceScore = val.ViolenceScore;
+                        exist.CareandProtectionTotal = val.CareandProtectionTotal;
+                        exist.HhtotalScore = val.HHTotalScore;
+                        exist.AveragePercentage = val.AveragePercentage;
+                        exist.AssessmentStatusId = val.AssessmentStatusId;
+                        exist.AssessmentDate = val.AssessmentDate;
+                        exist.AssessorObservation = val.AssessorObservation;
+                        exist.AssessorName = val.AssessorName;
+                        exist.AssessorTitle = val.AssessorTitle;
+                        exist.AssessorContact = val.AssessorContact;
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+        //public void saveLog(int HouseHoldId, string Editedcolumn, string previousvalue, string newvalue, string actiontaken)
+        //{
+        //    try
+        //    {
+        //        using (var db = new MUCOBADIContext())
+        //        {
+        //            double id = 1;
+        //            var exist = db.spAVATGetAllResultLog.OrderBy(o => o.HouseHoldLogId).LastOrDefault();
+        //            if (exist != null)
+        //            {
+        //                id = (exist.HouseHoldLogId + 1);
+        //            }
+        //            spAVATGetAllResultLog m = new spAVATGetAllResultLog()
+        //            {
+        //                HouseHoldLogId = id,
+        //                ColumnEdited = Editedcolumn,
+        //                HouseHoldId = HouseHoldId,
+        //                PreviousValue = previousvalue,
+        //                NewValue = newvalue,
+        //                // ActionMadeBy = _userManagement.GetStaffName(),
+        //                ActionDate = DateTime.Now,
+        //                ActionTaken = actiontaken
+        //            };
+        //            db.spAVATGetAllResultLog.Add(m);
+        //            db.SaveChanges();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        toastService.ShowError(ex.Message.ToString());
+        //    }
+        //}
+    }
+    public async Task OnHvatActionBegin(ActionEventArgs<spAVATGetAllResult> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                //using (var db = new MUCOBADIContext())
+                //{
+                //    HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                //}
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+
+                //using(var db = new MUCOBADIContext())
+                //{
+                //    HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == BeneficiaryRegisterData.HouseHoldId).AsNoTracking().ToList();
+                //}
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.HHTotalScore == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please answer all questions", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HouseHoldMemberId == 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the House hold member who was assessed", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.CDOName))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the name of the Sub-County Community Development Officer(CDO)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.CDOContact))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Contact of the Sub-County Community Development Officer(CDO)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.AdministrationPhaseId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Phase of Administration", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.AssessmentDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Assessment Date", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.MaritalStatusId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Marital status of the household head", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.AssessorName))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Assessor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.AssessorContact))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Contact of the Assessor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.AssessorTitle))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Title of the Assessor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+                    using(var db = new MUCOBADIContext())
+                    {
+                        var exists = db.Avat.FirstOrDefault(o => o.HouseHoldMemberId == args.Data.HouseHoldMemberId && o.AssessmentDate == args.Data.AssessmentDate);
+                        if(exists != null && exists.AvatId != args.Data.Avat_Id)
+                        {
+                            await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "This house hold member already has an assessment record on this day in the system.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                            args.Cancel = true;
+                        }
+                    }
+                }
+
+
+
+
+                //if (string.IsNullOrEmpty(args.Data.Surname))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Surname", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (string.IsNullOrEmpty(args.Data.GivenName))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Given name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.GenderId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.KnownRiskFactorId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Known Risk Factor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (HouseHoldMembersData.Count == 0)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Household members", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else
+                //{
+
+                //}
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    public void OnHvatActionComplete(ActionEventArgs<spAVATGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            HVatGrid.PreventRender(false);
+        }
+    }
+    #endregion Enrolment Register Header
+}

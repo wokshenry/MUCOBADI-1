@@ -1,0 +1,563 @@
+﻿@*<h3>HouseholdDetailPage</h3>*@
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using Microsoft.EntityFrameworkCore;
+@inject MUCOBADIContext db;
+@inject SPToCoreContext spdb;
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfGrid @ref="HouseHoldMembersGrid" TValue="HouseHoldMembers" DataSource="@DataSource"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionBegin="OnHouseHoldMemberActionBegin" OnActionComplete="@OnHouseHoldMemberActionComplete" TValue="HouseHoldMembers"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="MemberContext">
+                    @{
+                        HouseHoldMemberData = (MemberContext as HouseHoldMembers);
+                        <div style="padding:15px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox ID="HouseHoldMemberId" @bind-Value="@(HouseHoldMemberData.HouseHoldMemberId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Unique Identifier</p>
+                                    <SfMaskedTextBox @bind-Value="@(HouseHoldMemberData.HouseHoldMemberCode)" Readonly="false" Mask=">LL-00-0000-00"></SfMaskedTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>SURNAME</p>
+                                    <SfTextBox Multiline="false" ID="Sur_name" @bind-Value="@(HouseHoldMemberData.Surname)" Enabled="true" Placeholder="Enter Surname" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>GIVEN NAME</p>
+                                    <SfTextBox Multiline="false" ID="Givenname" @bind-Value="@(HouseHoldMemberData.Givenname)" Enabled="true" Placeholder="Enter Given Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date of Birth </p>
+                                    <SfDatePicker @bind-Value="@(HouseHoldMemberData.DoB)" Format="dd/MM/yyyy" Placeholder="Date of Birth" FloatLabelType="FloatLabelType.Never">
+                                        <DatePickerEvents TValue="DateTime?" ValueChange="OnMemberDateChange"></DatePickerEvents>
+                                    </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Age</p>
+                                    <SfNumericTextBox @bind-Value="@HouseHoldMemberData.Age" Enabled="true" Placeholder="Enter the age" OnChange="OnMemberAgeChange" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Gender</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.GenderId)" Enabled="true" TItem="AGender" TValue="string" DataSource="@GenderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AGender.GenderId)" Text="@nameof(AGender.GenderDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Program Participation Status</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.ProgramParticipationId)" Enabled="true" TItem="AProgramParticipationStatus" TValue="int?" DataSource="@ProgramParticipationData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AProgramParticipationStatus.ProgramParticipationId)" Text="@nameof(AProgramParticipationStatus.ProgramParticipationDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Beneficiary Known Risk Factor</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.KnownRiskFactorId)" Enabled="true" TItem="AKnownRiskFactors" TValue="int?" DataSource="@KnownRiskFactorsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AKnownRiskFactors.KnownRiskFactorId)" Text="@nameof(AKnownRiskFactors.KnownRiskFactorDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Beneficiary is caregiver?</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsCareGiver)" Enabled="true" TItem="ACareGiver" TValue="int?" DataSource="@CareGiverData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ACareGiver.CareGiverId)" Text="@nameof(ACareGiver.CareGiverDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>OVC is Enrolled in School?</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsEnrolledInSchool)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (HouseHoldMemberData.IsEnrolledInSchool == 1)
+                                {
+                                    <div class="form-group col-md-4">
+                                        <p>Is OVC Attending School regularly?</p>
+                                        <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsAttendingSchoolRegularly)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                            <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <p>Education Level</p>
+                                        <SfDropDownList @bind-Value="@(HouseHoldMemberData.EducationLevelId)" Enabled="true" TItem="AEducationLevel" TValue="int?" DataSource="@EducationLevelData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                            <DropDownListFieldSettings Value="@nameof(AEducationLevel.EducationLevelId)" Text="@nameof(AEducationLevel.EducationLevelDescription)"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <p>Name of School </p>
+                                        <SfTextBox Multiline="false" @bind-Value="@(HouseHoldMemberData.NameofSchool)" Enabled="true" Placeholder="Enter Other name of School" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                    </div>
+                                }
+                                <div class="form-group col-md-4">
+                                    <p>OVC is Orphaned</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsOrphaned)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Is child Below 5 Malnourished</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsChildUnder5Malnourished)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Child has a birth Certificate?</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.DoesChildHaveBirthCertificate)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Is Disabled?</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsDisabled)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (HouseHoldMemberData.IsDisabled == 1)
+                                {
+                                    <div class="form-group col-md-4">
+                                        <p>Mention the disability</p>
+                                        <SfTextBox Multiline="false" @bind-Value="@(HouseHoldMemberData.DisabilityDescription)" Enabled="true" Placeholder="Enter the disability" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                    </div>
+                                }
+
+                                <div class="form-group col-md-4">
+                                    <p>Is Child Immunized?</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.Ischildimmunised)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>HIV Status</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.HivstatusId)" Enabled="true" TItem="AHivstatus" TValue="int?" DataSource="@HivstatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AHivstatus.HivstatusId)" Text="@nameof(AHivstatus.HivstatusDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (HouseHoldMemberData.HivstatusId == 1)
+                                {
+                                    <div class="form-group col-md-4">
+                                        <p>If HIV+, Currently on ART</p>
+                                        <SfDropDownList @bind-Value="@(HouseHoldMemberData.CurrentlyonArt)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                            <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                    @if (HouseHoldMemberData.CurrentlyonArt == 1)
+                                    {
+                                        <div class="form-group col-md-4">
+                                            <p>ART Number </p>
+                                            <SfTextBox Multiline="false" @bind-Value="@(HouseHoldMemberData.Artnumber)" Enabled="true" Placeholder="Enter ART Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                        </div>
+                                        <div class="form-group col-md-4">
+                                            <p>Cohort </p>
+                                            <SfDatePicker @bind-Value="@(HouseHoldMemberData.Cohort)" Format="dd/MM/yyyy" Placeholder="select the Cohort" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                                        </div>
+                                    }
+                                }
+
+                                <div class="form-group col-md-4">
+                                    <p>Has an IGA</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.HasanIga)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Is Beneficiary in Saving group</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.IsinSavingsGroup)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Is Beneficiary (aged 18-20 yrs) in-school completing apprenticeship</p>
+                                    <SfDropDownList @bind-Value="@(HouseHoldMemberData.Isinschoolcompletingapprenticeship)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(HouseHoldMembers.HouseHoldMemberId) HeaderText="HouseHold Member Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(HouseHoldMembers.HouseHoldMemberCode) HeaderText="HouseHold Member Code" Visible="true"></GridColumn>
+                <GridColumn Field=@nameof(HouseHoldMembers.Surname) HeaderText="Surname"></GridColumn>
+                <GridColumn Field=@nameof(HouseHoldMembers.Givenname) HeaderText="Given name"></GridColumn>
+                <GridColumn Field=@nameof(HouseHoldMembers.DoB) HeaderText="Date of birth" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit"></GridColumn>
+                <GridColumn Field=@nameof(HouseHoldMembers.Age) HeaderText="Age"></GridColumn>
+                <GridForeignColumn Field=@nameof(HouseHoldMembers.GenderId) HeaderText="Gender" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" ForeignDataSource="@GenderData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(HouseHoldMembers.ProgramParticipationId) HeaderText="Program Participation" ForeignKeyField="@nameof(AProgramParticipationStatus.ProgramParticipationId)" ForeignKeyValue="@nameof(AProgramParticipationStatus.ProgramParticipationDescription)" ForeignDataSource="@ProgramParticipationData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(HouseHoldMembers.KnownRiskFactorId) HeaderText="Known Risk Factor" ForeignKeyField="@nameof(AKnownRiskFactors.KnownRiskFactorId)" ForeignKeyValue="@nameof(AKnownRiskFactors.KnownRiskFactorDescription)" ForeignDataSource="@KnownRiskFactorsData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(HouseHoldMembers.IsCareGiver) HeaderText="Is Care Giver" ForeignKeyField="@nameof(ACareGiver.CareGiverId)" ForeignKeyValue="@nameof(ACareGiver.CareGiverDesc)" ForeignDataSource="@CareGiverData" Width="150"></GridForeignColumn>
+                @if (isEnabled)
+                {
+                    <GridColumn HeaderText="" Width="120">
+                        <Template Context="HouseholdMemberContext">
+                            @{
+                                var data = (HouseholdMemberContext as HouseHoldMembers);
+                                if (data != null)
+                                {
+                                    <button class="btn btn-danger" @onclick="@(async()=>{await DeleteHouseholdMember(data);})"><span class="fa fa-trash-o"></span> Delete</button>
+                                }
+                            }
+                        </Template>
+                    </GridColumn>
+                }
+
+                <GridColumn HeaderText="Manage Records" Width="140">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+    <div class="form-group col-md-12">
+        <SfDialog Width="80%" Height="auto" AllowDragging=true EnableResize=true CloseOnEscape=false IsModal=true ShowCloseIcon=false
+                  Target=".mainbody" @ref=@HouseholdMemberDeleteDialog Visible=false>
+            <DialogTemplates>
+                <Header>
+                    <h2>Delete confirmation</h2>
+                </Header>
+                <Content>
+                    <div class="dialogContent">
+                        @if (RecordToDeleteMember != null)
+                        {
+                            <p style="font-size:16px;">Are you sure you would like to delete this household Member <b>(@RecordToDeleteMember.HouseHoldMemberCode)</b>?</p>
+                        }
+
+                    </div>
+                </Content>
+                <FooterTemplate>
+                    <button id="sendButton" @onclick="@YesDeleteMemberBtnclicked" class="e-control e-btn e-primary" data-ripple="true">Yes Continue</button>
+                    <button id="sendButton" @onclick="@NoCancelMemberBtnclicked" class="e-control e-btn e-danger" data-ripple="true">No Cancel</button>
+                </FooterTemplate>
+            </DialogTemplates>
+        </SfDialog>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public List<HouseHoldMembers> HouseholdData { get; set; }
+    [Parameter]
+    public BeneficiaryIdentificationRegister ReviewHeaderData { get; set; }
+    [Parameter]
+    public bool isEnabled { get; set; }
+    [Parameter]
+    public List<AProgramParticipationStatus> ProgramParticipationData { get; set; }
+    [Parameter]
+    public List<AEducationLevel> EducationLevelData { get; set; }
+    [Parameter]
+    public List<AOvcVlrAndOvcVls> OvcVlrAndOvcVlsData { get; set; }
+    [Parameter]
+    public List<ARegimen> RegimenData { get; set; }
+    [Parameter]
+    public List<ARegimenCategory> RegimenCategoryData { get; set; }
+    [Parameter]
+    public List<AYesNo> YesNoData { get; set; }
+    [Parameter]
+    public List<ACareGiver> CareGiverData { get; set; }
+    [Parameter]
+    public List<AFacility> FacilityData { get; set; }
+    [Parameter]
+    public List<AHivstatus> HivstatusData { get; set; }
+    [Parameter]
+    public List<AKnownRiskFactors> KnownRiskFactorsData { get; set; }
+    [Parameter]
+    public List<AGender> GenderData { get; set; }
+    [Parameter]
+    public SfToast ToastObj { get; set; }
+
+    SfGrid<HouseHoldMembers> HouseHoldMembersGrid;
+    HouseHoldMembers RecordToDeleteMember { get; set; }
+    SfDialog HouseholdMemberDeleteDialog { get; set; }
+    HouseHoldMembers HouseHoldMemberData { get; set; }
+    List<HouseHoldMembers> DataSource { get; set; }
+    Syncfusion.Blazor.Grids.Action PreviousMemberAction { get; set; }
+    int previousHouseholdId { get; set; }
+    Random rand = new Random();
+
+    private void OnMemberDateChange(ChangedEventArgs<DateTime?> args)
+    {
+        if (HouseHoldMemberData.DoB.HasValue)
+        {
+            HouseHoldMemberData.Age = (DateTime.Now.Year - HouseHoldMemberData.DoB.Value.Year);
+        }
+    }
+    private void OnMemberAgeChange()
+    {
+        if (HouseHoldMemberData.Age.HasValue)
+        {
+            HouseHoldMemberData.DoB = new DateTime((DateTime.Now.Year - HouseHoldMemberData.Age.Value), 1, 1);
+        }
+    }
+    public void OnHouseHoldMemberActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<HouseHoldMembers> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            HouseHoldMembersGrid.PreventRender(false);
+        }
+    }
+    public async Task OnHouseHoldMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<HouseHoldMembers> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            PreviousMemberAction = args.RequestType;
+            if (args.RowData.EnrollmentDate == null)
+            {
+                args.RowData.EnrollmentDate = ReviewHeaderData.DateofIdentification;
+            }
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            PreviousMemberAction = args.RequestType;
+            string householdCode = ReviewHeaderData.HouseHoldCode.Substring(0, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(2, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(4, 4);
+            string oldhouseholdCode = householdCode;
+
+            args.RowData.HouseHoldId = ReviewHeaderData.HouseHoldId;
+
+            //var records = await spdb.spLastMemberNumberGetAllAsync(ReviewHeaderData.HouseHoldId);
+
+            int _count = 1;
+            //if (records.Count > 0)
+            //{
+            //    _count = (records[0].LastMemberNumber.Value + 1);
+            //}
+            if (DataSource.Count > 0)
+            {
+                var Last = DataSource.OrderBy(o => o.HouseHoldMemberCode).ToList().LastOrDefault();
+                int lastvalue =1;
+                if (int.TryParse(Last.HouseHoldMemberCode.Substring((Last.HouseHoldMemberCode.Length - 2), 2), out lastvalue))
+                {
+                    _count = (lastvalue + 1);
+                }
+                
+            }
+            else
+            {
+                args.RowData.Surname = ReviewHeaderData.Surname;
+                args.RowData.Givenname = ReviewHeaderData.GivenName;
+                args.RowData.GenderId = ReviewHeaderData.GenderId;
+                args.RowData.HivstatusId = ReviewHeaderData.HivstatusId;
+                args.RowData.DoB = ReviewHeaderData.DoB;
+                args.RowData.Age = ReviewHeaderData.Age;
+                args.RowData.CurrentlyonArt = ReviewHeaderData.CurrentlyonArt;
+                args.RowData.Artnumber = ReviewHeaderData.Artnumber;
+                args.RowData.KnownRiskFactorId = ReviewHeaderData.KnownRiskFactorId;
+                args.RowData.Cohort = ReviewHeaderData.Cohort;
+                args.RowData.ProgramParticipationId = 1;
+            }
+            args.RowData.HouseHoldMemberCode = householdCode + "-" + _count.ToString("D2");
+
+            args.RowData.EnrollmentDate = DateTime.Now;
+            args.RowData.HouseHoldMemberId = rand.Next(-1000000, -1);
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+            PreviousMemberAction = args.RequestType;
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (string.IsNullOrEmpty(args.Data.Surname))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Surname", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.Givenname))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Given name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.GenderId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.ProgramParticipationId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.KnownRiskFactorId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Known Risk Factor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsCareGiver == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is Care Giver", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsEnrolledInSchool == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the OVC is Enrolled in School", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsEnrolledInSchool == 1 && args.Data.IsAttendingSchoolRegularly == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is OVC Attending School regularly", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsEnrolledInSchool == 1 && args.Data.EducationLevelId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Education Level", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsEnrolledInSchool == 1 && String.IsNullOrEmpty(args.Data.NameofSchool))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the name of school", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsOrphaned == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is Orphaned", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsChildUnder5Malnourished == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is child Below 5 Malnourished", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.DoesChildHaveBirthCertificate == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Child has a birth Certificate", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsDisabled == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is Disabled", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            //else if (args.Data.IsDisabled == 1 && String.IsNullOrEmpty(args.Data.DisabilityDescription))
+            //{
+            //    ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Mention the disability", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+            else if (args.Data.Ischildimmunised == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Is Child Immunized", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.HivstatusId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the HIV Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.HivstatusId == 1 && args.Data.CurrentlyonArt == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select Currently on ART", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.HasanIga == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Has an IGA", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.IsinSavingsGroup == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if  Beneficiary is in Saving group", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Isinschoolcompletingapprenticeship == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Beneficiary (aged 18-20 yrs) is in-school completing apprenticeship", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                string householdCode = ReviewHeaderData.HouseHoldCode.Substring(0, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(2, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(4, 4);
+                string householdMemberCode = householdCode + "-" + args.Data.HouseHoldMemberCode.Substring((args.Data.HouseHoldMemberCode.Length - 2), 2);
+                args.Data.HouseHoldMemberCode = householdMemberCode;
+
+                if (PreviousMemberAction == Syncfusion.Blazor.Grids.Action.Add)
+                {
+                    var exists = await db.HouseHoldMembers.FirstOrDefaultAsync(o => o.HouseHoldMemberCode == householdMemberCode);
+                    if (exists != null)
+                    {
+                        var records = await spdb.spLastMemberNumberGetAllAsync(ReviewHeaderData.HouseHoldId);
+                        int _count = 1;
+                        if (records.Count > 0)
+                        {
+                            _count = (records[0].LastMemberNumber.Value + 1);
+                        }
+                        var _HouseHoldMemberCode = householdCode + "-" + _count.ToString("D2");
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "There is already a household member with the household code (" + householdMemberCode + "). We recommend moving the household code to (" + _HouseHoldMemberCode + ")", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Data.HouseHoldMemberCode = _HouseHoldMemberCode;
+                        args.Cancel = true;
+                    }
+                }
+
+            }
+        }
+    }
+
+    private async Task DeleteHouseholdMember(HouseHoldMembers Record)
+    {
+        if (Record != null)
+        {
+            RecordToDeleteMember = Record;
+            await HouseholdMemberDeleteDialog.ShowAsync();
+        }
+    }
+    private async Task YesDeleteMemberBtnclicked()
+    {
+        try
+        {
+            db.HouseHoldMembers.Remove(RecordToDeleteMember);
+            db.SaveChanges();
+            DataSource.Remove(RecordToDeleteMember);
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await HouseholdMemberDeleteDialog.HideAsync();
+        }
+    }
+    private async Task NoCancelMemberBtnclicked()
+    {
+        await HouseholdMemberDeleteDialog.HideAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        DataSource = new List<HouseHoldMembers>();
+        if(HouseholdData != null && HouseholdData.Count > 0)
+        {
+            DataSource.AddRange(HouseholdData);
+        }
+        if (ReviewHeaderData != null)
+        {
+            previousHouseholdId = ReviewHeaderData.HouseHoldId;
+        }
+    }
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (ReviewHeaderData != null)
+        {
+            if (previousHouseholdId != ReviewHeaderData.HouseHoldId)
+            {
+                DataSource = new List<HouseHoldMembers>();
+                if (HouseholdData != null && HouseholdData.Count > 0)
+                {
+                    DataSource.AddRange(HouseholdData);
+                }
+                previousHouseholdId = ReviewHeaderData.HouseHoldId;
+            }
+        }
+    }
+
+    public List<HouseHoldMembers> ReturnData()
+    {
+        return DataSource;
+    }
+}

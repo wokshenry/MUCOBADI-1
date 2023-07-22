@@ -1,0 +1,2169 @@
+﻿@page "/ECDUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using System.Globalization;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> ECD UPLOAD </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading row @rownumber of @usedRows Please wait ........ </p>
+        }
+       @* <p>Row Number: @rownumber <br/>Column Number: @columnnnumber<br/> Used Rows: @usedRows</p>*@
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            <p class="badge-success" style="padding:10px;">@MessageResponse</p>
+        }
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageError))
+        {
+            <p class="badge-danger" style="padding:10px;">@MessageError</p>
+        }
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    SfGrid<Apiupload> ApiuploadGrid;
+    string _MessageResponse;
+    string MessageResponse { get { return _MessageResponse; } set { if (value != null && value != _MessageResponse)
+            {
+                _MessageResponse = value;
+                StateHasChanged();
+            } } }
+    string _Messageerror;
+    string MessageError { get { return _Messageerror; } set { if (value != null && value != _Messageerror)
+            {
+                _Messageerror = value;
+                StateHasChanged();
+            } } }
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        MessageResponse = null;
+        await UploadingSpinner.ShowAsync();
+        foreach (var file in args.Files)
+        {
+            using (ExcelEngine excelEngine = new ExcelEngine())
+            {
+                //Instantiate the Excel application object
+                IApplication application = excelEngine.Excel;
+
+                file.Stream.Position = 0;
+                //Set the default application version
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                //Get the first worksheet in the workbook into IWorksheet
+                IWorksheet worksheet = workbook.Worksheets[0];
+                try
+                {
+                    if (worksheet.Range[1, 1].Value.Trim().Contains("Name of IP") && worksheet.Range[1, 2].Value.Trim().Contains("HH UiD")
+                    && worksheet.Range[1, 3].Value.Trim().Contains("District") && worksheet.Range[1, 4].Value.Trim().Contains("Sub county")
+                    && worksheet.Range[1, 5].Value.Trim().Contains("Parish") && worksheet.Range[1, 6].Value.Trim().Contains("Name of training/Curriculum"))
+                    {
+                        EcdAttendenceRegister attendanceRegisterHeader = new EcdAttendenceRegister();
+                        EcdDirectMemberAttendence attendanceDirectmembers = new EcdDirectMemberAttendence();
+                        EcdIndirectMemberAttendence attendanceIndirectmembers = new EcdIndirectMemberAttendence();
+                        EcdDirectMemberDetail detailDirectmembers = new EcdDirectMemberDetail();
+                        EcdIndirectMemberDetail detailIndirectmembers = new EcdIndirectMemberDetail();
+
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var districts = db.ADistrict.ToList();
+                            var subcounties = db.ASubcounty.ToList();
+                            var parishes = db.AParish.ToList();
+                            var groups = db.AGroups.ToList();
+                            var vslaGroupComposition = db.VslaGroupComposition.ToList();
+                            var caregiver = db.ViewIsCareGiver.ToList();
+
+                            for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+                                rownumber = row.ToString();
+                                await Task.Delay(10);
+                                attendanceRegisterHeader = new EcdAttendenceRegister();
+                                int? _district = null;
+                                int? _subcounty = null;
+                                int? _parish = null;
+                                int? _groupTypeId = 3;
+                                string _vslaGroupCode = null;
+                                int? _groupId = null;
+                                int? hhcaregivermemberid = null;
+                                int parentinggroupsession=0;
+                                DateTime? DateofSession = null;
+
+                                if (worksheet.IsRowVisible(row))
+                                {
+                                    //Name of IP/CSO
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 1].Value.Trim())
+                                        && (worksheet.Range[row, 1].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "1";
+                                        attendanceRegisterHeader.ImplementingPartnerId = 1;
+                                    }
+
+                                    //District
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 3].Value.Trim())
+                                        && (worksheet.Range[row, 3].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "3";
+                                        var district = districts
+                                            .FirstOrDefault(x => x.DistrictDescription.ToLower()
+                                                == worksheet.Range[row, 3].Value.Trim().ToLower());
+                                        if (district != null)
+                                        {
+                                            attendanceRegisterHeader.DistrictId = Convert.ToInt32(district.DistrictId);
+                                            _district = Convert.ToInt32(district.DistrictId);
+                                        }
+                                        else
+                                            _district = null;
+                                    }
+
+                                    //Sub county
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 4].Value.Trim())
+                                        && (worksheet.Range[row, 4].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "4";
+
+                                        var subcounty = subcounties.FirstOrDefault(x => x.DistrictId == _district && x.SubcountyDescription.ToLower().Contains(worksheet.Range[row, 4].Value.Trim().ToLower()));
+
+
+                                        if (subcounty != null)
+                                        {
+                                            attendanceRegisterHeader.SubcountyId = Convert.ToInt32(subcounty.SubcountyId);
+                                            _subcounty = Convert.ToInt32(subcounty.SubcountyId);
+                                        }
+                                        else
+                                            _subcounty = null;
+                                    }
+
+                                    //Parish
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 5].Value.Trim())
+                                        && (worksheet.Range[row, 5].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "5";
+
+                                        var parish = parishes.FirstOrDefault(x => x.ParishId == _parish && x.ParishDescription.ToLower().Contains(worksheet.Range[row, 4].Value.Trim().ToLower()));
+
+
+                                        if (parish != null)
+                                        {
+                                            attendanceRegisterHeader.ParishId = Convert.ToInt32(parish.ParishId);
+                                            _parish = Convert.ToInt32(parish.ParishId);
+                                        }
+                                        else
+                                            _parish = null;
+                                    }
+
+                                    //GroupId - What to save if group is null
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 7].Value.Trim()) &&
+                                    (worksheet.Range[row, 7].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "7";
+                                        string apiid = worksheet.Range[row,7].Value.ToLower().Trim();
+                                        var obj = groups
+                                        .FirstOrDefault(x => x.GroupName.ToLower() == apiid);
+                                        if (obj != null)
+                                        {
+                                            attendanceRegisterHeader.GroupId = obj.GroupId;
+                                            _groupId = obj.GroupId;
+                                        }
+                                        else
+                                            _groupId = null;
+                                    }
+
+                                    //GroupCode
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim())
+                                       && (worksheet.Range[row, 9].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "9";
+                                        if(worksheet.Range[row, 9].Value.Contains("DIRECT") || worksheet.Range[row, 8].Value.Contains("INDIRECT"))
+                                        {
+                                            _vslaGroupCode = null;
+                                        }
+                                        else
+                                        {
+                                            _vslaGroupCode = worksheet.Range[row, 9].Value.Trim();
+                                        }
+                                    }
+                                    else
+                                        _vslaGroupCode = null;
+
+                                    //Dates of Training 
+                                    //if (!string.IsNullOrEmpty(worksheet.Range[row, 10].Value.Trim())
+                                    //    && (worksheet.Range[row, 10].Value.Trim() != ""))
+                                    //{
+                                    //    columnnnumber = "10";
+                                    //    DateTime _date = DateTime.Now;
+                                    //    if(DateTime.TryParseExact(worksheet.Range[row, 10].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                    //    {
+                                    //        DateofSession = _date;
+                                    //    }
+                                    //}
+
+                                    //Trainer//Facilitator
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 12].Value.Trim())
+                                        && (worksheet.Range[row, 12].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "12";
+                                        attendanceRegisterHeader.FacilitatorOne = worksheet.Range[row,12].Value.ToString();
+                                    }
+
+                                    //Coordinated By
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 29].Value.Trim())
+                                        && (worksheet.Range[row, 29].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "29";
+                                        attendanceRegisterHeader.SubmittedBy = worksheet.Range[row,29].Value.ToString();
+                                    }
+
+                                    //Coordinated Date
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 30].Value.Trim())
+                                        && (worksheet.Range[row, 30].Value.Trim() != ""))
+                                    {
+                                        DateTime _date = DateTime.Now;
+                                        if(DateTime.TryParseExact(worksheet.Range[row, 30].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                        {
+                                            attendanceRegisterHeader.SubmittedDate = _date;
+                                        }
+                                    }
+
+                                    //Coordinators Contact
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row, 31].Value.Trim())
+                                        && (worksheet.Range[row, 31].Value.Trim() != ""))
+                                    {
+                                        columnnnumber = "31";
+                                        attendanceRegisterHeader.SubmittedTitle = worksheet.Range[row,31].Value.ToString();
+                                    }
+
+                                    //Getting the group composition code
+                                    VslaGroupComposition _table1 = db.VslaGroupComposition
+                                    .FirstOrDefault(
+                                       o => o.DistrictId == _district &&
+                                       o.SubcountyId == _subcounty &&
+                                       o.GroupTypeId == _groupTypeId &&
+                                       (o.GroupCode == _vslaGroupCode || o.GroupCode== null) &&
+                                       o.GroupId == _groupId);
+
+                                    if (_table1 != null)
+                                    {
+                                        attendanceRegisterHeader.GroupCompositionCode = _table1.GroupCompositionCode;
+                                        var ecdattendanceexists = db.EcdAttendenceRegister.FirstOrDefault(o =>o.GroupCompositionCode == _table1.GroupCompositionCode);
+                                        if (ecdattendanceexists == null)
+                                        {
+                                            int id = 1;
+                                            var last = db.EcdAttendenceRegister.OrderBy(o => o.SinoParentingId).ToList().LastOrDefault();
+                                            if (last != null)
+                                            {
+                                                id = (last.SinoParentingId + 1);
+                                            }
+                                            attendanceRegisterHeader.SinoParentingId = id;
+                                            try
+                                            {
+                                                db.EcdAttendenceRegister.Add(attendanceRegisterHeader);
+                                                db.SaveChanges();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                throw ex;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            attendanceRegisterHeader.SinoParentingId = ecdattendanceexists.SinoParentingId;
+                                            db.Entry(ecdattendanceexists).CurrentValues.SetValues(attendanceRegisterHeader);
+                                            db.Entry(ecdattendanceexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                            db.SaveChanges();
+                                        }
+
+                                        string membercode = null;
+                                        string membername = null;
+                                        string hhuuidcode = null;
+                                        //HH UiD
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 2].Value.Trim())
+                                            && (worksheet.Range[row, 2].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "2";
+                                            hhuuidcode = worksheet.Range[row, 2].Value.Trim(); 
+                                            var _iscaregiver = caregiver.FirstOrDefault(o => o.HouseHoldCode == hhuuidcode && o.IsCareGiver==1);
+                                            if (_iscaregiver!=null)
+                                            {
+                                                hhcaregivermemberid = _iscaregiver.HouseHoldId;
+                                            }
+                                        }
+
+                                        //Member Code
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim())
+                                            && (worksheet.Range[row, 9].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "9";
+                                            membercode = worksheet.Range[row, 9].Value.Trim();                                            
+                                        }
+
+                                        //Name of participant
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 14].Value.Trim())
+                                            && (worksheet.Range[row, 14].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "14";
+                                            membername = worksheet.Range[row, 14].Value.Trim();
+                                        }                    
+
+                                        //Saving Sessions
+
+                                        //Session I
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 17].Value.Trim())
+                                            && (worksheet.Range[row, 17].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "17";
+                                            parentinggroupsession = 15;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 17].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 17].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 17].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 17].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+
+                                        }
+
+                                        //Session II
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 18].Value.Trim())
+                                            && (worksheet.Range[row, 18].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "18";
+                                            parentinggroupsession = 16;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 18].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 18].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 18].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 18].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session III
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 19].Value.Trim())
+                                            && (worksheet.Range[row, 19].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "19";
+                                            parentinggroupsession = 17;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 19].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 19].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 19].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 19].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session IV
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 20].Value.Trim())
+                                            && (worksheet.Range[row, 20].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "20";
+                                            parentinggroupsession = 18;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 20].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 20].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 20].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 20].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session V
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 21].Value.Trim())
+                                            && (worksheet.Range[row, 21].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "21";
+                                            parentinggroupsession = 19;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 21].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 21].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 21].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 21].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session VI
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 22].Value.Trim())
+                                            && (worksheet.Range[row, 22].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "22";
+                                            parentinggroupsession = 20;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 22].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 22].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 22].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 22].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = attendanceIndirectmembers.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session VII
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 23].Value.Trim())
+                                            && (worksheet.Range[row, 23].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "23";
+                                            parentinggroupsession = 21;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 23].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 23].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 23].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 23].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session VIII
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 24].Value.Trim())
+                                            && (worksheet.Range[row, 24].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "23";
+                                            parentinggroupsession = 22;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 24].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 24].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 24].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 24].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session IX
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 25].Value.Trim())
+                                            && (worksheet.Range[row, 25].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "25";
+                                            parentinggroupsession = 23;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 25].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 25].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 25].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 25].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session X
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 26].Value.Trim())
+                                            && (worksheet.Range[row, 26].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "26";
+                                            parentinggroupsession = 24;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 26].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 26].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 26].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 26].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session XI
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 27].Value.Trim())
+                                            && (worksheet.Range[row, 27].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "27";
+                                            parentinggroupsession = 25;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 27].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 27].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 27].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 27].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //Session XII
+                                        if (!string.IsNullOrEmpty(worksheet.Range[row, 28].Value.Trim())
+                                            && (worksheet.Range[row, 28].Value.Trim() != ""))
+                                        {
+                                            columnnnumber = "28";
+                                            parentinggroupsession = 26;
+                                            DateTime _date = DateTime.Now;
+                                            if(DateTime.TryParseExact(worksheet.Range[row, 28].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 28].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 28].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+                                            else if(DateTime.TryParseExact(worksheet.Range[row, 28].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                            {
+                                                DateofSession = _date;
+                                            }
+
+                                            var directsessioncase = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(directsessioncase != null)
+                                            {
+                                                attendanceDirectmembers.VslaGroupDirectMemberId = directsessioncase.VslaGroupDirectMemberId;
+                                                var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                                if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberId + 1);
+                                                    }
+                                                    attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                    attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                    db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+                                                    exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                    ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Direct Members Detail
+                                                EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecddirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                    }
+                                                    detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                    detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                    detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    detailDirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {
+                                                    ecddirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var indirectsessioncase = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                                if(indirectsessioncase == null)
+                                                {
+                                                    var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                    if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberId + 1);
+                                                        }
+                                                        attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                        attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                        attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else if(exists != null)
+                                                    {
+
+                                                        exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                        //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+
+                                                    //Save Indirect Members Detail
+                                                    EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                    if (ecdindirectmemberdetailexists==null)
+                                                    {
+                                                        int id = 1;
+                                                        var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                        }
+                                                        detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                        detailIndirectmembers.SinoParentingIndirectMemberId = exists.SinoParentingIndirectMemberId;
+                                                        detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                        detailIndirectmembers.SessionDate = DateofSession;
+
+                                                        db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                        db.SaveChanges();
+                                                    }
+                                                    else
+                                                    {
+                                                        ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                        //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                        db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                        db.SaveChanges();
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        //OverrallExcelSaveMethod
+
+                                        var directmemberexists = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                        if(directmemberexists != null)
+                                        {
+                                            attendanceDirectmembers.VslaGroupDirectMemberId = directmemberexists.VslaGroupDirectMemberId;
+                                            var exists = db.EcdDirectMemberAttendence.FirstOrDefault(o => o.VslaGroupDirectMemberId == attendanceDirectmembers.VslaGroupDirectMemberId);
+                                            if(exists == null/* && attendanceDirectmembers.SinoParentingId != null*/)
+                                            {
+                                                int id = 1;
+                                                var last = db.EcdDirectMemberAttendence.OrderBy(o => o.SinoParentingDirectMemberId).ToList().LastOrDefault();
+                                                if (last != null)
+                                                {
+                                                    id = (last.SinoParentingDirectMemberId + 1);
+                                                }
+                                                attendanceDirectmembers.SinoParentingDirectMemberId = id;
+                                                attendanceDirectmembers.CareTakerHouseholdMemberId = hhcaregivermemberid;
+
+                                                db.EcdDirectMemberAttendence.Add(attendanceDirectmembers);
+                                                db.SaveChanges();
+                                            }
+                                            else if(exists != null)
+                                            {
+                                                exists.CareTakerHouseholdMemberId = hhcaregivermemberid;
+                                                ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                                db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                db.SaveChanges();
+                                            }
+
+                                            //Save Direct Members Detail
+                                            EcdDirectMemberDetail ecddirectmemberdetailexists = db.EcdDirectMemberDetail.FirstOrDefault(o => o.SinoParentingDirectMemberId == exists.SinoParentingDirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                            if (ecddirectmemberdetailexists==null)
+                                            {
+                                                int id = 1;
+                                                var last = db.EcdDirectMemberDetail.OrderBy(o => o.SinoParentingDirectMemberDetailId).ToList().LastOrDefault();
+                                                if (last != null)
+                                                {
+                                                    id = (last.SinoParentingDirectMemberDetailId + 1);
+                                                }
+                                                detailDirectmembers.SinoParentingDirectMemberDetailId = id;
+                                                detailDirectmembers.SinoParentingDirectMemberId = exists.SinoParentingDirectMemberId;
+                                                //detailDirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                //detailDirectmembers.SessionDate = DateofSession;
+
+                                                db.EcdDirectMemberDetail.Add(detailDirectmembers);
+                                                db.SaveChanges();
+                                            }
+                                            else
+                                            {
+                                                detailDirectmembers.SessionDate = DateofSession;
+                                                //db.Entry(ecddirectmemberdetailexists).CurrentValues.SetValues(detailDirectmembers);
+                                                db.Entry(ecddirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                db.SaveChanges();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            var indirectmemberexists = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==membername && o.GroupCompositionCode == attendanceRegisterHeader.GroupCompositionCode);
+                                            if(indirectmemberexists == null)
+                                            {
+                                                var exists = db.EcdIndirectMemberAttendence.FirstOrDefault(o => o.VslaGroupIndirectMemberId == attendanceIndirectmembers.VslaGroupIndirectMemberId);
+                                                if(exists == null /*&& attendanceIndirectmembers.SessionId != null*/)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdIndirectMemberAttendence.OrderBy(o => o.SinoParentingIndirectMemberId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingIndirectMemberId + 1);
+                                                    }
+                                                    attendanceIndirectmembers.SinoParentingIndirectMemberId = id;
+                                                    attendanceIndirectmembers.SinoParentingId = attendanceRegisterHeader.SinoParentingId;
+                                                    attendanceIndirectmembers.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                    db.EcdIndirectMemberAttendence.Add(attendanceIndirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else if(exists != null)
+                                                {
+
+                                                    exists.CareTakerHouseholdMemberCode = hhcaregivermemberid.ToString();
+                                                    //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                                    db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+
+                                                //Save Indirect Members Detail
+                                                EcdIndirectMemberDetail ecdindirectmemberdetailexists = db.EcdIndirectMemberDetail.FirstOrDefault(o => o.SinoParentingIndirectMemberId == exists.SinoParentingIndirectMemberId && o.ParentingGroupSessionId==parentinggroupsession);
+
+                                                if (ecdindirectmemberdetailexists==null)
+                                                {
+                                                    int id = 1;
+                                                    var last = db.EcdIndirectMemberDetail.OrderBy(o => o.SinoParentingIndirectMemberDetailId).ToList().LastOrDefault();
+                                                    if (last != null)
+                                                    {
+                                                        id = (last.SinoParentingIndirectMemberDetailId + 1);
+                                                    }
+                                                    detailIndirectmembers.SinoParentingIndirectMemberDetailId = id;
+                                                    detailIndirectmembers.SinoParentingIndirectMemberId = attendanceIndirectmembers.SinoParentingIndirectMemberId;
+                                                    //detailIndirectmembers.ParentingGroupSessionId = parentinggroupsession;
+                                                    //detailIndirectmembers.SessionDate = DateofSession;
+
+                                                    db.EcdIndirectMemberDetail.Add(detailIndirectmembers);
+                                                    db.SaveChanges();
+                                                }
+                                                else
+                                                {   
+                                                    ecdindirectmemberdetailexists.SessionDate = DateofSession;
+                                                    //db.Entry(ecdindirectmemberdetailexists).CurrentValues.SetValues(detailIndirectmembers);
+                                                    db.Entry(ecdindirectmemberdetailexists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                    db.SaveChanges();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            MessageResponse = "Success: All the records were uploaded successfully. Please refresh the page to upload again";
+                        }
+                    }
+                    else
+                    {
+                        MessageError = "Failure: You are uploading a wrong file. Please refresh the page to upload the right file again";
+                        await UploadingSpinner.HideAsync();
+                    }
+                    file.Stream.Close();
+
+                }
+                catch(Exception ex)
+                {
+                    MessageResponse = "error: " + ex.Message.ToString();
+                }
+                finally
+                {                
+                    await UploadingSpinner.HideAsync();
+                    await Task.CompletedTask;
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+}

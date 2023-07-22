@@ -1,0 +1,1415 @@
+﻿@page "/HIVTBTrackingFormUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> TRACKING FORM FOR MONITORING HIV, TB CARE AND EID UPLOAD </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<SfTab Width="100%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Top" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="VIRAL LOAD UPLOAD"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content" style="margin-top:10px;">
+                                        <div class="form-row">
+                                            <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+                                            <div class="form-group col-md-12">
+                                                <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+                                                    <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+                                                </SfUploader>
+                                            </div>
+                                            <div class="form-group col-md-12">
+                                                @if (!string.IsNullOrEmpty(rownumber))
+                                                {
+                                                    <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+                                                }
+                                            </div>
+                                            <div class="form-group col-md-12">
+                                                <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+                                            </div>
+                                            <div class="form-group col-md-12">
+                                                @if (!string.IsNullOrEmpty(MessageResponse))
+                                                {
+                                                    if (MessageResponse.Contains("error") || MessageResponse.Contains("Failure"))
+                                                    {
+                                                        <p class="badge-danger" style="padding:10px">
+                                                            @MessageResponse
+                                                        </p>
+                                                    }
+                                                    else if (MessageResponse.Contains("success"))
+                                                    {
+                                                        <p class="badge-success" style="padding:10px">
+                                                            @MessageResponse
+                                                        </p>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="EID FORM UPLOAD"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content" style="margin-top:10px;">
+                                        <HIVTBTrackingFormEIDUploadPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+
+
+
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    SfGrid<Apiupload> ApiuploadGrid;
+    string MessageResponse { get; set; }
+    SfGrid<Apiupload> UploadGrid;
+    public Query ChildQuery = new Query();
+    private APISearchPanel InputModel = new APISearchPanel();
+    List<Apiupload> DistrictData { get; set; }
+    List<string> DistinctDistrictData { get; set; } 
+    private List<Apiupload> SubcountyData { get; set; }
+    List<string> DistinctSubcountyData { get; set; } 
+    private List<Apiupload> FinancialYearData { get; set; }
+    List<string> DistinctFinancialYearData { get; set; } 
+    private List<Apiupload> ReportingPeriodData { get; set; }
+    List<string> DistinctReportingPeriodData { get; set; } 
+    bool DistrictEnabled { get; set; } = true;
+    bool isSubcountyEnabled { get; set; } = false;
+    SfMultiSelect<string[], string> DropdownObj;
+
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            MessageResponse = null;
+            await UploadingSpinner.ShowAsync();
+            foreach (var file in args.Files)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+
+                    //Instantiate the Excel application object
+                    IApplication application = excelEngine.Excel;
+
+                    file.Stream.Position = 0;
+                    //Set the default application version
+                    application.DefaultVersion = ExcelVersion.Xlsx;
+                    IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                    //Get the first worksheet in the workbook into IWorksheet
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    if (worksheet.Range["A1"].Value.Contains("UiD") && worksheet.Range["B1"].Value.Contains("District")
+                        && worksheet.Range["C1"].Value.Contains("Sub"))
+                    {
+                        HivTbTrackingForm apiuploadata = new HivTbTrackingForm();
+
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var hh = db.HouseHoldMembers.ToList();
+                            var fac = db.AFacility.ToList();
+                            var reg = db.ARegimen.ToList();
+                            var sub = db.ASubcounty.ToList();
+                            var dist = db.ADistrict.ToList();
+
+                            for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+                                apiuploadata = new HivTbTrackingForm();
+                                if (worksheet.IsRowVisible(row))
+                                {
+                                    rownumber = row.ToString();
+                                    await Task.Delay(10);
+
+                                    for (int column = 1; column <= worksheet.UsedRange.LastColumn; column++)
+                                    {
+                                        switch (column)
+                                        {
+
+                                            case 6:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.FollowUpDate = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 7:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim();
+                                                    var _hhcode = hh.FirstOrDefault(o => o.HouseHoldMemberCode == apiid);
+                                                    if (_hhcode != null)
+                                                    {
+                                                        apiuploadata.HouseHoldMemberId = Convert.ToInt32(_hhcode.HouseHoldMemberId);
+                                                    }
+                                                    else
+                                                    {
+                                                        HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                                                        _hhcode1.HouseHoldMemberCode = apiid;
+                                                        int id = 1;
+                                                        var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                        if (last != null)
+                                                        {
+                                                            id = (last.HouseHoldMemberId + 1);
+                                                        }
+                                                        _hhcode1.HouseHoldMemberId = id;
+
+                                                        db.HouseHoldMembers.Add(_hhcode1);
+                                                        db.SaveChanges();
+
+                                                        hh = db.HouseHoldMembers.ToList();
+                                                        apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 12:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.PhoneNumber = apiid;
+                                                }
+                                                break;
+
+                                            case 13:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string status = worksheet.Range[row, column].Value.ToString();
+                                                        if (status == "+" || status =="1=HIV Positive")
+                                                        {
+                                                            apiuploadata.HivstatusId = 1;
+                                                        }
+                                                        else if (status == "-" || status =="2=HIV Negative")
+                                                        {
+                                                            apiuploadata.HivstatusId = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.HivstatusId = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 14:
+                                               if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.OnArt = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.OnArt = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.OnArt = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 15:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.CohortNo = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 16:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Artnumber = apiid;
+                                                }
+                                                break;
+
+                                            case 17:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("Active"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 1;
+                                                    }
+                                                    else if (apiid.Contains("Transferred"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 7;
+                                                    }
+                                                    else if (apiid.Contains("follow"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 4;
+                                                    }
+                                                    else if (apiid.Contains("Appointment"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 2;
+                                                    }
+                                                    else if (apiid.Contains("Died"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 6;
+                                                    }
+                                                    else if (apiid.Contains("Dropped"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 5;
+                                                    }
+                                                    else if (apiid.Contains("Month"))
+                                                    {
+                                                        apiuploadata.ClientMemberStatusId = 3;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 18:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("PLHIV"))
+                                                    {
+                                                        apiuploadata.CientClassificationId = 4;
+                                                    }
+                                                    else if (apiid.Contains("CLHIV"))
+                                                    {
+                                                        apiuploadata.CientClassificationId = 1;
+                                                    }
+                                                    else if (apiid.Contains("ALHIV"))
+                                                    {
+                                                        apiuploadata.CientClassificationId = 2;
+                                                    }
+                                                    else if (apiid.Contains("PMTCT"))
+                                                    {
+                                                        apiuploadata.CientClassificationId = 3;
+                                                    }                                                    
+                                                }
+                                                break;
+
+                                            case 19:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Weight = Convert.ToDouble(apiid);
+                                                }
+                                                break;
+
+                                            //Check Else Part of this facility table because it will add new facilities
+                                            case 21:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim();
+                                                    var _hhcode = fac.FirstOrDefault(o => o.FacilityName == apiid);
+                                                    if (_hhcode != null)
+                                                    {
+                                                        apiuploadata.FacilityId = Convert.ToInt32(_hhcode.FacilityId);
+                                                    }
+                                                    else
+                                                    {
+                                                        //HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                                                        //_hhcode1.HouseHoldMemberCode = apiid;
+                                                        //int id = 1;
+                                                        //var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                        //if (last != null)
+                                                        //{
+                                                        //    id = (last.HouseHoldMemberId + 1);
+                                                        //}
+                                                        //_hhcode1.HouseHoldMemberId = id;
+
+                                                        //db.HouseHoldMembers.Add(_hhcode1);
+                                                        //db.SaveChanges();
+
+                                                        //hh = db.HouseHoldMembers.ToList();
+                                                        //apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 23:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.TreatmentDuration = Convert.ToDouble(apiid);
+                                                }
+                                                break;
+
+                                            case 24:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("1st"))
+                                                    {
+                                                        apiuploadata.RegimenCategoryId = 1;
+                                                    }
+                                                    else if (apiid.Contains("2nd"))
+                                                    {
+                                                        apiuploadata.RegimenCategoryId = 2;
+                                                    }
+                                                    else if (apiid.Contains("3rd"))
+                                                    {
+                                                        apiuploadata.RegimenCategoryId = 3;
+                                                    }                                       
+                                                }
+                                                break;
+
+                                            //Check Else Part of this Regimen table because it will add new facilities
+                                            case 25:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim();
+                                                    var _hhcode = reg.FirstOrDefault(o => o.RegimenDescription == apiid);
+                                                    if (_hhcode != null)
+                                                    {
+                                                        apiuploadata.RegimenId = Convert.ToInt32(_hhcode.RegimenId);
+                                                    }
+                                                    else
+                                                    {
+                                                        //HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                                                        //_hhcode1.HouseHoldMemberCode = apiid;
+                                                        //int id = 1;
+                                                        //var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                        //if (last != null)
+                                                        //{
+                                                        //    id = (last.HouseHoldMemberId + 1);
+                                                        //}
+                                                        //_hhcode1.HouseHoldMemberId = id;
+
+                                                        //db.HouseHoldMembers.Add(_hhcode1);
+                                                        //db.SaveChanges();
+
+                                                        //hh = db.HouseHoldMembers.ToList();
+                                                        //apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 26:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("FBIM"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 1;
+                                                    }
+                                                    else if (apiid.Contains("FBG"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 2;
+                                                    }
+                                                    else if (apiid.Contains("FTDR"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 3;
+                                                    }
+                                                    else if (apiid.Contains("CDDP"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 4;
+                                                    }  
+                                                    else if (apiid.Contains("CCLAD"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 5;
+                                                    } 
+                                                    else if (apiid.Contains("Others"))
+                                                    {
+                                                        apiuploadata.ClientCareModalityId = 6;
+                                                    }  
+                                                }
+                                                break;
+
+                                            case 27:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("MMD"))
+                                                    {
+                                                        apiuploadata.DrugDispensingModalityId = 1;
+                                                    }
+                                                    else if (apiid.Contains("Monthly"))
+                                                    {
+                                                        apiuploadata.DrugDispensingModalityId = 2;
+                                                    }
+                                                    else 
+                                                    {
+                                                        apiuploadata.DrugDispensingModalityId = 3;
+                                                    }                                                    
+                                                }
+                                                break;
+
+                                            //Check Else Part of this Subcounty table because it will add new facilities
+                                            case 28:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim();
+                                                    var _hhcode = sub.FirstOrDefault(o => o.SubcountyDescription == apiid);
+                                                    if (_hhcode != null)
+                                                    {
+                                                        apiuploadata.CurrentCarePointSubCountyId = Convert.ToInt32(_hhcode.SubcountyId);
+                                                    }
+                                                    else
+                                                    {
+                                                        //HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                                                        //_hhcode1.HouseHoldMemberCode = apiid;
+                                                        //int id = 1;
+                                                        //var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                        //if (last != null)
+                                                        //{
+                                                        //    id = (last.HouseHoldMemberId + 1);
+                                                        //}
+                                                        //_hhcode1.HouseHoldMemberId = id;
+
+                                                        //db.HouseHoldMembers.Add(_hhcode1);
+                                                        //db.SaveChanges();
+
+                                                        //hh = db.HouseHoldMembers.ToList();
+                                                        //apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                                    }
+                                                }
+                                                break;
+
+                                            //Check Else Part of this District table because it will add new facilities
+                                            case 29:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim();
+                                                    var _hhcode = dist.FirstOrDefault(o => o.DistrictDescription == apiid);
+                                                    if (_hhcode != null)
+                                                    {
+                                                        apiuploadata.CurrentCarePointDistrictId = Convert.ToInt32(_hhcode.DistrictId);
+                                                    }
+                                                    else
+                                                    {
+                                                        //HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                                                        //_hhcode1.HouseHoldMemberCode = apiid;
+                                                        //int id = 1;
+                                                        //var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                        //if (last != null)
+                                                        //{
+                                                        //    id = (last.HouseHoldMemberId + 1);
+                                                        //}
+                                                        //_hhcode1.HouseHoldMemberId = id;
+
+                                                        //db.HouseHoldMembers.Add(_hhcode1);
+                                                        //db.SaveChanges();
+
+                                                        //hh = db.HouseHoldMembers.ToList();
+                                                        //apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 30:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.LastAppointmentDate = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 31:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.NextAppointmentDate = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 32:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.IsClientEligibleForViralload = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.IsClientEligibleForViralload = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.IsClientEligibleForViralload = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 33:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ViralloadTestDone = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ViralloadTestDone = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ViralloadTestDone = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 34:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ViralloadResultsReceived = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ViralloadResultsReceived = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ViralloadResultsReceived = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 35:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.ViralloadTestResults = apiid;
+                                                }
+                                                break;                                                                                              
+
+
+                                            case 36:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (apiid.Contains("Suppressed"))
+                                                    {
+                                                        apiuploadata.ViralLoadSuppressedId = 1;
+                                                    }
+                                                    else if (apiid.Contains("Unsuppressed"))
+                                                    {
+                                                        apiuploadata.ViralLoadSuppressedId = 2;
+                                                    }
+                                                    else if (apiid.Contains("Waiting"))
+                                                    {
+                                                        apiuploadata.ViralLoadSuppressedId = 2;
+                                                    }
+                                                    else 
+                                                    {
+                                                        apiuploadata.ViralLoadSuppressedId = 3;
+                                                    }                                                    
+                                                }
+                                                break;
+
+                                            case 37:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.LastViralloadTestDate = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 38:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.NextViralloadTestDate = date;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 39:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ClientHasPresumptiveOrActiveTb = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ClientHasPresumptiveOrActiveTb = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ClientHasPresumptiveOrActiveTb = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 40:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ClientReceivedTbscreeningSession = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ClientReceivedTbscreeningSession = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ClientReceivedTbscreeningSession = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 41:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ClientAtTbinfectionRisk = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ClientAtTbinfectionRisk = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ClientAtTbinfectionRisk = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 42:
+                                               if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Not Applicable"))
+                                                        {
+                                                            apiuploadata.ClientRefferedTestedForTb = 4;
+                                                        }
+                                                        else if (onart.Contains("Referred and Tested"))
+                                                        {
+                                                            apiuploadata.ClientRefferedTestedForTb = 3;
+                                                        }
+                                                        else if (onart.Contains("Not Yet Referred"))
+                                                        {
+                                                            apiuploadata.ClientRefferedTestedForTb = 1;
+                                                        }
+                                                        else 
+                                                        {
+                                                            apiuploadata.ClientRefferedTestedForTb = 2;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 43:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Conclusive"))
+                                                        {
+                                                            apiuploadata.TbtestResultId = 3;
+                                                        }
+                                                        else if (onart.Contains("Positive"))
+                                                        {
+                                                            apiuploadata.TbtestResultId = 1;
+                                                        }
+                                                        else if (onart.Contains("Negative"))
+                                                        {
+                                                            apiuploadata.TbtestResultId = 2;
+                                                        }
+                                                        else if (onart.Contains("Disclosed"))
+                                                        {
+                                                            apiuploadata.TbtestResultId = 4;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.TbtestResultId = 5;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 44:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Completed"))
+                                                        {
+                                                            apiuploadata.IsOnTbtreatment = 3;
+                                                        }
+                                                        else if (onart.Contains("Not"))
+                                                        {
+                                                            apiuploadata.IsOnTbtreatment = 2;
+                                                        }
+                                                        else if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.IsOnTbtreatment = 1;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 45:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains(">6 Months"))
+                                                        {
+                                                            apiuploadata.TbtreatmentDuration = 4;
+                                                        }
+                                                        else if (onart.Contains("3-6 Months"))
+                                                        {
+                                                            apiuploadata.TbtreatmentDuration = 3;
+                                                        }
+                                                        else if (onart.Contains("1-<3 Months"))
+                                                        {
+                                                            apiuploadata.TbtreatmentDuration = 2;
+                                                        }
+                                                        else if (onart.Contains("<1 Month"))
+                                                        {
+                                                            apiuploadata.TbtreatmentDuration = 1;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 46:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Completed"))
+                                                        {
+                                                            apiuploadata.IsOnTbpreventiveTreatment = 3;
+                                                        }
+                                                        else if (onart.Contains("Not"))
+                                                        {
+                                                            apiuploadata.IsOnTbpreventiveTreatment = 2;
+                                                        }
+                                                        else if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.IsOnTbpreventiveTreatment = 1;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 47:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains(">6 Months"))
+                                                        {
+                                                            apiuploadata.TptTreatmentDuration = 4;
+                                                        }
+                                                        else if (onart.Contains("3-6 Months"))
+                                                        {
+                                                            apiuploadata.TptTreatmentDuration = 3;
+                                                        }
+                                                        else if (onart.Contains("1-<3 Months"))
+                                                        {
+                                                            apiuploadata.TptTreatmentDuration = 2;
+                                                        }
+                                                        else if (onart.Contains("<1 Month"))
+                                                        {
+                                                            apiuploadata.TptTreatmentDuration = 1;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 48:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {    
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Health"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 3;
+                                                    }
+                                                    else if (onart.Contains("Home"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 2;
+                                                    }
+                                                    else if (onart.Contains("Phone"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 1;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 49:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ClientSuccessfullyContactedOrSeen = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.ClientSuccessfullyContactedOrSeen = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.ClientSuccessfullyContactedOrSeen = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 50:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.AnotherPersonContactedOnBehalfOfClient = 1;
+                                                        }
+                                                        else if (onart.Contains("No"))
+                                                        {
+                                                            apiuploadata.AnotherPersonContactedOnBehalfOfClient = 2;
+                                                        }
+                                                        else
+                                                        {
+                                                            apiuploadata.AnotherPersonContactedOnBehalfOfClient = 3;
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 51:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Family"))
+                                                    {
+                                                        apiuploadata.PersonContactedId = 1;
+                                                    }
+                                                    else if (onart.Contains("Treatment"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 2;
+                                                    }
+                                                    else if (onart.Contains("Care"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 3;
+                                                    }
+                                                    else if (onart.Contains("Other"))
+                                                    {
+                                                        apiuploadata.FollowupMeansId = 4;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 52:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.ServiceProvidedId = "1";
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 53:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",2";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "2";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 54:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                           if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",3";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "3";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 55:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                           if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",4";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "4";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 56:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",5";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "5";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 57:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                           if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",6";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "6";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 58:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",7";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "7";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                            case 59:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                           if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",8";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "8";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 60:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                           if (!string.IsNullOrEmpty(apiuploadata.ServiceProvidedId))
+                                                            {
+                                                                apiuploadata.ServiceProvidedId += ",9";
+                                                            }
+                                                            else
+                                                            {
+                                                                apiuploadata.ServiceProvidedId = "9";
+                                                            }
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 61:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NotSuppressingReasonId = "1";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 62:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "1";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 63:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "2";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 64:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "3";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 65:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "4";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 66:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "5";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 67:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "6";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 68:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "7";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 69:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "8";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 70:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "9";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 71:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "10";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 72:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "11";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 73:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "12";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 74:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();
+                                                        if (onart.Contains("Yes"))
+                                                        {
+                                                            apiuploadata.NonAdherenceId = "13";
+                                                        }
+                                                    }
+                                                break;
+
+                                                case 75:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.NonAdherenceOther = onart;
+                                                    }
+                                                break;
+
+                                                case 76:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.SocialWorkerNextActionTaken = onart;
+                                                    }
+                                                break;
+
+                                                case 77:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.SocialWorkerName = onart;
+                                                    }
+                                                break;
+
+                                                case 78:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.SocialWorkerTitle = onart;
+                                                    }
+                                                break;
+
+                                                case 79:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.SocialWorkerContact = onart;
+                                                    }
+                                                break;
+
+                                                case 80:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.ReviewedBy = onart;
+                                                    }
+                                                break;
+
+                                                case 81:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                    {
+                                                        string onart = worksheet.Range[row, column].Value.ToString();                                                        
+                                                        apiuploadata.ReviewedTitle = onart;
+                                                    }
+                                                break;
+
+                                                case 82:
+                                                if (worksheet.Range[row, column].HasDateTime)
+                                                    {
+                                                        var date = worksheet.Range[row, column].DateTime;
+                                                        apiuploadata.ReviewDate = date;
+                                                    }
+                                                break;
+                                        }
+                                    }
+                                    HivTbTrackingForm _table = db.HivTbTrackingForm.FirstOrDefault(o => o.HouseHoldMemberId == apiuploadata.HouseHoldMemberId && o.FollowUpDate == apiuploadata.FollowUpDate);
+
+                                    if (_table == null)
+                                    {
+                                        int id = 1;
+                                        var last = db.HivTbTrackingForm.OrderBy(o => o.HivTbTrackingFormId).ToList().LastOrDefault();
+                                        if (last != null)
+                                        {
+                                            id = (last.HivTbTrackingFormId + 1);
+                                        }
+                                        apiuploadata.HivTbTrackingFormId = id;
+                                        try
+                                        {
+                                            //apiuploadata.LastUploadDate = DateTime.Now;
+                                            db.HivTbTrackingForm.Add(apiuploadata);
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        try
+                                        {
+                                            apiuploadata.HivTbTrackingFormId = _table.HivTbTrackingFormId;
+                                            //apiuploadata.LastUploadDate = DateTime.Now;
+                                            db.Entry(_table).CurrentValues.SetValues(apiuploadata);
+                                            db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                    else
+                    {
+                        if (string.IsNullOrEmpty(MessageResponse))
+                        {
+                            MessageResponse = "Failure: You are uploading a wrong file. Please refresh the page to upload the right file again";
+                        }
+                    }
+                    file.Stream.Close();
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageResponse = "error: " + ex.Message.ToString();
+        }
+        finally
+        {
+            if (string.IsNullOrEmpty(MessageResponse))
+            {
+                MessageResponse = "Success: All the records were uploaded successfully. Please refresh the page to upload again";
+            }
+            await UploadingSpinner.HideAsync();
+            await Task.CompletedTask;
+            //UploadGrid.Refresh();
+            StateHasChanged();
+        }
+    }
+}

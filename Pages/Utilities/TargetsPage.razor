@@ -1,0 +1,749 @@
+﻿@*@page "/targetPage"*@
+@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject IToastService toastService;
+
+<style>
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+
+    .e-edit-dialog {
+        max-height: 95%;
+        max-width: 100%;
+        /*min-width: 100%;
+        min-height: 95%;*/
+    }
+
+    /*stick grid headers*/
+    .e-gridheader {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 56px;
+        z-index: 1;
+    }
+    /*stick grid headers*/
+
+</style>
+
+@{
+    var Div = (new string[] { "DistrictDescription", "FinancialYearDesc" });
+}
+
+@*<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Targets</strong></li>
+</ol>
+*@
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="true">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">                                    
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictsData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>                                            
+                                        </SfMultiSelect>
+                                    </div>
+                                    
+                                    <div class="form-group col-md-3">
+                                        <p>Year</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.FinancialYearId" TValue="int?[]" TItem="AFinancialYear" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@FinancialYearData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Year" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)" Text="@nameof(AFinancialYear.FinancialYearDesc)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+
+    <div class="form-group col-md-12">
+        <SfGrid @ref="@TargetsGrid" TValue="ViewATargets" ID="GridMain" Query="@MainQuery" Toolbar="@ToolbarMenuMain"
+                AllowPaging="true" AllowFiltering="false" AllowTextWrap="true" AllowGrouping="true" GridLines="GridLine.Both">
+            <GridGroupSettings Columns="@Div" ShowDropArea="false">
+                <CaptionTemplate>
+                    @{
+                        var dvn = (context as CaptionTemplateContext);
+                        <div><p class="pp"><strong>@dvn.Key</strong></p></div>
+                    }
+                </CaptionTemplate>
+            </GridGroupSettings>
+            <GridEditSettings AllowAdding="true" AllowDeleting="true" AllowEditing="true" Mode="EditMode.Dialog" ShowConfirmDialog="false">
+                <Template>           
+                @{
+                    <center>
+                        <h5>
+                            <strong>ENTER TARGETS</strong>
+                        </h5>
+                    </center>
+                    TargetData = (context as ViewATargets);
+
+                    <div style="padding:15px;">
+                         <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <p>Financial Year:<span style="color:red;">*</span></p>
+                                </div>
+
+                                <div class="form-group col-md-12">
+                                    <SfDropDownList @bind-Value="@(TargetData.FinancialYearId)"
+                                                Enabled="@FinancialYearDD" TItem="AFinancialYear" TValue="int?"
+                                                DataSource="@FinancialYearData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="finyearedit">
+                                        <DropDownListFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)"
+                                                 Text="@nameof(AFinancialYear.FinancialYearDesc)">
+                                        </DropDownListFieldSettings>
+                                        <DropDownListEvents TValue="int?"
+                                                 TItem="AFinancialYear" ValueChange="OnFinancialYearChange">
+                                        </DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="@DataGrid" 
+                                        TValue="ATargets" 
+                                        ID="Grid" 
+                                        DataSource="@gridData" 
+                                        AllowPaging="true" 
+                                        AllowFiltering="false" 
+                                        AllowReordering="true" 
+                                        AllowResizing="true" 
+                                        AllowGrouping="true" 
+                                        AllowExcelExport="true" 
+                                        AllowPdfExport="true" 
+                                        AllowSelection="true" 
+                                        AllowSorting="true"
+                                        Toolbar="@ToolbarMenu">
+                                        <GridEditSettings 
+                                            AllowAdding="false" 
+                                            AllowEditing="true" 
+                                            AllowDeleting="false" 
+                                            Mode="Syncfusion.Blazor.Grids.EditMode.Batch" 
+                                            ShowConfirmDialog="false">
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                                        <GridPageSettings PageSizes="true"></GridPageSettings>
+                                        <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Single" CellSelectionMode="CellSelectionMode.Box" Mode="Syncfusion.Blazor.Grids.SelectionMode.Cell"></GridSelectionSettings>
+                                        <GridEvents CellSelected="CellSelectHandler"
+                                                TValue="ATargets">
+                                        </GridEvents>
+                                        <GridColumns>
+                                          <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+                                        	<GridColumn Field=@nameof(ATargets.TargetId) HeaderText="TargetId" AllowEditing="false" Visible="false" IsPrimaryKey="true" Width="80"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(ATargets.DistrictId)
+                                                           Visible="true"
+                                                           HeaderText="District"
+                                                           Width="80"
+                                                           ForeignKeyField="@nameof(ADistrict.DistrictId)"
+                                                           ForeignKeyValue="@nameof(ADistrict.DistrictDescription)"
+                                                           ForeignDataSource="@DistrictsData"
+                                                           ValidationRules="@(new ValidationRules {Required=true})"
+                                                           AllowEditing="false">
+                                            </GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(ATargets.FinancialYearId)
+                                                           Visible="true"
+                                                           HeaderText="Financial Year"
+                                                           Width="80"
+                                                           ForeignKeyField="@nameof(AFinancialYear.FinancialYearId)"
+                                                           ForeignKeyValue="@nameof(AFinancialYear.FinancialYearDesc)"
+                                                           ForeignDataSource="@FinancialYearData"
+                                                           ValidationRules="@(new ValidationRules {Required=true})"
+                                                           AllowEditing="false">
+                                            </GridForeignColumn>
+                                            <GridColumn 
+                                                Field=@nameof(ATargets.TargetValue) 
+                                                HeaderText="Target"  
+                                                Width="80" 
+                                                AllowEditing="true">
+                                            </GridColumn>
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                         </div>
+                    </div>
+
+                }
+                </Template>  
+                <FooterTemplate>
+                    <button @onclick="@onSubmitForm" class="btn btn-primary" data-ripple="true" style="margin-right:10px;">Save Form</button>
+                    <button @onclick="@DialogCancelBtnclicked" class="btn btn-danger" data-ripple="true">Cancel</button>
+                </FooterTemplate>
+            </GridEditSettings>
+            <SfDataManager AdaptorInstance="@typeof(TargetsAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionComplete="ActionCompleteMain"
+                        OnActionBegin="ActionBeginMain"
+                        TValue="ViewATargets">
+            </GridEvents>
+            <GridColumns>
+                <GridColumn Type="ColumnType.CheckBox" Width="20"></GridColumn>
+                <GridColumn Field=@nameof(ViewATargets.TargetId) HeaderText="ID" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>                
+                <GridColumn Field=@nameof(ViewATargets.DistrictDescription) HeaderText="District" Width="80" AllowEditing="false"></GridColumn>
+                <GridColumn Field=@nameof(ViewATargets.FinancialYearDesc) HeaderText="Year" Width="80" AllowEditing="false"></GridColumn>
+                <GridColumn HeaderText="Target"
+                                Width="150"
+                                AllowEditing="true"
+                                Field=@nameof(ViewATargets.TargetValue)
+                                EditType="EditType.NumericEdit"
+                                IsFrozen="false">
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+    {
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfGrid<ViewATargets>? TargetsGrid;
+    public Query MainQuery = new Query();
+    List<ADistrict> DistrictsData { get; set; }
+    List<AFinancialYear> FinancialYearData { get; set; }
+    List<ATargets> TargetDataSource { get; set; }
+    private static ViewATargets? TargetData { get; set; }
+    SfGrid<ATargets>? DataGrid { get; set; }
+    private List<ATargets> gridData = new List<ATargets>();
+    private UtilitiesSearchPanel InputModel = new();
+    public bool FinancialYearDD = true;
+    int? finyear = null;
+    public Query DistricttQuery { get; set; } = null;
+    SfDropDownList<int?,AFinancialYear> finyearedit { get; set; }
+
+
+    private List<object> ToolbarMenuMain = new List<object>()
+    {
+        new ItemModel() { Text = "Capture Target", PrefixIcon = "e-add", Id = "GridMain_add"},
+        new ItemModel(){ Text = "Edit Target", PrefixIcon= "e-edit", Id="GridMain_edit"},
+        //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+        new ItemModel(){ Text = "Update Target", PrefixIcon= "e-update", Id="GridMain_update"},
+        new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="GridMain_cancel"}
+    };
+
+    private List<object> ToolbarMenu = new List<object>()
+    {
+        new ItemModel() { Text = "Capture Target", PrefixIcon = "e-add", Id = "Grid_add"},
+        new ItemModel(){ Text = "Edit Target", PrefixIcon= "e-edit", Id="Grid_edit"},
+        //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+        new ItemModel(){ Text = "Update Target", PrefixIcon= "e-update", Id="Grid_update"},
+        new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="Grid_cancel"}
+    };
+
+
+    public class TargetSetting
+    {
+        public int TargetId { get; set; }
+        public double? TargetValue { get; set; }
+        public int? DistrictId { get; set; }
+        public int? FinancialYearId { get; set; }
+        public string DistrictDescription { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+
+    private async void GenerateTargetSettingList()
+    {
+        try
+        {
+            if (DistrictsData == null)
+            {
+                return;
+            }
+
+            if (TargetData != null)
+            {
+                List<ATargets> m = new List<ATargets>();
+
+                foreach (var n in DistrictsData)
+                {
+                    Random random = new Random();
+                    m.Add(new ATargets
+                        {
+                            TargetId = random.Next(1000, 10000),
+                            DistrictId = n.DistrictId,
+                        });
+                }
+                TargetDataSource = m;
+            }
+
+            else
+            {
+                foreach (var n in DistrictsData)
+                {
+                    var x = TargetDataSource.FirstOrDefault(o => o.DistrictId == n.DistrictId);
+                    if (x == null)
+                    {
+                        Random random = new Random();
+                        TargetDataSource.Add(new ATargets
+                        {
+                            TargetId = random.Next(1000, 10000),
+                            DistrictId = n.DistrictId,
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+        finally
+        {
+
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        GenerateTargetSettingList();
+    }
+
+    private List<TargetSetting> TargetSettingList = new List<TargetSetting>(); 
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+            if (TargetSettingList != null)
+            {
+                TargetSettingList.Clear();
+            }
+
+            DistrictsData = _context.ADistrict.ToList();
+            FinancialYearData = _context.AFinancialYear.ToList();
+            TargetDataSource = _context.ATargets.ToList();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.FinancialYearId != null)
+            {
+                MainQuery.AddParams("FinancialYearId", string.Join(",", InputModel.FinancialYearId));
+            }
+        }
+
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+    }
+
+    public async Task onSubmitForm()
+    {
+        try
+        {
+            if (DataGrid != null && finyear != null)
+            {
+                await DataGrid.EndEditAsync();
+                TargetDataSource = gridData;
+
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    foreach (var item in TargetDataSource /*DataGrid.CurrentViewData*/)
+                    {
+                        ATargets obj = new ATargets();
+                        var mo = await dbContext.ATargets
+                        .FirstOrDefaultAsync(o => o.DistrictId == item.DistrictId
+                            && o.FinancialYearId == item.FinancialYearId);
+
+                        ATargetsLog targetlog = new ATargetsLog();
+
+                        if (mo == null)
+                        {
+                            int id = 1;
+                            var last = dbContext.ATargets.OrderBy(o => o.TargetId).ToList().LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.TargetId + 1);
+                            }
+
+                            item.TargetId = id;
+
+                            await dbContext.ATargets.AddAsync(item);
+                            await dbContext.SaveChangesAsync();
+                        }
+
+                        else
+                        {
+                            //Save into LogTable
+                            int idlog = 1;
+                            var lastlogid = dbContext.ATargetsLog.OrderBy(o => o.TargetsLogId).ToList().LastOrDefault();
+                            if (lastlogid != null)
+                            {
+                                idlog = (lastlogid.TargetsLogId + 1);
+                            }
+
+                            targetlog.TargetsLogId = idlog;
+                            targetlog.TargetId = mo.TargetId;
+                            targetlog.TargetValueOld = mo.TargetValue;
+                            targetlog.TargetValueNew = item.TargetValue;
+                            targetlog.DistrictIdOld = mo.DistrictId;
+                            targetlog.DistrictIdNew = item.DistrictId;
+                            targetlog.FinancialYearIdOld = mo.FinancialYearId;
+                            targetlog.FinancialYearIdNew = item.FinancialYearId;
+                            targetlog.UpdatedBy = userManagement.GetUserName();
+                            targetlog.UpdatedDate = DateTime.Now;
+
+                            dbContext.ATargetsLog.Add(targetlog);
+                            dbContext.SaveChanges();
+
+
+                            item.TargetId = mo.TargetId;
+                            dbContext.Entry(mo).CurrentValues.SetValues(item);
+                            dbContext.Entry(mo).State = EntityState.Modified;
+                            dbContext.SaveChanges();
+                        }
+                    }
+                    toastService.ShowSuccess("Record saved successfully.");
+                }                
+
+                if (TargetsGrid != null)
+                {
+                    await TargetsGrid.EndEditAsync();
+                }
+            }
+
+            else
+            {
+                toastService.ShowWarning("Please select the financial year.");            
+            }           
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            //await LoadingDialogue.HideAsync();
+            StateHasChanged();
+        }
+    }
+
+    public async void DialogCancelBtnclicked()
+    {
+        if (DataGrid != null)
+        {
+            await DataGrid.CloseEdit();
+        }
+        if (TargetsGrid != null)
+        {
+            await TargetsGrid.CloseEdit();
+        }
+    }
+
+    #region Targets
+    public class TargetsAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        private MUCOBADIContext _dbContext;
+        public TargetsAdapter(IToastService ts, UserManagement userManagement, MUCOBADIContext dbContext)
+        {
+            toastService = ts;
+            _userManagement = userManagement;
+            _dbContext = dbContext;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ViewATargets>();
+            try
+            {
+                List<int> DistrictId = new List<int>();
+                List<int> FinancialYearId = new List<int>();
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        var a = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString().Split(",");
+                        foreach (var y in a)
+                        {
+                            DistrictId.Add(Convert.ToInt32(y));
+                        }
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "FinancialYearId").Value != null)
+                    {
+                        var a = val.FirstOrDefault(o => o.Key == "FinancialYearId").Value.ToString().Split(",");
+                        foreach (var y in a)
+                        {
+                            FinancialYearId.Add(Convert.ToInt32(y));
+                        }
+                    }
+                }
+                data = _dbContext.ViewATargets.OrderBy(o => o.DistrictDescription).ToList().Where(o => (DistrictId.Count() == 0 || DistrictId.Any(a => a == o.DistrictId)) && (FinancialYearId.Count() == 0 || FinancialYearId.Any(a => a == Convert.ToInt32(o.FinancialYearId)))).ToList();
+                //data = _dbContext.ViewATargets.OrderBy(o => o.DistrictId).ToList();
+
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ViewATargets>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+    }
+
+    public async void OnFinancialYearChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AFinancialYear> args)
+    {
+        finyear = args.ItemData.FinancialYearId;
+
+        List<ATargets> m = new List<ATargets>();
+
+        foreach (var n in TargetDataSource)
+        {
+            var countdata = _context.ATargets
+            .FirstOrDefault(o => o.FinancialYearId == finyear 
+                && o.DistrictId == n.DistrictId);
+
+                if(countdata == null)
+                {
+                Random random = new Random();
+                m.Add(new ATargets
+                    {
+                        TargetId = random.Next(1000, 10000),
+                        DistrictId = n.DistrictId,
+                        FinancialYearId = args.ItemData.FinancialYearId,
+                        TargetValue = 0,
+                    });
+                }   
+
+                else
+                {
+                Random random = new Random();
+                m.Add(new ATargets
+                    {
+                        TargetId = random.Next(1000, 10000),
+                        DistrictId = n.DistrictId,
+                        FinancialYearId = args.ItemData.FinancialYearId,
+                        TargetValue = countdata.TargetValue,
+                    });
+                }
+                    
+        }
+        gridData = m;
+
+    }
+
+    public void ActionCompleteMain(ActionEventArgs<ViewATargets> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) ||
+        args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            TargetsGrid.PreventRender(false);
+        }
+    }
+
+    public async void ActionBeginMain(ActionEventArgs<ViewATargets> Args)
+    {
+        var data = Args.Data;
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            //if (Args.Data.FinancialYearId == null)
+            //{
+            //    toastService.ShowWarning("Please select the financial year.");
+            //    Args.Cancel = true;
+            //}
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            //Disable Financial Year on Edit
+            FinancialYearDD = false;
+            finyear = Args.RowData.FinancialYearId;
+            //this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.RowData.DistrictId, IgnoreCase = false, IgnoreAccent = false });
+            //employeeno = EmployeeData.FirstOrDefault(o => o.Employeeid == Args.RowData.Employeeid);
+
+            if (TargetData == null)
+            {
+                TargetDataSource = new List<ATargets>();
+            }
+            List<ATargets> m = new List<ATargets>();
+
+            //Load current data
+            TargetDataSource = _context.ATargets
+            .Where(o=>o.FinancialYearId == Args.RowData.FinancialYearId).ToList();
+
+            foreach (var n in TargetDataSource)
+            {
+                Random random = new Random();
+                m.Add(new ATargets
+                    {
+                        TargetId = n.TargetId,
+                        TargetValue = n.TargetValue,
+                        DistrictId = n.DistrictId,
+                        FinancialYearId = n.FinancialYearId,
+                        //AddedBy = n.AddedBy,
+                        //AddedDate = n.AddedDate,
+                    });
+            }
+            gridData = m;
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            //Enable Financial Year on Edit
+            FinancialYearDD = true;
+            finyear = null;
+
+            DistrictsData = _context.ADistrict.ToList();
+            FinancialYearData = _context.AFinancialYear.ToList();
+            TargetDataSource = _context.ATargets.ToList();
+
+            TargetDataSource = new List<ATargets>();
+            if (DistrictsData != null)
+            {
+                foreach (var n in DistrictsData)
+                {
+                    var x = TargetDataSource.FirstOrDefault(o => o.DistrictId == n.DistrictId);
+                    if (x == null)
+                    {
+                        Random random = new Random();
+                        TargetDataSource.Add(new ATargets
+                        {
+                            TargetId = random.Next(1000, 10000),
+                            DistrictId = n.DistrictId,
+                        });
+                    }
+                }
+            }
+        }
+    }
+       
+    //Enable cell edit on single click
+    public async Task CellSelectHandler(CellSelectEventArgs<ATargets> args)
+    {
+        try
+        {
+            //get selected cell index
+            var CellIndexes = await DataGrid.GetSelectedRowCellIndexesAsync();
+
+            //get the row and cell index
+            var CurrentEditRowIndex = CellIndexes[0].Item1;
+            var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+            //get the available fields
+            var fields = await DataGrid.GetColumnFieldNamesAsync();
+            // edit the selected cell using the cell index and column name
+            await DataGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+        }
+        catch (Exception ex)
+        {
+            // throw ex;
+        }
+    }
+
+    #endregion Targets
+}
+

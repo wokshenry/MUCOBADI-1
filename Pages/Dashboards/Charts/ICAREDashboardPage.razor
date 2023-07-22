@@ -1,0 +1,1092 @@
+﻿@page "/ICAREDashboardPage"
+@using MUCOBADI.DTOs.Dashboard;
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor;
+@using Syncfusion.Blazor.ProgressBar;
+@*@inject MUCOBADIContext db;*@
+@inject SPToCoreContext dbcontext;
+@inject IToastService toastService;
+@inject NavigationManager Navigation;
+
+<style>
+	.pp {
+		color: ghostwhite;
+		background-color: #808285;
+		padding: 10px;
+	}
+
+	.control-container {
+		background-color: #adb5bd;
+		height: 300px;
+		margin: 0 auto;
+		width: 500px;
+	}
+
+	.e-carousel .slide-content {
+		align-items: center;
+		display: flex;
+		font-size: 1.25rem;
+		height: 100%;
+		justify-content: center;
+	}
+
+	/*Customize carousel*/
+	.e-carousel .e-carousel-navigators .e-next .e-btn:not(:disabled) .e-btn-icon,
+	.e-carousel .e-carousel-navigators .e-previous .e-btn:not(:disabled) .e-btn-icon
+	{
+		color: blackyellow;
+		font-size: 25px;
+	}
+
+	.e-carousel .e-carousel-navigators {
+		top: 150px;
+	}
+
+	.e-carousel .e-carousel-navigators .e-previous .e-btn:not(:disabled) .e-btn-icon, .e-carousel .e-carousel-navigators .e-next .e-btn:not(:disabled) .e-btn-icon, .e-carousel .e-carousel-navigators .e-play-pause .e-btn:not(:disabled) .e-btn-icon {
+    color: black;
+	}
+
+	table, th, td {
+  border: 1px solid black;
+}
+
+h5 {
+  display: block;
+  font-size: -1em;
+  font-weight: bold;
+  color:maroon;
+  background-color: white;
+}
+
+h6 {
+        color: ghostwhite;
+        background-color: #268cff;
+        padding: 10px;
+        width: 100%;
+        font-size: 10px;
+    }
+
+    h4 {
+        color: black;
+        background-color: deepskyblue;
+        padding: 10px;
+        width: 100%;
+        font-size: 15px;
+    }
+
+    h3 {
+        color: black;
+        background-color: darkorange;
+        padding: 10px;
+        width: 100%;
+        font-size: 15px;
+    }
+</style>
+
+<div class="row">
+	<div class="col-md-12">
+		<ol class="breadcrumb" style="margin-top:5px;">
+			<li class="breadcrumb-item active" style="color: brown;"> <strong>Dashboard</strong></li>
+		</ol>
+    </div>
+</div>
+
+	<div class="form-group col-md-12">
+				<SfAccordion ExpandMode="@ExpandMode.Single">
+					<AccordionItems>
+						<AccordionItem Expanded="true">
+							<HeaderTemplate>Search Panel</HeaderTemplate>
+							<ContentTemplate>
+								<div style="padding:10px;">
+									<EditForm Model="@SearchModel" OnValidSubmit="@SearchDashboard">
+										<div class="form-row">
+											<div class="form-group col-md-3">
+												<p>District</p>
+												<SfMultiSelect 
+													@bind-Value="@InputModel.DistrictId" 
+													Enabled="true" 
+													TValue="int?[]" 
+													TItem="ADistrict" 
+													AllowFiltering="true" 
+													Placeholder="Please select" 
+													Mode="@VisualMode.CheckBox"
+												    DataSource="@DistrictsDataSource"
+												    ShowSelectAll="true" 
+													EnableSelectionOrder="true" 
+													ShowDropDownIcon="true" 
+													FilterBarPlaceholder="Search District" 
+													FloatLabelType="FloatLabelType.Never" 
+													PopupHeight="350px">
+													<MultiSelectFieldSettings 
+														Value="@nameof(ADistrict.DistrictId)" 
+														Text="@nameof(ADistrict.DistrictDescription)">
+													</MultiSelectFieldSettings>
+													<MultiSelectEvents 
+														TValue="int?[]"
+														   TItem="ADistrict"
+														   ValueChange="OnDistrictChange">
+													</MultiSelectEvents>
+												</SfMultiSelect>
+											</div>
+											<div class="form-group col-md-3">
+												<p>Subcounty</p>
+												<SfMultiSelect 
+													@bind-Value="@InputModel.SubcountyId" 
+													Enabled="@isSubcountyEnabled" 
+													TValue="int?[]"
+												    TItem="ASubcounty"
+												    AllowFiltering="true" 
+													Placeholder="Please select" 
+													Mode="@VisualMode.CheckBox" 
+													DataSource="@SubcountiesDataSource" 
+													ShowSelectAll="true" 
+													EnableSelectionOrder="true" 
+													ShowDropDownIcon="true" 
+													FilterBarPlaceholder="Search Subcounty" 
+													FloatLabelType="FloatLabelType.Never" 
+													PopupHeight="350px">
+													<MultiSelectFieldSettings 
+														Value="@nameof(ASubcounty.SubcountyId)" 
+														Text="@nameof(ASubcounty.SubcountyDescription)">
+													</MultiSelectFieldSettings>
+												</SfMultiSelect>
+											</div>
+											<div class="form-group col-md-3">
+												<p>Quarter</p>
+												<SfMultiSelect 
+													@bind-Value="@InputModel.QuarterId" 
+													Enabled="@isQuarterEnabled" 
+													TValue="int?[]" 
+													TItem="AQuarter" 
+													AllowFiltering="true" 
+													Placeholder="Please select" 
+													Mode="@VisualMode.CheckBox" 
+													DataSource="@QuarterData" 
+													ShowSelectAll="true" 
+													EnableSelectionOrder="true" 
+													ShowDropDownIcon="true" 
+													FilterBarPlaceholder="Search Quarter" 
+													FloatLabelType="FloatLabelType.Never" 
+													PopupHeight="350px">
+													<MultiSelectFieldSettings 
+														Value="@nameof(AQuarter.QuarterId)" 
+														Text="@nameof(AQuarter.QuarterName)">
+													</MultiSelectFieldSettings>
+												</SfMultiSelect>
+											</div>
+											<div class="form-group col-md-3">
+												<p>Year</p>
+												<SfMultiSelect 
+													@bind-Value="@InputModel.FinancialYearId" 
+													Enabled="true" 
+													TValue="int?[]"
+												   TItem="AFinancialYear"
+												   AllowFiltering="true" 
+													Placeholder="Please select" 
+													Mode="@VisualMode.CheckBox"
+												   DataSource="@YearsDataSource"
+												   ShowSelectAll="true" 
+													EnableSelectionOrder="true" 
+													ShowDropDownIcon="true" 
+													FilterBarPlaceholder="Search Year" 
+													FloatLabelType="FloatLabelType.Never" 
+													PopupHeight="350px">
+													<MultiSelectFieldSettings Value="@nameof(AFinancialYear.FinancialYearDesc)"
+																  Text="@nameof(AFinancialYear.FinancialYearDesc)">
+													</MultiSelectFieldSettings>
+												</SfMultiSelect>
+											</div>
+											@*<div class="form-group col-md-3">
+												<p>Visitation Start date</p>
+												<SfDatePicker @bind-Value="@SearchModel.Startdate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+											</div>
+											<div class="form-group col-md-3">
+											<p>Visitation End date</p>
+											<SfDatePicker @bind-Value="@SearchModel.Enddate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+											</div>*@
+											<div class="form-group col-md-3">
+												<BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+												<BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+											</div>
+											<div class="form-group col-md-12">
+												<DataAnnotationsValidator />
+												<ValidationSummary />
+											</div>
+										</div>
+									</EditForm>
+								</div>
+							</ContentTemplate>
+						</AccordionItem>
+					</AccordionItems>
+				</SfAccordion>
+    </div>
+
+<div class="col-md-9">
+	@{
+		if (InputModel.DistrictId == null && InputModel.SubcountyId == null && InputModel.QuarterId == null && InputModel.FinancialYearId == null)
+		{
+			<p style="color:purple;"><center><strong>DATA FOR QTR @QuarterNo @DateTime.Now.Year</strong></center></p>
+		}
+		else
+		{
+			string _DistrictId = null;
+			if (InputModel.DistrictId != null)
+			{
+				var districtdesc = string.Join(", ", DistrictsDataSource.Where(o => InputModel.DistrictId.Any(a => a == o.DistrictId)).Select(o => o.DistrictDescription).ToArray());
+				_DistrictId = districtdesc;
+			}
+
+			string _SubcountyId = null;
+			if (InputModel.SubcountyId != null)
+			{
+				var subcountydesc = string.Join(", ", SubcountiesDataSource.Where(o => InputModel.SubcountyId.Any(a => a == o.SubcountyId)).Select(o => o.SubcountyDescription).ToArray());
+				_SubcountyId = subcountydesc;
+			}
+
+			string _QuarterId = null;
+			if (InputModel.QuarterId != null)
+			{
+				var quarterdesc = string.Join(", ", QuarterData.Where(o => InputModel.QuarterId.Any(a => a == o.QuarterId)).Select(o => o.QuarterName).ToArray());
+				_QuarterId = quarterdesc;
+			}
+
+			string _FinancialYearId = null;
+			if (InputModel.FinancialYearId != null)
+			{
+				_FinancialYearId = string.Join(",", InputModel.FinancialYearId);
+			}
+				
+				<table>
+				<tr><th colspan="4" style="color:purple;">FILTERED BY</th></tr>
+					<tr>
+						<th style="color:purple;">District</th>
+						<th style="color:purple;">Subcounty</th>
+						<th style="color:purple;">Quarter</th>
+						<th style="color:purple;">Year</th>
+					</tr>
+					<tr>
+						<td>@_DistrictId</td>
+						<td>@_SubcountyId</td>
+						<td>@_QuarterId</td>
+						<td>@_FinancialYearId</td>
+					</tr>
+				</table>	
+		}
+	}	
+</div>
+
+
+<div class="row" style="margin-top:5px;">
+			<SfCarousel AnimationEffect="CarouselAnimationEffect.Fade"
+                    AutoPlay="true"
+                    Interval="60000" 
+					ButtonsVisibility="CarouselButtonVisibility.Visible"
+					ShowIndicators="false">
+					@try
+					{
+						<CarouselItem>
+							<h5>OVC_SERV. Vs TARGET (0-18+ YEARS)</h5>
+							<table style="width:100%;font-size:20px">
+								<tr>
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>District</strong>
+									</td>
+									@*<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;" hidden>
+										<strong>Year</strong>
+									</td>*@
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>Target</strong>
+									</td>
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>Active</strong>
+									</td>
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>Graduated</strong>
+									</td>
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>OVC_SERV.</strong>
+									</td>
+									@*<td>
+										<strong>Year</strong>
+									</td>*@
+									<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;">
+										<strong>Percent (%)</strong>
+									</td>
+								</tr>
+								@{
+									double? totaltarget = 0;
+									double? totalovcserve = 0;
+									double? totalpercentage = 0;
+									double? totalactive = 0;
+									double? totalgraduated = 0;
+								}
+								@try
+								{
+									@foreach(var item in TargetsList)
+									{
+										double? percentagevalue = 0;
+									<tr>
+										<td>
+											@item.DistrictDescription
+										</td>
+										@*<td style="text-align:right" hidden>									
+											@item.FinancialYearDesc
+										</td>*@
+										<td style="text-align:right">
+											@{
+												totaltarget += item.TargetValue;
+											}
+											@item.TargetValue.Value.ToString("#,##0")
+										</td>
+										@*Active*@
+										<td style="text-align:right">
+											@{
+												totalactive += item.TargetValue;
+											}
+											@item.TargetValue.Value.ToString("#,##0")
+										</td>
+										@*Graduated*@
+										<td style="text-align:right">
+											@{
+												totalgraduated += item.TargetValue;
+											}
+											@*@item.TargetValue.where.Value.ToString("#,##0")*@
+										</td>
+										<td style="text-align:right">
+											@{
+												totalovcserve += item.ActualValue;
+											}
+											@item.ActualValue.Value.ToString("#,##0")
+										</td>
+								
+											@if(item.TargetValue>0)
+											{
+												@if (totaltarget > 0)
+												{
+													totalpercentage = Math.Round(((double)totalovcserve / (double)totaltarget) * 100, 1);
+												}											
+												if(@item.Percentage < 75)
+												{
+													<td style="text-align:right;background-color:red;color:ghostwhite;font-weight:bold;">
+														<p style="color:ghostwhite;font-weight:bold;">@item.Percentage%</p>
+													</td>
+												}
+												else if(@item.Percentage >= 75 && @item.Percentage < 95)
+												{
+													<td style="text-align:right;background-color:yellow;color:black;font-weight:bold;">
+														<p style="color:black;font-weight:bold;">@item.Percentage%</p>
+													</td>
+												}
+												else if (@item.Percentage > 95)
+												{
+													<td style="text-align:right;background-color:green;color:ghostwhite;font-weight:bold;">
+														<p style="color:black;font-weight:bold;">@item.Percentage%</p>
+													</td>
+												}
+											}
+											else
+											{
+													<td style="text-align:right;background-color:red;color:ghostwhite;font-weight:bold;">
+														<p style="color:ghostwhite;font-weight:bold;">0%</p>
+													</td>
+											}
+									</tr>							
+									}
+								}
+								catch(Exception ex)
+								{
+									throw ex;
+								}
+								finally
+								{
+									@*LoadingDialogue.HideAsync();*@
+								}
+							<tr>							
+								<td style="border-color:ghostwhite; background-color:black; color:ghostwhite;"><strong>Total</strong></td>
+								@*<td></td>*@
+								<td style="text-align:right"><strong>@totaltarget.Value.ToString("#,##0")</strong></td>
+								<td>Active</td>
+								<td>Graduated</td>
+								<td style="text-align:right"><strong>@totalovcserve.Value.ToString("#,##0")</strong></td>
+							
+								@if(@totalpercentage < 75)
+								{
+												<td style="text-align:right;background-color:red;color:ghostwhite;font-weight:bold;">
+													<p style="color:ghostwhite;font-weight:bold;">@totalpercentage.Value.ToString("#,##0")%</p>
+												</td>
+								}
+								else if(@totalpercentage >= 75 && @totalpercentage < 95)
+								{
+												<td style="text-align:right;background-color:yellow;color:black;font-weight:bold;">
+													<p style="color:black;font-weight:bold;">@totalpercentage.Value.ToString("#,##0")%</p>
+												</td>
+								}
+								else if (@totalpercentage > 95)
+								{
+												<td style="text-align:right;background-color:green;color:black;font-weight:bold;">
+													<p style="color:black;font-weight:bold;">@totalpercentage.Value.ToString("#,##0")%</p>
+												</td>
+								}
+							</tr>
+							</table>
+						</CarouselItem>
+						@*<CarouselItem>
+							<p>2</p>
+						</CarouselItem>
+						<CarouselItem>
+							<p>3</p>
+						</CarouselItem>*@
+					}
+					
+					catch(Exception ex)
+					{
+					
+					}
+					finally
+					{
+						LoadingDialogue.HideAsync();
+					}
+			</SfCarousel>
+
+</div>
+
+<div>
+	<SfDialog @ref="@LoadingDialogue"
+			  ID="LoadingDialog"
+			  Height="auto"
+			  Width="20%"
+			  AllowDragging="true"
+			  Target=".mainbody"
+			  ShowCloseIcon="false"
+			  IsModal=true
+			  Visible="false">
+		<DialogTemplates>
+			<Content>
+				<div style="padding:25px">
+					<div class="loader">
+						<div class="loader--dot"></div>
+						<div class="loader--dot"></div>
+						<div class="loader--dot"></div>
+						<div class="loader--dot"></div>
+						<div class="loader--dot"></div>
+						<div class="loader--dot"></div>
+						<div class="loader-Loading-text"></div>
+						@*<div class="loader-Saving-text"></div>*@
+					</div>
+				</div>
+			</Content>
+			<FooterTemplate>
+
+			</FooterTemplate>
+		</DialogTemplates>
+	</SfDialog>
+</div>
+
+@code {
+	#region Toasters
+	public static string ToastContent { get; set; }
+	SfToast ToastObj;
+	SfToast DeleteToastObj;
+	private string ToastPosition = "Right";
+	private int AlarmTimeout { get; set; } = 120000;
+	private List<ToastModel> Toast = new List<ToastModel>
+	{
+		new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+		new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+		new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+		new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+	};
+	#endregion Toasters
+
+	string QuarterNo { get; set; }
+	string Qtr = null;
+	string PreviousQtr = null;
+	string Yr = null;
+	private List<ViewDashboardBeneficiaryIdentificationRegister> TotalHouseHoldsToVisit { get; set; }
+	private List<spDashboardHouseHoldsGetAllResult> TotalHouseholdsVisited { get; set; }
+	List<ViewDashboardOvcserveVsTarget> OvcServeData { get; set; }
+	List<ViewDashboardTnrhivstatus> UnknownTNRData { get; set; }
+	List<ViewATargets> TargetsData { get; set; }
+	List<DasboardDistricts> data { get; set; }
+	List<ViewDashboardBeneficiariesonIcarepivot> ICAREBeneficiariesData { get; set; }
+	List<ViewDashboardOvcServiceReportingToolDetail> HomeVisitData { get; set; }
+	List<AKnownRiskFactorsBinding> RiskFactorsData { get; set; }
+	List<ViewDashboardHouseHoldNoVisits> HHNoVisitsData { get; set; }
+	List<AFinancialYear> YearsDataSource { get; set; }
+	List<ADistrict> DistrictsDataSource { get; set; }
+	List<ASubcounty> SubcountiesDataSource { get; set; }
+
+	private Syncfusion.Blazor.Theme Theme { get; set; }
+	private double[] Spacing = new double[] { 15, 15 };
+	private double Ratio = 160 / 100;
+	SearchPanel SearchModel { get; set; } = new();
+	List<SeriesModel> AgeCategoryData { get; set; }
+	List<SeriesModel> DistrictData { get; set; }
+	List<SeriesModel> HIVStatusdData { get; set; }
+	List<SeriesModel> ProgramStatusData { get; set; }
+	List<SeriesModel> ClientsOnArtData { get; set; }
+	List<SeriesModel> ClientsEligibleforVLTestDoneData { get; set; }
+	List<SeriesModel> ClientsEligibleforVLData { get; set; }
+	List<SeriesModel> ClientsVLTestResultsReceivedData { get; set; }
+	List<SeriesModel> ClientsWithSuppressedResultsData { get; set; }
+	List<SeriesModel> RiskFactorData { get; set; }
+	List<DashboardModel> PositiveNegativeUnknownData { get; set; }
+	List<DashboardModel> PositiveNegativeUnknownData18Plus { get; set; }
+	public static double? TotalCALHIV { get; set; } = 0;
+	List<SeriesModel>? NumberofActiveBeneficiariesData { get; set; }
+	List<SeriesModel>? NumberofClientWithHealthServiceData { get; set; }
+	List<SeriesModel>? NumberofClientWithHealthServiceDataChildren { get; set; }
+	List<SeriesModel>? NumberClientsWithChildProtectionServiceData { get; set; }
+	List<SeriesModel>? NumberClientsWithChildProtectionServiceData1 { get; set; }
+	List<string> SeriesColors { get; set; } = new List<string>()
+	{
+		"#2485FA","#4d0702","#808285","#6002EE","#008b00","#262626","#424d44","#472b42","#1e4167","#3d1d00"
+	};
+	SfDialog? LoadingDialogue;
+	private UtilitiesSearchPanel InputModel = new();
+	List<AQuarter> QuarterData { get; set; }
+	bool isQuarterEnabled { get; set; } = true;
+	bool isSubcountyEnabled  { get; set; } = false;
+
+	public class OvcHivStat
+	{
+		public string DistrictDescription { get; set; }
+		public double? OVCServ { get; set; }
+		public double? HivPositive { get; set; }
+		public double? HivNegative { get; set; }
+		public double? Unknownstatus { get; set; }
+		public double? UnknownTNR { get; set; }
+		public double? CALHIV { get; set; }
+	}
+	public class OvcServeAgeGroups
+	{
+		public string DistrictDescription { get; set; }
+		public double? OVCServTotal { get; set; }
+		public double? Children { get; set; }
+		public double? Adults { get; set; }
+		public double? PercentageChildren { get; set; }
+		public double? PercentageAdults { get; set; }
+	}
+
+	List<OvcHivStat> ovchivchildren = new List<OvcHivStat>();
+	List<OvcHivStat> ovcadults = new List<OvcHivStat>();
+	List<OvcServeAgeGroups> ovcservagegroups = new List<OvcServeAgeGroups>();
+
+	public class OVCServeValueTargets
+	{
+		public double? TargetValue { get; set; }
+		public int? DistrictId { get; set; }
+		public int? FinancialYearId { get; set; }
+		public string DistrictDescription { get; set; }
+		public string FinancialYearDesc { get; set; }
+		public int? VisitationMonth { get; set; }
+		public int? Qtr { get; set; }
+		public int? VisitationYear { get; set; }
+		public double? ActualValue { get; set; }
+		public double? Percentage { get; set; }
+	}
+
+	List<OVCServeValueTargets> TargetsList = new List<OVCServeValueTargets>();
+
+	public class BeneficiaryRiskFactor
+	{
+		public string DistrictDescription { get; set; }
+		public string KnownRiskFactorDescription { get; set; }
+		public double? TotalNumber { get; set; }
+		public int? DistrictId { get; set; }
+		public double? AdolescentMother { get; set; }
+		public double CALHIV { get; set; }
+		public double ChildofFSW { get; set; }
+		public double FSW { get; set; }
+		public double HEI { get; set; }
+		public double LivinginHHwithAdolescentMother { get; set; }
+		public double LivinginHHwithFSW { get; set; }
+		public double LivinginHHwithHEI { get; set; }
+		public double LivinginHHwithPLHIV { get; set; }
+		public double LivinginHHwithSVAC { get; set; }
+		public double Other { get; set; }
+		public double PLHIV { get; set; }
+		public double SVAC { get; set; }
+	}
+	List<BeneficiaryRiskFactor> beneficiaryriskfactorchildren = new List<BeneficiaryRiskFactor>();
+
+	public class DasboardDistricts
+	{
+		public int? DistrictId { get; set; }
+		public string DistrictDescription { get; set; }
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		try
+		{
+			await base.OnInitializedAsync();
+
+			//Timer to refresh dashboard page
+			System.Timers.Timer timer = new System.Timers.Timer();
+			timer.Interval = 300000;
+			timer.Elapsed += timer_Elapsed;
+			timer.Start();
+
+
+			QuarterData = dbcontext
+			.AQuarter
+			.Where(o=>o.QuarterId >= 1 && o.QuarterId <= 4)
+			.ToList();
+
+			YearsDataSource = dbcontext
+			.AFinancialYear
+			.OrderBy(o=>o.FinancialYearDesc)
+			.ToList();
+
+			DistrictsDataSource = dbcontext
+			.ADistrict
+			.OrderBy(o=>o.DistrictDescription)
+			.ToList();
+
+			SubcountiesDataSource = dbcontext
+			.ASubcounty
+			.OrderBy(o=>o.SubcountyDescription)
+			.ToList();
+		
+			await LoadDashboards();
+
+
+		}
+		catch(Exception ex)
+		{
+			throw ex;
+		}
+
+		finally
+		{
+
+
+		}
+	}
+
+	async void timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+	{
+		await LoadDashboards();
+	}
+
+	public class PreviousQtrsClass
+	{
+		public string PreviousQtrs { get; set; }
+	}
+
+	private async Task SearchDashboard()
+	{
+		//int StartMonth = SearchModel.Startdate.Value.Month;
+		//int EndMonth = SearchModel.Enddate.Value.Month;
+
+		//int currentYear = SearchModel.Startdate.Value.Year;
+
+		//if (StartMonth >= 1 && EndMonth <= 3)
+		//{
+		//	QuarterNo = "TWO (JAN-MAR)";
+		//	Qtr = "2";
+		//	//StartMonth = 1;
+		//	//EndMonth = 3;
+		//}
+		//else if (StartMonth >= 4 && EndMonth <= 6)
+		//{
+		//	QuarterNo = "THREE (APR-JUN)";
+		//	Qtr = "3";
+		//	//StartMonth = 4;
+		//	//EndMonth = 6;
+		//}
+		//else if (StartMonth >= 7 && EndMonth <= 9)
+		//{
+		//	QuarterNo = "FOUR (JUL-SEP)";
+		//	Qtr = "4";
+		//	//StartMonth = 7;
+		//	//EndMonth = 9;
+		//}
+		//else if (StartMonth >= 10 && EndMonth <= 12)
+		//{
+		//	QuarterNo = "ONE (OCT-DEC)";
+		//	Qtr = "1";
+		//	//StartMonth = 10;
+		//	//EndMonth = 12;
+		//}
+
+
+		//Quarter
+		string _QuarterId = null;
+		if (InputModel.QuarterId != null)
+		{
+			_QuarterId = string.Join(",", InputModel.QuarterId);
+		}
+
+		string[] _QuarterId1 = new string[] { };
+		if (!string.IsNullOrEmpty(_QuarterId))
+		{
+			_QuarterId1 = _QuarterId.Split(',');
+		}
+
+		List<string> PreviousQtrsList = new List<string> ();
+		string[] _PreviousQtrsList = new string[] { };
+
+		if (!string.IsNullOrEmpty(_QuarterId))
+		{
+			foreach (char n in _QuarterId)
+			{
+				if (n.ToString() == "1")
+				{
+					PreviousQtrsList.Add("4");
+				}
+				else if (n.ToString() == "2")
+				{
+					PreviousQtrsList.Add("1");
+				}
+
+				else if (n.ToString() == "3")
+				{
+					PreviousQtrsList.Add("2");
+				}
+
+				else if (n.ToString() == "4")
+				{
+					PreviousQtrsList.Add("3");
+				}
+								
+				if (PreviousQtrsList.Count > 0)
+				{
+					_PreviousQtrsList = PreviousQtrsList.ToArray();
+				}
+			}
+        }
+
+		//Financial Year
+		string _YearId = null;
+		if (InputModel.FinancialYearId != null)
+		{
+			_YearId = string.Join(",", InputModel.FinancialYearId);
+		}
+
+		string[] _YearId1 = new string[] { };
+		if (!string.IsNullOrEmpty(_YearId))
+        {
+			_YearId1 = _YearId.Split(',');
+        }
+
+		//District
+		string _DistrictId = null;
+		if (InputModel.DistrictId != null)
+		{
+			_DistrictId = string.Join(",", InputModel.DistrictId);
+		}
+
+		string[] _DistrictId1 = new string[] { };
+		if (!string.IsNullOrEmpty(_DistrictId))
+		{
+			_DistrictId1 = _DistrictId.Split(',');
+		}
+
+		//Subcounty
+		string _SubcountyId = null;
+		if (InputModel.SubcountyId != null)
+		{
+			_SubcountyId = string.Join(",", InputModel.SubcountyId);
+		}
+
+		string[] _SubcountyId1 = new string[] { };
+		if (!string.IsNullOrEmpty(_SubcountyId))
+		{
+			_SubcountyId1 = _SubcountyId.Split(',');
+		}
+
+		try
+		{
+			await LoadingDialogue.ShowAsync();
+			
+			//Clear the current list in the table
+			TargetsList.Clear();
+			//Datasources to load OVCServe Data and Targets
+			TargetsData = await  dbcontext.ViewATargets
+			.Where(o => (_YearId1.Length == 0 || (o.FinancialYearDesc != null && _YearId1.Any(a => a == o.FinancialYearDesc.Trim()) == true)))
+			.ToListAsync();
+
+			OvcServeData = await dbcontext.ViewDashboardOvcserveVsTarget
+			.Where(o => (_YearId1.Length == 0 || (o.VisitationYear != null && _YearId1.Any(a => a == o.VisitationYear.ToString()) == true)
+			&& (_QuarterId1.Length == 0 || (o.Qtr != null && _QuarterId1.Any(a => a == o.Qtr.ToString()))
+			|| ((_PreviousQtrsList.Length == 0 || (o.Qtr != null && _PreviousQtrsList.Any(a => a == o.Qtr.ToString()) == true)) && o.ProgramParticipationId == 2)))
+			&& (_DistrictId1.Length == 0 || (o.DistrictId != null && _DistrictId1.Any(a => a == o.DistrictId.ToString()) == true))
+			&& (_SubcountyId1.Length == 0 || (o.SubcountyId != null && _SubcountyId1.Any(a => a == o.SubcountyId.ToString()) == true))
+			).ToListAsync();
+
+			ovchivchildren = new List<OvcHivStat>();
+			ovcadults = new List<OvcHivStat>();
+
+			var _data = OvcServeData.Select(o => new { o.DistrictId, o.DistrictDescription, o.VisitationYear }).ToList().Distinct().ToList();
+
+			//OVC_Serv Vs Target
+			foreach (var item in _data)
+			{
+				int count = 0;
+				if (OvcServeData != null && OvcServeData.Count > 0)
+				{
+					var ovcservefilter = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.VisitationYear.ToString() == item.VisitationYear.ToString()).ToList();
+					if (ovcservefilter != null)
+					{
+						count = ovcservefilter.Count();
+					}
+				}
+
+				OVCServeValueTargets mm = new OVCServeValueTargets();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.FinancialYearDesc = item.VisitationYear.ToString();
+				var tvalue = TargetsData.FirstOrDefault(o => o.DistrictId == item.DistrictId && o.FinancialYearDesc == item.VisitationYear.ToString());
+				if (tvalue != null)
+				{
+					mm.TargetValue = tvalue.TargetValue;
+				}
+				else
+				{
+					mm.TargetValue = 0;
+				}
+
+				mm.ActualValue = count;
+
+				if (mm.TargetValue > 0)
+				{
+					mm.Percentage = Math.Round((((double)mm.ActualValue / (double)mm.TargetValue) * 100), 1);
+				}
+
+				TargetsList.Add(mm);
+			}
+			TargetsList = TargetsList.OrderByDescending(o => o.Percentage).ToList();
+			StateHasChanged();
+			//CloseDialog();
+		}
+		catch (Exception ex)
+		{
+			throw ex;
+		}
+		finally
+		{
+			//await LoadingDialogue.HideAsync();
+			//Navigation.NavigateTo("/ICAREDashboardPage", true);
+		}
+	}
+
+	private void ClearSearchBtnClick()
+	{
+		InputModel = new();
+	}
+
+	private async Task LoadDashboards()
+	{
+		try
+		{			
+			//await LoadingDialogue.ShowAsync();
+			var currentMonth = DateTime.Now.Month;
+			var currentYear = DateTime.Now.Year;
+
+
+			SearchModel = new SearchPanel();
+			SearchModel.Startdate = new DateTime(DateTime.Now.Year, 1, 1);
+			SearchModel.Enddate = new DateTime(DateTime.Now.Year, 12, 31);
+
+			int StartMonth = 1;
+			int EndMonth = 12;
+
+			if (currentMonth >= 1 && currentMonth <= 3)
+			{
+				QuarterNo = "TWO (JAN-MAR)";
+				Qtr = "2";
+				PreviousQtr = "1";
+				StartMonth = 1;
+				EndMonth = 3;
+			}
+			else if (currentMonth >= 4 && currentMonth <= 6)
+			{
+				QuarterNo = "THREE (APR-JUN)";
+				Qtr = "3";
+				PreviousQtr = "2";
+				StartMonth = 4;
+				EndMonth = 6;
+			}
+			else if (currentMonth >= 7 && currentMonth <= 9)
+			{
+				QuarterNo = "FOUR (JUL-SEP)";
+				Qtr = "4";
+				PreviousQtr = "3";
+				StartMonth = 7;
+				EndMonth = 9;
+			}
+			else if (currentMonth >= 10 && currentMonth <= 12)
+			{
+				QuarterNo = "ONE (OCT-DEC)";
+				Qtr = "1";
+				PreviousQtr = "4";
+				StartMonth = 10;
+				EndMonth = 12;
+			}
+
+			//Datasources to load OVCServe Data and Targets
+
+			TargetsData = dbcontext.ViewATargets.Where(o => o.FinancialYearDesc.Trim() == currentYear.ToString()).ToList();
+						
+			OvcServeData = dbcontext.ViewDashboardOvcserveVsTarget
+			.Where(o => o.VisitationYear == currentYear && (o.Qtr.ToString() == Qtr
+			|| (o.Qtr.ToString() == PreviousQtr && o.ProgramParticipationId == 2)))
+			.ToList();
+
+			UnknownTNRData = dbcontext.ViewDashboardTnrhivstatus.Where(o => o.VisitationYear == currentYear && o.Qtr.ToString() == Qtr).ToList();
+			ICAREBeneficiariesData = dbcontext.ViewDashboardBeneficiariesonIcarepivot.Where(o => o.VisitationYear == currentYear && (o.Qtr.ToString() == Qtr/*|| o.Qtr.ToString() == PreviousQtr*/)).ToList();
+			RiskFactorsData = dbcontext.AKnownRiskFactorsBinding.ToList();
+			HHNoVisitsData = dbcontext.ViewDashboardHouseHoldNoVisits.Where(o => o.VisitationYear == currentYear && o.Qtr == Qtr).ToList();
+			HomeVisitData = dbcontext.ViewDashboardOvcServiceReportingToolDetail.Where(o => o.VisitationYear == currentYear && o.Qtr == Qtr).ToList();
+
+			ovchivchildren = new List<OvcHivStat>();
+			ovcadults = new List<OvcHivStat>();
+
+			var _data = OvcServeData.Select(o => new { o.DistrictId, o.DistrictDescription, o.VisitationYear }).ToList().Distinct().ToList();
+
+			//OvcHivStat
+			foreach (var item in _data)
+			{
+				OvcHivStat mm = new OvcHivStat();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.OVCServ = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "0-17 Years").ToList().Count();
+				mm.HivPositive = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 1 && o.AgeCategory == "0-17 Years").ToList().Count();
+				mm.HivNegative = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 2 && o.AgeCategory == "0-17 Years").ToList().Count();
+				mm.Unknownstatus = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 3 && o.AgeCategory == "0-17 Years").ToList().Count();
+				mm.UnknownTNR = UnknownTNRData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "0-17 Years").ToList().Count();
+
+				if (mm.HivPositive > 0)
+				{
+					mm.CALHIV = Math.Round((((double)mm.HivPositive / (double)mm.OVCServ) * 100), 1);
+				}
+				ovchivchildren.Add(mm);
+			}
+			ovchivchildren = ovchivchildren.OrderByDescending(o => o.CALHIV).ToList();
+
+			//OvcHIVAdults
+			foreach (var item in _data)
+			{
+				OvcHivStat mm = new OvcHivStat();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.OVCServ = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "18+ Years").ToList().Count();
+				mm.HivPositive = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 1 && o.AgeCategory == "18+ Years" && o.IsCareGiver == 1).ToList().Count();
+				mm.HivNegative = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 2 && o.AgeCategory == "18+ Years" && o.IsCareGiver == 1).ToList().Count();
+				mm.Unknownstatus = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.HivstatusId == 3 && o.AgeCategory == "18+ Years" && o.IsCareGiver == 1).ToList().Count();
+				mm.UnknownTNR = UnknownTNRData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "18+ Years" && o.IsCareGiver == 1).ToList().Count();
+
+				if (mm.HivPositive > 0)
+				{
+					mm.CALHIV = Math.Round((((double)mm.HivPositive / (double)mm.OVCServ) * 100), 1);
+				}
+				ovcadults.Add(mm);
+			}
+			ovcadults = ovcadults.OrderByDescending(o => o.CALHIV).ToList();
+
+			//OVC_Serv Vs Target
+			foreach (var item in _data)
+			{
+				int count = 0;
+				if (OvcServeData != null && OvcServeData.Count > 0)
+				{
+					var ovcservefilter = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.VisitationYear.ToString() == item.VisitationYear.ToString()).ToList();
+					if (ovcservefilter != null)
+					{
+						count = ovcservefilter.Count();
+					}
+				}
+
+				OVCServeValueTargets mm = new OVCServeValueTargets();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.FinancialYearDesc = item.VisitationYear.ToString();
+				var tvalue = TargetsData.FirstOrDefault(o => o.DistrictId == item.DistrictId && o.FinancialYearDesc == item.VisitationYear.ToString());
+				if (tvalue != null)
+				{
+					mm.TargetValue = tvalue.TargetValue;
+				}
+				else
+				{
+					mm.TargetValue = 0;
+				}
+
+				mm.ActualValue = count;
+
+				if (mm.TargetValue > 0)
+				{
+					mm.Percentage = Math.Round((((double)mm.ActualValue / (double)mm.TargetValue) * 100), 1);
+				}
+
+				TargetsList.Add(mm);
+			}
+			TargetsList = TargetsList.OrderByDescending(o => o.Percentage).ToList();
+
+			//Beneficiaries KnownRiskFactor
+			foreach (var item in ICAREBeneficiariesData)
+			{
+				BeneficiaryRiskFactor mm = new BeneficiaryRiskFactor();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.AdolescentMother = item.AdolescentMother;
+				mm.CALHIV = item.Calhiv;
+				mm.ChildofFSW = item.ChildofFsw;
+				mm.FSW = item.Fsw;
+				mm.HEI = item.Hei;
+				mm.LivinginHHwithAdolescentMother = item.LivinginHhwithAdolescentMother;
+				mm.LivinginHHwithFSW = item.LivinginHhwithFsw;
+				mm.LivinginHHwithHEI = item.LivinginHhwithHei;
+				mm.LivinginHHwithPLHIV = item.LivinginHhwithPlhiv;
+				mm.LivinginHHwithSVAC = item.LivinginHhwithSvac;
+				mm.Other = item.Other;
+				mm.PLHIV = item.Plhiv;
+				mm.SVAC = item.Svac;
+
+				beneficiaryriskfactorchildren.Add(mm);
+			}
+			beneficiaryriskfactorchildren = beneficiaryriskfactorchildren.OrderBy(o => o.DistrictDescription).ThenByDescending(o => o.TotalNumber).ToList();
+
+			//OvcServeAgeGroups
+			foreach (var item in _data)
+			{
+				OvcServeAgeGroups mm = new OvcServeAgeGroups();
+				mm.DistrictDescription = item.DistrictDescription;
+				mm.OVCServTotal = OvcServeData.Where(o => o.DistrictId == item.DistrictId).ToList().Count();
+				mm.Children = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "0-17 Years").ToList().Count();
+				mm.Adults = OvcServeData.Where(o => o.DistrictId == item.DistrictId && o.AgeCategory == "18+ Years" && o.IsCareGiver == 1).ToList().Count();
+
+				if (mm.OVCServTotal > 0)
+				{
+					mm.PercentageChildren = Math.Round((((double)mm.Children / (double)mm.OVCServTotal) * 100), 1);
+					mm.PercentageAdults = Math.Round((((double)mm.Adults / (double)mm.OVCServTotal) * 100), 1);
+				}
+				ovcservagegroups.Add(mm);
+			}
+			ovcservagegroups = ovcservagegroups.OrderByDescending(o => o.PercentageAdults).ThenByDescending(o => o.PercentageChildren).ToList();
+
+		}
+		catch(Exception ex)
+		{			
+
+		}
+		finally
+		{
+			//Navigation.NavigateTo("/ICAREDashboardPage", true);
+		}
+	}
+
+	public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+	{
+		if (args.Value != null)
+		{
+			isSubcountyEnabled = true;
+			using (var db = new MUCOBADIContext())
+			{
+				SubcountiesDataSource = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).ToList();
+				isSubcountyEnabled = true;
+			}
+		}
+	}
+
+
+
+}

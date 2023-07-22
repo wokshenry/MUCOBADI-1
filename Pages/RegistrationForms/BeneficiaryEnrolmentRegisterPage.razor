@@ -1,0 +1,1244 @@
+﻿@page "/BeneficiaryEnrolmentRegisterPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID/ICARE |</strong> Beneficiary Enrolment Register</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager AdaptorInstance="@typeof(BeneficiaryEnrollmentRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="RegisterContext">
+                    @{
+                        BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                        <div style="padding:3px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Household Code</p>
+                                    <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="EnrolmentRegisterHeaderGrid" TValue="BeneficiaryEnrolmentRegisterHeader" Query="@(new Query().AddParams("HouseHoldId",BeneficiaryRegisterData.HouseHoldId))"
+                                            AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true"
+                                            Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                        @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                                        <SfDataManager AdaptorInstance="@typeof(EnrolmentRegisterHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <GridEvents OnActionBegin="OnEnrolmentRegisterHeaderActionBegin" OnActionComplete="EnrolmentRegisterHeaderActionComplete" TValue="BeneficiaryEnrolmentRegisterHeader"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="ReviewHeaderContext">
+                                                @{
+                                                    EnrolmentRegisterHeaderData = (ReviewHeaderContext as BeneficiaryEnrolmentRegisterHeader);
+                                                    <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@EnrolmentRegisterHeaderData.EnrolmentRegisterHeaderId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>District</p>
+                                                                <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Sub-County</p>
+                                                                <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Parish</p>
+                                                                <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Village</p>
+                                                                <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-3">
+                                                                <p>Household Code</p>
+                                                                <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Implementing Partner</p>
+                                                                <SfDropDownList @bind-Value="@(EnrolmentRegisterHeaderData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>OVC Service Provider</p>
+                                                                <SfDropDownList ID="HivstatusId" @bind-Value="@(EnrolmentRegisterHeaderData.OvcserviceProviderId)" Enabled="true" TItem="AOvcserviceProvider" TValue="int?" DataSource="@ServiceProviderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AOvcserviceProvider.OvcserviceProviderId)" Text="@nameof(AOvcserviceProvider.OvcserviceProviderName)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Individual Code of Household Head</p>
+                                                                <SfDropDownList @bind-Value="@(EnrolmentRegisterHeaderData.HouseHoldMemberId)" Enabled="true" TItem="HouseHoldMembers" TValue="int?" DataSource="@HouseHoldMemberData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListTemplates TItem="HouseHoldMembers">
+                                                                        <ItemTemplate>
+                                                                            <div style="margin-left:10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as HouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as HouseHoldMembers).Surname) @((context as HouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>
+                                                                        </ItemTemplate>
+                                                                        <ValueTemplate>
+                                                                            <div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as HouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as HouseHoldMembers).Surname) @((context as HouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>
+                                                                        </ValueTemplate>
+                                                                    </DropDownListTemplates>
+                                                                    <DropDownListFieldSettings Value="@nameof(HouseHoldMembers.HouseHoldMemberId)" Text="@nameof(HouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Enrolment Date</p>
+                                                                <SfDatePicker @bind-Value="@(EnrolmentRegisterHeaderData.EnrolmentDate)" Format="dd/MM/yyyy" Placeholder="Enter Enrolment Date" FloatLabelType="FloatLabelType.Never" />
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Collected by</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(EnrolmentRegisterHeaderData.CollectedBy)" Enabled="true" Placeholder="Enter the person who collected the information" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Tel: </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(EnrolmentRegisterHeaderData.CollectedByTele)" Enabled="true" Placeholder="Enter Other name of School" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date:</p>
+                                                                <SfDatePicker @bind-Value="@(EnrolmentRegisterHeaderData.CollectedDate)" Format="dd/MM/yyyy" Placeholder="Enter Collected Date" FloatLabelType="FloatLabelType.Never" />
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Reviewed by </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(EnrolmentRegisterHeaderData.ReviewedBy)" Enabled="true" Placeholder="Enter the person who Reviewed the information" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Tel:</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(EnrolmentRegisterHeaderData.ReviewedByTele)" Enabled="true" Placeholder="Enter Other name of School" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Date:</p>
+                                                                <SfDatePicker @bind-Value="@(EnrolmentRegisterHeaderData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Review Date" FloatLabelType="FloatLabelType.Never" />
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Beneficiary Household Member(s) Offer and Enrolment Details</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="EnrolledMembersGrid" DataSource="@EnrolledMembersData" TValue="spBeneficiaryEnrolmentRegisterDetailsGetAllResult" Query="@ChildQuery"
+                                                                        AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                                        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true" FrozenColumns="5">
+                                                                    @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                                                    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                                                    <GridEvents OnActionBegin="OnEnrolledMemberActionBegin" OnActionComplete="EnrolledMemberActionComplete" TValue="spBeneficiaryEnrolmentRegisterDetailsGetAllResult"></GridEvents>
+                                                                    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                                        <Template Context="MemberContext">
+                                                                            @{
+                                                                                EnrolledMembersReviewData = (MemberContext as spBeneficiaryEnrolmentRegisterDetailsGetAllResult);
+                                                                                <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                                                    <div class="form-row">
+                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                            <SfNumericTextBox @bind-Value="@EnrolledMembersReviewData.EnrolmentRegisterDetailsId" Enabled="false"></SfNumericTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <h4>Home Visit Service Reporting Tool</h4>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>District</p>
+                                                                                            <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Sub-County</p>
+                                                                                            <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Parish</p>
+                                                                                            <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Village</p>
+                                                                                            <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Household Code</p>
+                                                                                            <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Household Member Code</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.HouseHoldMemberCode</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Name</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.FullName</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Date of birth</p>
+                                                                                            @if (EnrolledMembersReviewData.DoB.HasValue)
+                                                                                            {
+                                                                                                <p><b>@EnrolledMembersReviewData.DoB.Value.ToString("dd/MM/yyyy")</b></p>
+                                                                                            }
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Age</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.Age</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Gender</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.GenderDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Program Participation Status</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.ProgramParticipationDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-3">
+                                                                                            <p>Risk Factor</p>
+                                                                                            <p><b>@EnrolledMembersReviewData.KnownRiskFactorDescription</b></p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Assessed, Offered, Accepted Enrollment (Y, N)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.Assessed_Offered_Accepted)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Assessed, Offered,Refused Enrollment(Y, N/A)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.Assessed_Offered_Refused)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Assessed, Not found eligible for Enrollment (Y, N/A)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.Assessed_NotEligible)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Not Assessed (Y, N/A)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.Not_Assessed)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>OVC_ Offer (Y, N/A)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.OVC_Offer)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>OVC_ Enroll (Y, N/A)</p>
+                                                                                            <SfDropDownList @bind-Value="@(EnrolledMembersReviewData.OVC_Enroll)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                                            </SfDropDownList>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                        <FooterTemplate>
+                                                                            <SfButton CssClass="e-btn e-success" OnClick="SaveEnrolledMemberFormBtnClick"> Save Form</SfButton>
+                                                                            <SfButton CssClass="e-btn e-danger" OnClick="CancelEnrolledMemberFormBtnClick"> Cancel</SfButton>
+                                                                        </FooterTemplate>
+                                                                    </GridEditSettings>
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                        <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.EnrolmentRegisterDetailsId) HeaderText="TB RiskAssessment Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.HouseHoldMemberCode) Visible="true" HeaderText="HouseHold Member Code" Width="140"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.FullName) HeaderText="Name" Width="180"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.HIVStatusDescription) Visible="true" HeaderText="Current HIV status" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.CurrentlyonARTDesc) Visible="true" HeaderText="If HIV + on ART? (Y/N)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.ARTNumber) Visible="true" HeaderText="ART No (if HIV+ & on ART)" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.Assessed_Offered_Accepted) AllowFiltering="false" HeaderText="Assessed, Offered, Accepted Enrollment (Y, N)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.Assessed_Offered_Refused) AllowFiltering="false" HeaderText="Assessed,Offered,Refused Enrollment(Y, N/A)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.Assessed_NotEligible) AllowFiltering="false" HeaderText="Assessed, Not found eligible for Enrollment (Y, N/A)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.Not_Assessed) AllowFiltering="false" HeaderText="Not Assessed (Y, N/A)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.OVC_Offer) AllowFiltering="false" HeaderText="OVC_ Offer (Y, N/A)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                        <GridForeignColumn Field=@nameof(spBeneficiaryEnrolmentRegisterDetailsGetAllResult.OVC_Enroll) AllowFiltering="false" HeaderText="OVC_ Enroll (Y, N/A)" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                            <FooterTemplate>
+                                                <SfButton CssClass="e-btn e-success" OnClick="SaveFormBtnClick"> Save Form</SfButton>
+                                                <SfButton CssClass="e-btn e-danger" OnClick="CancelFormBtnClick"> Cancel</SfButton>
+                                            </FooterTemplate>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.EnrolmentRegisterHeaderId) HeaderText="Enrolment Register Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.EnrolmentDate) HeaderText="Enrolment Date" Format="dd/MM/yyyy" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.OvcserviceProviderId) Visible="false" HeaderText="Ovc service Provider" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.ImplementingPartnerId) HeaderText="Implementing Partner" Width="100"></GridColumn>
+                                            <GridColumn Visible="true" HeaderText="HouseHold Head" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="200">
+                                                <Template>
+                                                    @{
+                                                        var data = (context as BeneficiaryEnrolmentRegisterHeader);
+                                                        string fullname = null;
+                                                        var record = HouseHoldMemberData.FirstOrDefault(o => o.HouseHoldMemberId == data.HouseHoldMemberId);
+                                                        if (record != null)
+                                                        {
+                                                            fullname = record.Surname + " " + record.Givenname;
+                                                        }
+                                                        <p>@fullname</p>
+                                                    }
+                                                </Template>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.CollectedBy) HeaderText="Collected By" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.CollectedByTele) Visible="true" HeaderText="Telephone" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.CollectedDate) HeaderText="Collected Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.ReviewedBy) HeaderText="Reviewed By" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.ReviewedByTele) HeaderText="Telephone" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                            <GridColumn Field=@nameof(BeneficiaryEnrolmentRegisterHeader.ReviewDate) HeaderText="Review Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+    SfGrid<BeneficiaryEnrolmentRegisterHeader> EnrolmentRegisterHeaderGrid;
+    SfGrid<spBeneficiaryEnrolmentRegisterDetailsGetAllResult> EnrolledMembersGrid;
+    private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+    BeneficiaryEnrolmentRegisterHeader EnrolmentRegisterHeaderData { get; set; }
+    spBeneficiaryEnrolmentRegisterDetailsGetAllResult EnrolledMembersReviewData { get; set; }
+    List<spBeneficiaryEnrolmentRegisterDetailsGetAllResult> EnrolledMembersData = new List<spBeneficiaryEnrolmentRegisterDetailsGetAllResult>();
+
+    List<HouseHoldMembers> HouseHoldMemberData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AOvcserviceProvider> ServiceProviderData { get; set; }
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+
+    private void SaveRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.EndEdit();
+    }
+    private void CancelRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.CloseEdit();
+    }
+    private void SaveFormBtnClick()
+    {
+        EnrolmentRegisterHeaderGrid.EndEdit();
+    }
+    private void CancelFormBtnClick()
+    {
+        EnrolmentRegisterHeaderGrid.CloseEdit();
+    }
+    private void SaveEnrolledMemberFormBtnClick()
+    {
+        EnrolledMembersGrid.EndEdit();
+    }
+    private void CancelEnrolledMemberFormBtnClick()
+    {
+        EnrolledMembersGrid.CloseEdit();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            //if (!userManagement.IsSignedIn())
+            //{
+            //    Navigation.NavigateTo("/", true);
+            //}
+            //else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    //SourceDocumentData = db.ASourceDocument.AsNoTracking().ToList();
+                    //DrugDispensingModelData = db.ADrugDispensingModel.AsNoTracking().ToList();
+                    ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                    ServiceProviderData = db.AOvcserviceProvider.AsNoTracking().ToList();
+                    YesNoData = db.AYesNo.AsNoTracking().ToList();
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                     _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    #region Beneficiary Register
+    public class BeneficiaryEnrollmentRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public BeneficiaryEnrollmentRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryRegisterGrid.PreventRender(false);
+            ChildQuery = new Query().AddParams("HouseHoldId", args.Data.HouseHoldId);
+            using(var db = new MUCOBADIContext())
+            {
+                HouseHoldMemberData = db.HouseHoldMembers.Where(o => o.HouseHoldId == args.Data.HouseHoldId).AsNoTracking().ToList();
+            }
+        }
+    }
+    #endregion Beneficiary Register
+    #region Enrolment Register Header
+    public class EnrolmentRegisterHeaderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public EnrolmentRegisterHeaderAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<BeneficiaryEnrolmentRegisterHeader>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.BeneficiaryEnrolmentRegisterHeader.Where(o=> o.HouseHoldId== HouseHoldId).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<BeneficiaryEnrolmentRegisterHeader>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as BeneficiaryEnrolmentRegisterHeader);
+                    var exists = dbContext.BeneficiaryEnrolmentRegisterHeader.FirstOrDefault(o => o.EnrolmentRegisterHeaderId == val.EnrolmentRegisterHeaderId);
+                    if (exists == null)
+                    {
+                        HivTbTrackingForm m = new HivTbTrackingForm();
+
+                        int id = 1;
+                        var last = dbContext.BeneficiaryEnrolmentRegisterHeader.OrderBy(o => o.EnrolmentRegisterHeaderId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.EnrolmentRegisterHeaderId + 1);
+                        }
+                        val.EnrolmentRegisterHeaderId = id;
+                        dbContext.BeneficiaryEnrolmentRegisterHeader.Add(val);
+                        dbContext.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    //var exists = dbContext.BeneficiaryEnrolmentRegisterHeader.FirstOrDefault(o => o.BeneficiaryEnrolmentRegisterHeaderId == data);
+                    //if (exists != null)
+                    //{
+                    //    dbContext.BeneficiaryEnrolmentRegisterHeader.Remove(exists);
+                    //}
+                    //await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as BeneficiaryEnrolmentRegisterHeader);
+                    var exist = db.BeneficiaryEnrolmentRegisterHeader.FirstOrDefault(o => o.EnrolmentRegisterHeaderId == val.EnrolmentRegisterHeaderId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+        //public void saveLog(int HouseHoldId, string Editedcolumn, string previousvalue, string newvalue, string actiontaken)
+        //{
+        //    try
+        //    {
+        //        using (var db = new MUCOBADIContext())
+        //        {
+        //            double id = 1;
+        //            var exist = db.BeneficiaryEnrolmentRegisterHeaderLog.OrderBy(o => o.HouseHoldLogId).LastOrDefault();
+        //            if (exist != null)
+        //            {
+        //                id = (exist.HouseHoldLogId + 1);
+        //            }
+        //            BeneficiaryEnrolmentRegisterHeaderLog m = new BeneficiaryEnrolmentRegisterHeaderLog()
+        //            {
+        //                HouseHoldLogId = id,
+        //                ColumnEdited = Editedcolumn,
+        //                HouseHoldId = HouseHoldId,
+        //                PreviousValue = previousvalue,
+        //                NewValue = newvalue,
+        //                // ActionMadeBy = _userManagement.GetStaffName(),
+        //                ActionDate = DateTime.Now,
+        //                ActionTaken = actiontaken
+        //            };
+        //            db.BeneficiaryEnrolmentRegisterHeaderLog.Add(m);
+        //            db.SaveChanges();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        toastService.ShowError(ex.Message.ToString());
+        //    }
+        //}
+    }
+    public async Task OnEnrolmentRegisterHeaderActionBegin(ActionEventArgs<BeneficiaryEnrolmentRegisterHeader> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using(var db = new SPToCoreContext())
+                {
+                    EnrolledMembersData = await db.spBeneficiaryEnrolmentRegisterDetailsGetAllAsync(args.RowData.HouseHoldId.ToString(), args.RowData.EnrolmentRegisterHeaderId);
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+                using (var db = new SPToCoreContext())
+                {
+                    EnrolledMembersData = await db.spBeneficiaryEnrolmentRegisterDetailsGetAllAsync(BeneficiaryRegisterData.HouseHoldId.ToString(), args.RowData.EnrolmentRegisterHeaderId);
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Implementing Partner", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.OvcserviceProviderId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the OVC Service Provider", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HouseHoldMemberId == 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the House Hold Head", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.EnrolmentDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Enrolment Date", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.CollectedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Person that collected this information", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.CollectedByTele))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone Number of Person that collected this information", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.CollectedDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Data Collection Date", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.ReviewedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Person that Reviewed this information", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.ReviewedByTele))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone Number of Person that Reviewed this information", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ReviewDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Data review Date", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+
+                //if (string.IsNullOrEmpty(args.Data.Surname))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Surname", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (string.IsNullOrEmpty(args.Data.GivenName))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Given name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.GenderId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.KnownRiskFactorId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Known Risk Factor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (HouseHoldMembersData.Count == 0)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Household members", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else
+                //{
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.BeneficiaryEnrolmentRegisterHeader.FirstOrDefault(o => o.EnrolmentRegisterHeaderId == EnrolmentRegisterHeaderData.EnrolmentRegisterHeaderId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.BeneficiaryEnrolmentRegisterHeader.OrderBy(o => o.EnrolmentRegisterHeaderId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.EnrolmentRegisterHeaderId + 1);
+                        }
+                        EnrolmentRegisterHeaderData.EnrolmentRegisterHeaderId = id;
+                        args.Data.EnrolmentRegisterHeaderId = id;
+
+                        db.BeneficiaryEnrolmentRegisterHeader.Add(EnrolmentRegisterHeaderData);
+                        db.SaveChanges();
+                    }
+
+                    foreach (var n in EnrolledMembersData)
+                    {
+                        var _exist = db.BeneficiaryEnrolmentRegisterDetails.FirstOrDefault(o => o.EnrolmentRegisterHeaderId == EnrolmentRegisterHeaderData.EnrolmentRegisterHeaderId && o.HouseHoldMemberId == n.HouseHoldMemberId);
+                        if (_exist == null)
+                        {
+                            BeneficiaryEnrolmentRegisterDetails m = new BeneficiaryEnrolmentRegisterDetails();
+                            int id = 1;
+                            var last = db.BeneficiaryEnrolmentRegisterDetails.OrderBy(o => o.EnrolmentRegisterDetailsId).AsNoTracking().ToList().LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.EnrolmentRegisterDetailsId + 1);
+                            }
+                            n.EnrolmentRegisterDetailsId = id;
+                            m.EnrolmentRegisterHeaderId = EnrolmentRegisterHeaderData.EnrolmentRegisterHeaderId;
+                            m.EnrolmentRegisterDetailsId = n.EnrolmentRegisterDetailsId.Value;
+                            m.HouseHoldMemberId = n.HouseHoldMemberId;
+                            m.AssessedOfferedAccepted = n.Assessed_Offered_Accepted;
+                            m.AssessedOfferedRefused = n.Assessed_Offered_Refused;
+                            m.AssessedNotEligible = n.Assessed_NotEligible;
+                            m.NotAssessed = n.Not_Assessed;
+                            m.OvcOffer = n.OVC_Offer;
+                            m.OvcEnroll = n.OVC_Enroll;
+                            db.BeneficiaryEnrolmentRegisterDetails.Add(m);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            _exist.AssessedOfferedAccepted = n.Assessed_Offered_Accepted;
+                            _exist.AssessedOfferedRefused = n.Assessed_Offered_Refused;
+                            _exist.AssessedNotEligible = n.Assessed_NotEligible;
+                            _exist.NotAssessed = n.Not_Assessed;
+                            _exist.OvcOffer = n.OVC_Offer;
+                            _exist.OvcEnroll = n.OVC_Enroll;
+
+                            //db.Entry(_exist).CurrentValues.SetValues(n);
+                            db.Entry(_exist).State = EntityState.Modified;
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                //}
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    public void EnrolmentRegisterHeaderActionComplete(ActionEventArgs<BeneficiaryEnrolmentRegisterHeader> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            EnrolmentRegisterHeaderGrid.PreventRender(false);
+        }
+    }
+    #endregion Enrolment Register Header
+
+    public async Task OnEnrolledMemberActionBegin(ActionEventArgs<spBeneficiaryEnrolmentRegisterDetailsGetAllResult> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.Assessed_Offered_Accepted == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Assessed, Offered, Accepted Enrollment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.Assessed_Offered_Refused == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Assessed, Offered,Refused Enrollment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.Assessed_NotEligible == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Assessed, Not found eligible for Enrollment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.Not_Assessed == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if Not Assessed ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.OVC_Offer == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if OVC_ Offer  ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.OVC_Enroll == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select if OVC_ Enroll", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //if (string.IsNullOrEmpty(args.Data.Surname))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Surname", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (string.IsNullOrEmpty(args.Data.GivenName))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Given name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.GenderId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.KnownRiskFactorId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Known Risk Factor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (HouseHoldMembersData.Count == 0)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Household members", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else
+                //{
+
+                //}
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    public void EnrolledMemberActionComplete(ActionEventArgs<spBeneficiaryEnrolmentRegisterDetailsGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            EnrolledMembersGrid.PreventRender(false);
+        }
+    }
+}

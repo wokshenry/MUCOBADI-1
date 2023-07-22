@@ -1,0 +1,318 @@
+﻿@page "/Account/RegisterUserPage"
+@using MUCOBADI.Data;
+@using MUCOBADI.Models;
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@inject NavigationManager NavManager;
+@inject UserManager<IdentityUser> _userManager;
+@using System.Net;
+@using System.Net.Mail;
+<style>
+    /*body {
+        margin: 0px;
+        padding: 0px;
+        background: url(../image/bg.png);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position-y: -68px;
+        height: 100%;
+        background-color: #000 !important;*/
+        /*font-family: 'Roboto', 'Roboto Condensed' !important;*/
+        /*width: 100%;
+        overflow-x: hidden !important;
+    }
+
+    h3 {
+            color: ghostwhite;
+            font-family: 'Roboto', 'Roboto Condensed' !important;
+    }
+
+    p {
+        word-wrap: break-word;
+    }*/
+</style>
+<ol class="breadcrumb">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong> Register </strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<EditForm Model="@InputModel" class="form-row" style="margin-left:10%; margin-right:10%;" OnValidSubmit="@RegisterUser">
+    <div class="form-group col-md-6">
+        <label class="label" for="Contact" style="float:left;">Contact</label>
+        <SfDropDownList ID="Contact" @bind-Value="InputModel.Contact" TValue="int" TItem="ViewAContacts" Width="100%" DataSource="@ContactData" Placeholder="Contact" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+            <DropDownListFieldSettings Text="@(nameof(ViewAContacts.FullName))" Value="@nameof(ViewAContacts.ContactId)"></DropDownListFieldSettings>
+            <DropDownListEvents TValue="int" TItem="ViewAContacts" ValueChange="OnContactChange"></DropDownListEvents>
+        </SfDropDownList>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="AccountHolderName" style="float:left;">Name</label>
+        <input type="text" id="AccountHolderName" readonly name="AccountHolderName" @bind-value="@InputModel.AccountHolderName" class="form-control" placeholder="Name" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="ConfirmPassword" style="float:left;">Email</label>
+        <input type="email" name="Email" readonly id="Email" @bind-value="@InputModel.Email" class="form-control" placeholder="Email" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="PhoneNumber" style="float:left;">Phone Number</label>
+        <input type="tel" id="PhoneNumber" readonly name="PhoneNumber" @bind-value="@InputModel.PhoneNumber" class="form-control" placeholder="Phone Number" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="UserName" style="float:left;">User Name</label>
+        <input type="text" name="UserName" readonly id="UserName" @bind-value="@InputModel.UserName" class="form-control" placeholder="User Name" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="UserRole" style="float:left;">User Role</label>
+        <SfDropDownList ID="UserRole" @bind-Value="InputModel.UserRole" TValue="string" TItem="AspNetRoles" Width="100%" DataSource="@UserRoleData" Placeholder="User Role" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+            <DropDownListFieldSettings Text="@(nameof(AspNetRoles.Name))" Value="@nameof(AspNetRoles.Name)"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
+    @if (!string.IsNullOrEmpty(InputModel.UserRole) && (InputModel.UserRole.Contains("Program Specialist")
+    || InputModel.UserRole.Contains("Cluster Manager") || InputModel.UserRole.Contains("Monitoring & Evaluation Officer")
+    || InputModel.UserRole.Contains("Case Care Worker") || InputModel.UserRole.Contains("Cdo")
+    || InputModel.UserRole.Contains("Field Assistant") || InputModel.UserRole.Contains("Business Incubation Assistant")
+    || InputModel.UserRole.Contains("Cfpu") || InputModel.UserRole.Contains("Counsellor") || InputModel.UserRole.Contains("Art Incharge") ))
+    {
+        <div class="form-group col-md-6">
+            <label class="label" for="UserRole" style="float:left;">District</label>
+            <SfMultiSelect @bind-Value="@(InputModel.DistrictId)" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="form-group col-md-6">
+            <label class="label" for="UserRole" style="float:left;">Sub-county</label>
+            <SfMultiSelect @bind-Value="@(InputModel.SubcountyId)" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="form-group col-md-6">
+            <label class="label" for="UserRole" style="float:left;">Facility</label>
+            <SfMultiSelect @bind-Value="@(InputModel.FacilityId)" TValue="int?[]" TItem="ViewAFacility" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@FacilityData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ViewAFacility.FacilityId)" Text="@nameof(ViewAFacility.FacilityName)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+    }
+
+    <div class="form-group col-md-12"></div>
+    <div class="form-group col-md-6">
+        <label class="label" for="Password" style="float:left;">Password</label>
+        <input type="password" @bind-value="@InputModel.Password" class="form-control" placeholder="Password" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="ConfirmPassword" style="float:left;">Confirm Password</label>
+        <input type="password" @bind-value="@InputModel.ConfirmPassword" class="form-control" placeholder="Confirm Password" required>
+    </div>
+    <div class="form-group col-md-6">
+    </div>
+    <div class="form-group col-md-6">
+        <button type="submit" class="form-control btn btn-primary rounded submit px-3">Register User</button>
+    </div>
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+</EditForm>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    SfDropDownList<string,ViewAContacts> ContactsId { get; set; }
+
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private RegisterViewModel InputModel = new RegisterViewModel();
+    List<AspNetRoles> UserRoleData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<ViewAContacts> ContactData { get; set; }
+    List<ViewAFacility> FacilityData { get; set; }
+    public SfTextBox Email;
+    public SfTextBox Fullname;
+
+    protected override void OnInitialized()
+    {
+        //InputModel.UserRole = "Administrator";
+        using(var db = new MUCOBADIContext())
+        {
+            UserRoleData = db.AspNetRoles.AsNoTracking().ToList();
+            DistrictData = db.ADistrict.AsNoTracking().ToList();
+            ContactData = db.ViewAContacts.AsNoTracking().ToList();
+            FacilityData = db.ViewAFacility.AsNoTracking().ToList();
+        }
+        base.OnInitialized();
+    }
+
+    public void OnContactChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int,ViewAContacts> args)
+    {
+        InputModel.UserName = $"{args.ItemData.ContactLastName.ToLower()}.{args.ItemData.ContactFirstName.ToLower()}";
+        InputModel.Email=args.ItemData.ContactEmail;
+        InputModel.AccountHolderName = args.ItemData.FullName;
+        InputModel.PhoneNumber = args.ItemData.ContactPhoneNumber;
+    }
+
+    private void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a=> a== o.DistrictId)).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    private void OnDistrictChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        if (args.ItemData != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.Value).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    private async Task RegisterUser()
+    {
+        try
+        {
+            var user = new IdentityUser { UserName = InputModel.UserName.Trim(), Email = InputModel.Email, PhoneNumber = InputModel.PhoneNumber, LockoutEnabled = false };
+            var result = await _userManager.CreateAsync(user, InputModel.Password);
+            if (result.Succeeded)
+            {
+                var _result = await _userManager.AddToRoleAsync(user, InputModel.UserRole);
+
+                if (_result.Succeeded)
+                {
+                    string url = NavManager.BaseUri;
+                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+                    using (var dbContext = new MUCOBADIContext())
+                    {
+                        //double id = 1;
+                        //var _last = dbContext.AspNetEmailConfirmationCode.AsNoTracking().ToList().LastOrDefault();
+                        //if (_last != null)
+                        //{
+                        //    id = (_last.ConfirmationId + 1);
+                        //}
+                        var exist = dbContext.AspNetUsers.FirstOrDefault(o => o.Id == user.Id);
+                        if (exist != null)
+                        {
+                            //exist.StaffId = InputModel.StaffId;
+                            exist.AccountHolderName = InputModel.AccountHolderName;
+                            if(InputModel.DistrictId != null)
+                            {
+                                exist.DistrictId = string.Join(",",InputModel.DistrictId);
+                            }
+
+                            if (InputModel.SubcountyId != null)
+                            {
+                                exist.SubCountyId = string.Join(",", InputModel.SubcountyId);
+                            }
+
+                            //exist.FacilityId = InputModel.FacilityId;
+
+                            //exist.EmailConfirmed = true;
+                            //exist.LockoutEnabled = false;
+                            //exist.OperatorId = InputModel.OperatorId;
+                            //exist.TechnicalGroupId = InputModel.TechnicalGroupId;
+                            exist.LockoutEnabled = false;
+                            exist.PhoneNumberConfirmed = true;
+                            exist.EmailConfirmed = true;
+                            exist.ContactId = InputModel.Contact;
+                            dbContext.Entry(exist).State = EntityState.Modified;
+                            dbContext.SaveChanges();
+                        }
+                        double id = 1;
+                        var _last = dbContext.AspNetEmailConfirmationCode.AsNoTracking().ToList().LastOrDefault();
+                        if (_last != null)
+                        {
+                            id = (_last.ConfirmationId + 1);
+                        }
+                        AspNetEmailConfirmationCode x = new AspNetEmailConfirmationCode()
+                        {
+                            UserName = InputModel.UserName,
+                            ConfirmationCode = code,
+                            CreationDate = DateTime.Now,
+                            ConfirmationId = id
+                        };
+                        dbContext.AspNetEmailConfirmationCode.Add(x);
+                        dbContext.SaveChanges();
+                    }
+
+                    //await _userManager.ConfirmEmailAsync(user, code);
+
+                    //await _userManager.SetLockoutEnabledAsync(user, false);
+
+                    byte[] c = System.Text.ASCIIEncoding.ASCII.GetBytes(InputModel.UserName);
+                    string username = Convert.ToBase64String(c);
+
+                    string _message = url + "ConfirmEmailPage/" + username;
+                    using (var message = new MailMessage("apps.noreply@pau.go.ug", InputModel.Email))
+                    {
+                        message.Subject = "MUCOBADI Creation";
+                        message.Body = "<p>Dear " + InputModel.AccountHolderName + ",</p><br/><br/> <p>An account has been created for you on the MUCOBADI MIS system by the system Administrator.</p>" +
+                                "<br/><p> Kindly navigate to the system with the password and registered email provided to you by the system administrator for access.</p>"+
+                                "<br/> <br/> Regards,<br/><br/> System Notification, <br/> Multi Community Based Development Initiative (MUCOBADI) <br/><br/>" + DateTime.Now;
+                        message.IsBodyHtml = true;
+                        using (SmtpClient client = new SmtpClient
+                        {
+                            EnableSsl = true,
+                            Host = "smtp.gmail.com",
+                            Port = 587,
+                            DeliveryMethod = SmtpDeliveryMethod.Network,
+                            Credentials = new NetworkCredential("donotreplyabt@gmail.com", "tvlmbqdoprhvdutm")
+                        })
+                        {
+                            //client.EnableSsl = true;
+                            client.Send(message);
+                        }
+                    }
+
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Success!", Content = InputModel.AccountHolderName + " has been successfully registered!", CssClass = "e-toast-success", Icon = "e-success toast-icons" });
+                    InputModel = new RegisterViewModel();
+                }
+                else
+                {
+                    string _error = string.Empty;
+                    foreach (var error in _result.Errors)
+                    {
+                        // ModelState.AddModelError(string.Empty, error.Description);
+                        _error += error.Description + ",";
+                    }
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = _error, CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                }
+
+            }
+            else
+            {
+                string _error = string.Empty;
+                foreach (var error in result.Errors)
+                {
+                    // ModelState.AddModelError(string.Empty, error.Description);
+                    _error += error.Description + ",";
+                }
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = _error, CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+}
+

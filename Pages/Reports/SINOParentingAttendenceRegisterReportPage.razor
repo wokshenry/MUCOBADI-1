@@ -1,0 +1,1068 @@
+﻿@*<h3>SINOParentingAttendenceRegisterReportPage</h3>*@
+@page "/SINOParentingAttendenceRegisterReportPage"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> PARENTING WEEKLY GROUP SESSION ATTENDANCE REGISTER REPORT</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <p>District</p>
+                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Sub-County</p>
+                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Parish</p>
+                    <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3" hidden>
+                    <p>Village</p>
+                    <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+               @* <div class="form-group col-md-3" hidden>
+                    <p>Reporting Period</p>
+                    <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3" hidden>
+                    <p>Financial Year</p>
+                    <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>*@
+                <div class="form-group col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+                <div class="form-group col-md-12">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                </div>
+                @if (!string.IsNullOrEmpty(outComeResult))
+                {
+                    <div class="form-group col-md-12">
+                        @if (outComeResult.Contains("No Record"))
+                        {
+                            <p class="alert alert-danger" style="padding:10px;">@outComeResult</p>
+                        }
+                        else if (outComeResult.Contains("Warning"))
+                        {
+                            <p class="alert alert-warning" style="padding:10px;">@outComeResult</p>
+                        }
+                        else
+                        {
+                            <p class="alert alert-success" style="padding:10px;">@outComeResult</p>
+                        }
+                    </div>
+                }
+                <div class="form-group col-md-12">
+                    <SfSpinner @ref="ReportSpinner" Label="downloading the report please wait..." Size="70" Visible="false"></SfSpinner>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfSpinner ReportSpinner;
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    bool isEnabled { get; set; } = false;
+    string outComeResult { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    FianacialYearData = new List<FianacialYear>();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    //QuarterData = db.AQuarter.AsNoTracking().ToList();
+                    //int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o => o.DateofIdentification.HasValue == true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                    InputModel = new();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+    public async Task SearchRecords()
+    {
+        try
+        {
+            await ReportSpinner.ShowAsync();
+            outComeResult = null;
+            string district = null;
+            string Subcounty = null;
+            string parish = null;
+            //string village = null;
+            if (InputModel.DistrictId != null)
+            {
+                district = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                Subcounty = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null)
+            {
+                parish = string.Join(",", InputModel.ParishId);
+            }
+            //if (InputModel.VillageId != null)
+            //{
+            //    village = string.Join(",", InputModel.VillageId);
+            //}
+
+            using (var db = new SPToCoreContext())
+            {
+                var data = await db.spSINO_Parenting_Attendence_RegisterReportGetAllAsync(district, Subcounty, parish);
+                if (data.Count > 0)
+                {
+                    using (ExcelEngine excelEngine = new ExcelEngine())
+                    {
+                        IApplication application = excelEngine.Excel;
+                        application.DefaultVersion = ExcelVersion.Excel2013;
+                        IWorkbook workbook = application.Workbooks.Create(1);
+                        IWorksheet worksheet = workbook.Worksheets[0];
+                        worksheet.Name = "PARENTING WEEKLY GROUP SESSION ATTENDANCE REGISTER";
+
+                        #region Styles
+                        var headerStyle = workbook.Styles.Add("headerStyle");
+
+                        headerStyle.BeginUpdate();
+                        headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                        headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        headerStyle.Font.Bold = true;
+                        headerStyle.Font.FontName = "Arial";
+                        headerStyle.Font.Size = 8f;
+                        headerStyle.Font.Color = ExcelKnownColors.White;
+
+                        headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        headerStyle.Borders.Color = ExcelKnownColors.White;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                        headerStyle.WrapText = true;
+
+                        headerStyle.EndUpdate();
+
+                        var Style = workbook.Styles.Add("bodyStyle");
+
+                        Style.BeginUpdate();
+                        Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                        Style.Font.Bold = false;
+                        Style.Font.FontName = "Arial";
+                        Style.Font.Size = 8f;
+                        Style.Font.Color = ExcelKnownColors.Black;
+                        Style.WrapText = true;
+                        Style.Borders.Color = ExcelKnownColors.Black;
+                        Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        Style.EndUpdate();
+
+
+                        var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                        CategoryStyle.BeginUpdate();
+                        CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                        /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                        CategoryStyle.Font.Bold = true;
+                        CategoryStyle.Font.FontName = "Arial";
+                        CategoryStyle.Font.Size = 10f;
+                        CategoryStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryStyle.WrapText = true;
+                        CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.EndUpdate();
+
+                        var CategoryTotalStyle = workbook.Styles.Add("CategoryTotalStyle");
+
+                        CategoryTotalStyle.BeginUpdate();
+                        CategoryTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        CategoryTotalStyle.Color = Syncfusion.Drawing.Color.DarkBlue;
+                        CategoryTotalStyle.Font.Bold = true;
+                        CategoryTotalStyle.Font.FontName = "Arial";
+                        CategoryTotalStyle.Font.Size = 8f;
+                        CategoryTotalStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.WrapText = true;
+                        CategoryTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.EndUpdate();
+
+                        var DivisionStyle = workbook.Styles.Add("DivisionStyle");
+
+                        DivisionStyle.BeginUpdate();
+                        DivisionStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 0, 0); //RED
+                        DivisionStyle.Font.Bold = true;
+                        DivisionStyle.Font.FontName = "Arial";
+                        DivisionStyle.Font.Size = 8f;
+                        DivisionStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionStyle.WrapText = true;
+                        DivisionStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.EndUpdate();
+
+                        var DivisionTotalStyle = workbook.Styles.Add("DivisionTotalStyle");
+
+                        DivisionTotalStyle.BeginUpdate();
+                        DivisionTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        DivisionTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                        DivisionTotalStyle.Font.Bold = true;
+                        DivisionTotalStyle.Font.FontName = "Arial";
+                        DivisionTotalStyle.Font.Size = 8f;
+                        DivisionTotalStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.WrapText = true;
+                        DivisionTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.EndUpdate();
+
+
+                        var TopicStyle = workbook.Styles.Add("TopicStyle");
+
+                        TopicStyle.BeginUpdate();
+                        TopicStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88); //AUBERGINE
+                        TopicStyle.Font.Bold = true;
+                        TopicStyle.Font.FontName = "Arial";
+                        TopicStyle.Font.Size = 8f;
+                        TopicStyle.Font.Color = ExcelKnownColors.White;
+                        TopicStyle.WrapText = true;
+                        TopicStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.EndUpdate();
+
+                        var TopicTotalStyle = workbook.Styles.Add("TopicTotalStyle");
+
+                        TopicTotalStyle.BeginUpdate();
+                        TopicTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        TopicTotalStyle.Color = Syncfusion.Drawing.Color.DarkRed;
+                        TopicTotalStyle.Font.Bold = true;
+                        TopicTotalStyle.Font.FontName = "Arial";
+                        TopicTotalStyle.Font.Size = 8f;
+                        TopicTotalStyle.Font.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.WrapText = true;
+                        TopicTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.EndUpdate();
+                        #endregion
+
+                        int row = 1;
+                        worksheet.Range["A" + row].Text = "PARENTING WEEKLY GROUP SESSION ATTENDANCE REGISTER REPORT";
+                        worksheet.Range["A" + row + ":BP" + row].CellStyle = CategoryStyle;
+                        worksheet.Range["A" + row + ":BP" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["A" + row + ":BP" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["A" + row].RowHeight = 30;
+                        worksheet.Range["A" + row + ":BP" + row].Merge();
+                        row++;
+                        row++;
+
+                        worksheet.Range["U" + row + ":BJ" + row].CellStyle = headerStyle;
+                        worksheet.Range["U" + row].Text = "GROUP SESSION ATTENDANCE ";
+                        worksheet.Range["U" + row + ":BJ" + row].Merge();
+                        worksheet.Range["A" + row].RowHeight = 20;
+                        worksheet.Range["U" + row + ":BJ" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["U" + row + ":BJ" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        row++;
+
+                        worksheet.Range["U" + row + ":BJ" + row].CellStyle = headerStyle;
+                        worksheet.Range["U" + row].Text = "1.Introducing the program and defining goals";
+                        worksheet.Range["U" + row + ":W" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["U" + row + ":W" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["U" + row + ":W" + row].Merge();
+
+                        worksheet.Range["X" + row].Text = "2.Building a positive relationship through spending time together";
+                        worksheet.Range["X" + row + ":Z" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["X" + row + ":Z" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["X" + row + ":Z" + row].Merge();
+
+                        worksheet.Range["AA" + row].Text = "3.Praising each other.";
+                        worksheet.Range["AA" + row + ":AC" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AA" + row + ":AC" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AA" + row + ":AC" + row].Merge();
+
+                        worksheet.Range["AD" + row].Text = "4.Talking about emotions";
+                        worksheet.Range["AD" + row + ":AF" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AD" + row + ":AF" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AD" + row + ":AF" + row].Merge();
+
+                        worksheet.Range["AG" + row].Text = "5.Managing anger & solving problems";
+                        worksheet.Range["AG" + row + ":AI" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AG" + row + ":AI" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AG" + row + ":AI" + row].Merge();
+
+                        worksheet.Range["AJ" + row].Text = "6.Problem solving-putting out the fire";
+                        worksheet.Range["AJ" + row + ":AL" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AJ" + row + ":AL" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AJ" + row + ":AL" + row].Merge();
+
+                        worksheet.Range["AM" + row].Text = "7.Motivation to save and making a budget";
+                        worksheet.Range["AM" + row + ":AO" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AM" + row + ":AO" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AM" + row + ":AO" + row].Merge();
+
+                        worksheet.Range["AP" + row].Text = "8.	Dealing with problems without Conflict-I ";
+                        worksheet.Range["AP" + row + ":AR" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AP" + row + ":AR" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AP" + row + ":AR" + row].Merge();
+
+                        worksheet.Range["AS" + row].Text = "9.	Dealing with problems without conflict-II";
+                        worksheet.Range["AS" + row + ":AU" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AS" + row + ":AU" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AS" + row + ":AU" + row].Merge();
+
+                        worksheet.Range["AV" + row].Text = "10.	Establishing family rules and routines ";
+                        worksheet.Range["AV" + row + ":AX" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AV" + row + ":AX" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AV" + row + ":AX" + row].Merge();
+
+                        worksheet.Range["AY" + row].Text = "11.	Understanding the ways to save and the risk to borrow";
+                        worksheet.Range["AY" + row + ":BA" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AY" + row + ":BA" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AY" + row + ":BA" + row].Merge();
+
+                        worksheet.Range["BB" + row].Text = "12.	Keeping safe in the community ";
+                        worksheet.Range["BB" + row + ":BD" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["BB" + row + ":BD" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["BB" + row + ":BD" + row].Merge();
+
+                        worksheet.Range["BE" + row].Text = "13.	Responding to crisis: The Kraal of Safety";
+                        worksheet.Range["BE" + row + ":BG" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["BE" + row + ":BG" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["BE" + row + ":BG" + row].Merge();
+
+                        worksheet.Range["BH" + row].Text = "14.	Widening the circle of support";
+                        worksheet.Range["BH" + row + ":BJ" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["BH" + row + ":BJ" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["BH" + row + ":BJ" + row].Merge();
+
+
+                        worksheet.Range["A" + row].RowHeight = 20;
+
+
+                        row++;
+
+                        #region Header row
+                        worksheet.Range["A" + row].Text = "Name of CSO Partner";
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        worksheet.Range["B" + row].Text = "District";
+                        worksheet.Range["B" + row].ColumnWidth = 20;
+
+                        worksheet.Range["C" + row].Text = "Sub-county";
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = "Parish";
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = "Venue";
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = "Group Name";
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = "Name of Facilitator 1";
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        worksheet.Range["H" + row].Text = "Code";
+                        worksheet.Range["H" + row].ColumnWidth = 20;
+
+                        worksheet.Range["I" + row].Text = "Name of facilitator 2";
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = "Code";
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = "HHs Code ";
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = "Care Giver Member ID";
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        worksheet.Range["M" + row].Text = "Name of Caregiver ";
+                        worksheet.Range["M" + row].ColumnWidth = 20;
+
+                        worksheet.Range["N" + row].Text = "Age ";
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = "Relations to the child ";
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        worksheet.Range["P" + row].Text = "Sex";
+                        worksheet.Range["P" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Q" + row].Text = "Name of Child";
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                        worksheet.Range["R" + row].Text = "Member ID";
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+
+                        worksheet.Range["S" + row].Text = "Sex";
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+                        worksheet.Range["T" + row].Text = "Age ";
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = "Atendence Date";
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = "Parent";
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = "Teen";
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        worksheet.Range["X" + row].Text = "Atendence Date";
+                        worksheet.Range["X" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Y" + row].Text = "Parent";
+                        worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Z" + row].Text = "Teen";
+                        worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AA" + row].Text = "Atendence Date";
+                        worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AB" + row].Text = "Parent";
+                        worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AC" + row].Text = "Teen";
+                        worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AD" + row].Text = "Atendence Date";
+                        worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AE" + row].Text = "Parent";
+                        worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AF" + row].Text = "Teen";
+                        worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AG" + row].Text = "Atendence Date";
+                        worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AH" + row].Text = "Parent";
+                        worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AI" + row].Text = "Teen";
+                        worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AJ" + row].Text = "Atendence Date";
+                        worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AK" + row].Text = "Parent";
+                        worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AL" + row].Text = "Teen";
+                        worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AM" + row].Text = "Atendence Date";
+                        worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AN" + row].Text = "Parent";
+                        worksheet.Range["AN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AO" + row].Text = "Teen";
+                        worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AP" + row].Text = "Atendence Date";
+                        worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AQ" + row].Text = "Parent";
+                        worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AR" + row].Text = "Teen";
+                        worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AS" + row].Text = "Atendence Date";
+                        worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AT" + row].Text = "Parent";
+                        worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AU" + row].Text = "Teen";
+                        worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AV" + row].Text = "Atendence Date";
+                        worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AW" + row].Text = "Parent";
+                        worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AX" + row].Text = "Teen";
+                        worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AY" + row].Text = "Atendence Date";
+                        worksheet.Range["AY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AZ" + row].Text = "Parent";
+                        worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BA" + row].Text = "Teen";
+                        worksheet.Range["BA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BB" + row].Text = "Atendence Date";
+                        worksheet.Range["BB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BC" + row].Text = "Parent";
+                        worksheet.Range["BC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BD" + row].Text = "Teen";
+                        worksheet.Range["BD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BE" + row].Text = "Atendence Date";
+                        worksheet.Range["BE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BF" + row].Text = "Parent";
+                        worksheet.Range["BF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BG" + row].Text = "Teen";
+                        worksheet.Range["BG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BH" + row].Text = "Atendence Date";
+                        worksheet.Range["BH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BI" + row].Text = "Parent";
+                        worksheet.Range["BI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BJ" + row].Text = "Teen";
+                        worksheet.Range["BJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BK" + row].Text = "Submitted by";
+                        worksheet.Range["BK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BL" + row].Text = "Title";
+                        worksheet.Range["BL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BM" + row].Text = "Date Submitted";
+                        worksheet.Range["BM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BN" + row].Text = "Reviewed By";
+                        worksheet.Range["BN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BO" + row].Text = "Title";
+                        worksheet.Range["BO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BP" + row].Text = "Date Reviewed";
+                        worksheet.Range["BP" + row].ColumnWidth = 20;
+
+
+                        worksheet.Range["A" + row + ":BP" + row].CellStyle = headerStyle;
+                        row++;
+                        #endregion Header row
+                        foreach (var n in data)
+                        {
+                            worksheet.Range["A" + row].Text = n.ImplementingPartnerName;
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = n.DistrictDescription;
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = n.SubcountyDescription;
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = n.ParishDescription;
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = n.Venue;
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = n.GroupName;
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text =n.FacilitatorOne;
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = n.FacilitatorOneCode;
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = n.FacilitatorTwo;
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = n.FacilitatorTwoCode;
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            //worksheet.Range["K" + row].Text = n.hou;
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = n.CareTakerHouseHoldMemberCode;
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = n.CareTakerFullName;
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            if (n.CareTakerAge.HasValue)
+                            {
+                                worksheet.Range["N" + row].Number = n.CareTakerAge.Value;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["O" + row].Text = n.RelationshipName;
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = n.CareTakerGenderDescription;
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = n.FullName;
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = n.HouseHoldMemberCode;
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = n.GenderDescription;
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            if (n.Age.HasValue)
+                            {
+                                worksheet.Range["T" + row].Number = n.Age.Value;
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.ParentingGroupSession_One_SessionDate.HasValue)
+                            {
+                                worksheet.Range["U" + row].Text = n.ParentingGroupSession_One_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["U" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["V" + row].Text = n.ParentingGroupSession_One_Parent_Attended_Desc;
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            worksheet.Range["W" + row].Text = n.ParentingGroupSession_One_Teen_Attended_Desc;
+                            worksheet.Range["W" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Two_SessionDate.HasValue)
+                            {
+                                worksheet.Range["X" + row].Text = n.ParentingGroupSession_Two_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["X" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["Y" + row].Text = n.ParentingGroupSession_Two_Parent_Attended_Desc;
+                            worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Z" + row].Text = n.ParentingGroupSession_Two_Teen_Attended_Desc;
+                            worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Three_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AA" + row].Text = n.ParentingGroupSession_Three_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AA" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AB" + row].Text = n.ParentingGroupSession_Three_Parent_Attended_Desc;
+                            worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AC" + row].Text = n.ParentingGroupSession_Three_Teen_Attended_Desc;
+                            worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Four_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AD" + row].Text = n.ParentingGroupSession_Four_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AD" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AE" + row].Text = n.ParentingGroupSession_Four_Parent_Attended_Desc;
+                            worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AF" + row].Text = n.ParentingGroupSession_Four_Teen_Attended_Desc;
+                            worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Five_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AG" + row].Text = n.ParentingGroupSession_Five_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AG" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AH" + row].Text = n.ParentingGroupSession_Five_Parent_Attended_Desc;
+                            worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AI" + row].Text = n.ParentingGroupSession_Five_Teen_Attended_Desc;
+                            worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Six_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AJ" + row].Text = n.ParentingGroupSession_Six_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AJ" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AK" + row].Text = n.ParentingGroupSession_Six_Parent_Attended_Desc;
+                            worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AL" + row].Text = n.ParentingGroupSession_Six_Teen_Attended_Desc;
+                            worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Seven_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AM" + row].Text = n.ParentingGroupSession_Seven_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AM" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AN" + row].Text = n.ParentingGroupSession_Seven_Parent_Attended_Desc;
+                            worksheet.Range["AN" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AO" + row].Text = n.ParentingGroupSession_Seven_Teen_Attended_Desc;
+                            worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Eight_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AP" + row].Text = n.ParentingGroupSession_Eight_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AP" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AQ" + row].Text = n.ParentingGroupSession_Eight_Parent_Attended_Desc;
+                            worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AR" + row].Text = n.ParentingGroupSession_Eight_Teen_Attended_Desc;
+                            worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Nine_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AS" + row].Text = n.ParentingGroupSession_Nine_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AS" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AT" + row].Text = n.ParentingGroupSession_Nine_Parent_Attended_Desc;
+                            worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AU" + row].Text = n.ParentingGroupSession_Nine_Teen_Attended_Desc;
+                            worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Ten_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AV" + row].Text = n.ParentingGroupSession_Ten_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AV" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AW" + row].Text = n.ParentingGroupSession_Ten_Parent_Attended_Desc;
+                            worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AX" + row].Text = n.ParentingGroupSession_Ten_Teen_Attended_Desc;
+                            worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Eleven_SessionDate.HasValue)
+                            {
+                                worksheet.Range["AY" + row].Text = n.ParentingGroupSession_Eleven_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AY" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AZ" + row].Text = n.ParentingGroupSession_Eleven_Parent_Attended_Desc;
+                            worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BA" + row].Text = n.ParentingGroupSession_Eleven_Teen_Attended_Desc;
+                            worksheet.Range["BA" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Twelve_SessionDate.HasValue)
+                            {
+                                worksheet.Range["BB" + row].Text = n.ParentingGroupSession_Twelve_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["BB" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BC" + row].Text = n.ParentingGroupSession_Twelve_Parent_Attended_Desc;
+                            worksheet.Range["BC" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BD" + row].Text = n.ParentingGroupSession_Twelve_Teen_Attended_Desc;
+                            worksheet.Range["BD" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Thirteen_SessionDate.HasValue)
+                            {
+                                worksheet.Range["BE" + row].Text = n.ParentingGroupSession_Thirteen_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["BE" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BF" + row].Text = n.ParentingGroupSession_Thirteen_Parent_Attended_Desc;
+                            worksheet.Range["BF" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BG" + row].Text = n.ParentingGroupSession_Thirteen_Teen_Attended_Desc;
+                            worksheet.Range["BG" + row].ColumnWidth = 20;
+
+                            if (n.ParentingGroupSession_Fourteen_SessionDate.HasValue)
+                            {
+                                worksheet.Range["BH" + row].Text = n.ParentingGroupSession_Fourteen_SessionDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["BH" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BI" + row].Text = n.ParentingGroupSession_Fourteen_Parent_Attended_Desc;
+                            worksheet.Range["BI" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BJ" + row].Text = n.ParentingGroupSession_Fourteen_Teen_Attended_Desc;
+                            worksheet.Range["BJ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BK" + row].Text = n.SubmittedBy;
+                            worksheet.Range["BK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BL" + row].Text =n.SubmittedTitle;
+                            worksheet.Range["BL" + row].ColumnWidth = 20;
+
+                            if (n.SubmittedDate.HasValue)
+                            {
+                                worksheet.Range["BM" + row].Text = n.SubmittedDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["BM" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BN" + row].Text = n.ReviewedBy;
+                            worksheet.Range["BN" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BO" + row].Text = n.ReviewTitle;
+                            worksheet.Range["BO" + row].ColumnWidth = 20;
+
+                            if (n.ReviewDate.HasValue)
+                            {
+                                worksheet.Range["BP" + row].Text = n.ReviewDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["BP" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["A" + row + ":BP" + row].CellStyle = Style;
+                            row++;
+                        }
+
+                        MemoryStream ms = new MemoryStream();
+                        // Save and close the document.
+                        workbook.SaveAs(ms);
+                        //Reset the memory stream position.
+                        ms.Position = 0;
+                        await JS.SaveAs("PARENTING WEEKLY GROUP SESSION ATTENDANCE REGISTER REPORT.xlsx", ms.ToArray());
+                        ms.Dispose();
+                        workbook.Close();
+                        //excelEngine.Dispose();
+                        outComeResult = "Success:- The report was successfully downloaded.";
+                    }
+                }
+                else
+                {
+                    outComeResult = "No Record:- There were no records found for this search";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await ReportSpinner.HideAsync();
+        }
+    }
+
+}

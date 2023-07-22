@@ -1,0 +1,2402 @@
+﻿
+@page "/HomeVisitUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using System.Globalization;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+    h3 {
+        color: red;
+        text-align: center;
+        font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> VSLA TRacking Tool </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+        <div class="alert-info" style="padding:10px;">
+            <p>Before uploading this excel, please ensure that the following date are in the correct date format (Preferably in the 'dd/MM/yyyy' format);</p>
+        
+        </div>
+    </div>
+
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading row @rownumber of @usedRows Please wait ........ </p>
+        }
+       
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            <p class="badge-success" style="padding:10px;">@MessageResponse</p>
+        }
+    </div>
+</div>
+<div class="form-group col-md-12">
+    @if (!string.IsNullOrEmpty(rownumber))
+    {
+        <p style="color:#28a745;">Uploading row @rownumber of @usedRows Please wait ........ </p>
+    }
+
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    SfGrid<ReferralForm> ReferralFormGrid;
+    string _MessageResponse;
+    string MessageResponse
+    {
+        get { return _MessageResponse; }
+        set
+        {
+            if (value != null && value != _MessageResponse)
+            {
+                _MessageResponse = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber
+    {
+        get { return _rownumber; }
+        set
+        {
+            if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            }
+        }
+    }
+    string columnnnumber
+    {
+        get { return _columnnnumber; }
+        set
+        {
+            if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            }
+        }
+    }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        MessageResponse = null;
+        await UploadingSpinner.ShowAsync();
+        foreach (var file in args.Files)
+        {
+            using (ExcelEngine excelEngine = new ExcelEngine())
+            {
+
+                //Instantiate the Excel application object
+                IApplication application = excelEngine.Excel;
+
+                file.Stream.Position = 0;
+                //Set the default application version
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                //Get the first worksheet in the workbook into IWorksheet
+                IWorksheet worksheet = workbook.Worksheets[0];
+
+
+                HomeVisitServiceReportingToolHeader HVSRdata = new HomeVisitServiceReportingToolHeader();
+                HomeVisitServiceReportingToolDetail HVSRDetails = new HomeVisitServiceReportingToolDetail ();
+
+                using (var db = new MUCOBADIContext())
+                {
+                    var months = db.AMonth.ToList();
+                    var districts = db.ADistrict.ToList();
+                    var subcounties = db.ASubcounty.ToList();
+                    var groups = db.AGroups.ToList();
+                    var yesNo = db.AYesNo.ToList();
+                    var vlsa_trainers = db.AVslaGroupTrainer.ToList();
+                    var vslaGroupComposition = db.VslaGroupComposition.ToList();
+                    var memberstatus = db.AClientMemberStatus.ToList();
+                    var householdmember = db.HouseHoldMembers.ToList();
+
+
+
+                    for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                    {
+                        usedRows = worksheet.UsedRange.LastRow.ToString();
+
+
+                        HVSRdata = new HomeVisitServiceReportingToolHeader();
+                        HVSRDetails = new HomeVisitServiceReportingToolDetail();
+
+
+                        string num = "1";
+                        if (worksheet.IsRowVisible(row))
+                        {
+                            rownumber = row.ToString();
+                            await Task.Delay(10);
+
+                            //HH UiD
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 1].Value.Trim()) && (worksheet.Range[row, 1].Value.Trim() != ""))
+
+                            {
+                                columnnnumber = "1";
+                                var _hhUID = householdmember.FirstOrDefault(x => x.HouseHoldMemberCode.Contains(worksheet.Range[row, 1].Value.Trim()));
+
+                                if (_hhUID != null)
+                                    HVSRdata.HouseHoldId = _hhUID.HouseHoldId.Value;
+
+
+                            }
+
+                            // Date of Visit
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 6].Value.Trim()) && (worksheet.Range[row, 6].Value.Trim() != ""))
+                            {
+                                columnnnumber = "6";
+                                DateTime _date = DateTime.Now;
+                                if (DateTime.TryParseExact(worksheet.Range[row, 6].Value.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out _date))
+                                {
+                                    HVSRdata.VisitationDate = _date;
+                                }
+                                else if (DateTime.TryParseExact(worksheet.Range[row, 6].Value.Trim(), "M/d/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out _date))
+                                {
+                                    HVSRdata.VisitationDate = _date;
+                                }
+                                else if (DateTime.TryParseExact(worksheet.Range[row, 6].Value.Trim(), "MM/dd/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out _date))
+                                {
+                                    HVSRdata.VisitationDate = _date;
+                                }
+                                else if (DateTime.TryParseExact(worksheet.Range[row, 6].Value.Trim(), "d/M/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out _date))
+                                {
+                                    HVSRdata.VisitationDate = _date;
+                                }
+
+                            }
+
+                            //UiD of person talked to during Visit  columnnnumber = "7";
+
+                            //Reason for Visit to Enrolled HH
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 8].Value.Trim()) && (worksheet.Range[row, 8].Value.Trim() != ""))
+                            {
+                                columnnnumber = "8";
+                                string Reason4visist = worksheet.Range[row, 8].Value.ToString();
+                                if (Reason4visist.Contains("Routine Monitoring of Case Plan"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",1";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "1";
+                                    }
+                                }
+                                else if (Reason4visist.Contains("Assessment for Graduation"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",2";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "2";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Service Provision"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",4";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "4";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Follow Up"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",5";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "5";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Service Quality"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",6";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "6";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Mobilization for"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",7";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "7";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Emergency Assistance"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",8";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "8";
+                                    }
+
+                                }
+                                else if (Reason4visist.Contains("Others specify"))
+                                {
+                                    if (!string.IsNullOrEmpty(HVSRdata.HomeVisitReasonId))
+                                    {
+                                        HVSRdata.HomeVisitReasonId += ",9";
+                                    }
+                                    else
+                                    {
+                                        HVSRdata.HomeVisitReasonId = "9";
+                                    }
+
+                                }
+
+                            }
+
+                            //  Program participation status of Enrolled HH columnnnumber = "9";
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim()) && (worksheet.Range[row, 9].Value.Trim() != ""))
+                            {
+                                columnnnumber = "9";
+
+                                string programParticipationId = worksheet.Range[row, 9].Value.ToString();
+                                if (programParticipationId.Contains("Active"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 1;
+                                    // HVSRDetails.ProgramParticipationId = 1;
+                                }
+                                else if (programParticipationId.Contains("Graduated"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 2;
+                                    // HVSRDetails.ProgramParticipationId = 2;
+                                }
+                                else if (programParticipationId.Contains("Died"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 3;
+                                    // HVSRDetails.ProgramParticipationId = 3;
+                                }
+                                else if (programParticipationId.Contains("Relocated"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 4;
+                                    // HVSRDetails.ProgramParticipationId = 4;
+                                }
+                                else if (programParticipationId.Contains("Exited at Will"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 5;
+                                    // HVSRDetails.ProgramParticipationId = 5;
+                                }
+                                else if (programParticipationId.Contains("Transfered Out of PEPFAR Supported Partner"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 6;
+                                    // HVSRDetails.ProgramParticipationId = 6;
+                                }
+                                else if (programParticipationId.Contains("Transfered Out of non-PEPFAR Supported Partner or Government"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 7;
+                                    // HVSRDetails.ProgramParticipationId = 7;
+                                }
+                                else if (programParticipationId.Contains("Lost to follow up"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 8;
+                                    // HVSRDetails.ProgramParticipationId = 8;
+                                }
+                                else if (programParticipationId.Contains("Present Not Served"))
+                                {
+                                    HVSRdata.ProgramParticipationId = 9;
+                                    //HVSRDetails.ProgramParticipationId = 9;
+                                }
+                            }
+
+                            //Individual UiD
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 10].Value.Trim()) && (worksheet.Range[row, 10].Value.Trim() != ""))
+                            {
+
+                                columnnnumber = "10";
+                                var _hhUID = householdmember.FirstOrDefault(x => x.HouseHoldMemberCode.Contains(worksheet.Range[row, 10].Value.Trim()));
+
+                                if (_hhUID != null)
+                                    HVSRDetails.HouseHoldMemberId = _hhUID.HouseHoldMemberId;
+                            }
+
+                            //Name of Individual Enrolled col 11
+                            //Date of birth col 12
+                            //Age of individual col 13
+                            //Sex of individual col 14
+
+
+                            //Beneficiary Program participation Status 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 15].Value.Trim()) && (worksheet.Range[row, 15].Value.Trim() != ""))
+                            {
+                                columnnnumber = "15";
+
+                                string BeneficiaryprogramParticipationId = worksheet.Range[row, 15].Value.ToString();
+                                if (BeneficiaryprogramParticipationId.Contains("Active"))
+                                {
+                                    //HVSRdata.ProgramParticipationId = 1;
+                                    HVSRDetails.ProgramParticipationId = 1;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Graduated"))
+                                {
+                                    //HVSRdata.ProgramParticipationId = 2;
+                                    HVSRDetails.ProgramParticipationId = 2;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Died"))
+                                {
+                                    // HVSRdata.ProgramParticipationId = 3;
+                                    HVSRDetails.ProgramParticipationId = 3;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Relocated"))
+                                {
+                                    // HVSRdata.ProgramParticipationId = 4;
+                                    HVSRDetails.ProgramParticipationId = 4;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Exited at Will"))
+                                {
+                                    //HVSRdata.ProgramParticipationId = 5;
+                                    HVSRDetails.ProgramParticipationId = 5;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Transfered Out of PEPFAR Supported Partner"))
+                                {
+                                    //HVSRdata.ProgramParticipationId = 6;
+                                    HVSRDetails.ProgramParticipationId = 6;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Transfered Out of non-PEPFAR Supported Partner or Government"))
+                                {
+                                    //HVSRdata.ProgramParticipationId = 7;
+                                    HVSRDetails.ProgramParticipationId = 7;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Lost to follow up"))
+                                {
+                                    //  HVSRdata.ProgramParticipationId = 8;
+                                    HVSRDetails.ProgramParticipationId = 8;
+                                }
+                                else if (BeneficiaryprogramParticipationId.Contains("Present Not Served"))
+                                {
+                                    // HVSRdata.ProgramParticipationId = 9;
+                                    HVSRDetails.ProgramParticipationId = 9;
+                                }
+                            }
+
+                            //  Adjusted risk factor column 16
+
+                            //Cash transfer (project)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 17].Value.Trim()) && (worksheet.Range[row, 17].Value.Trim() != ""))
+                            {
+                                columnnnumber = "17";
+                                string _stable = worksheet.Range[row, 17].Value.ToString();
+                                if (_stable.Contains("Cash transfer"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",1";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "1";
+                                    }
+                                }
+
+                            }
+                            //Emergency cash support (VSLA+)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 18].Value.Trim()) && (worksheet.Range[row, 18].Value.Trim() != ""))
+                            {
+                                columnnnumber = "18";
+                                string _stable = worksheet.Range[row, 18].Value.ToString();
+                                if (_stable.Contains("Emergency cash support"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",2";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "2";
+                                    }
+                                }
+
+                            }
+                            //Access to Saving & Credit (VSLA)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 19].Value.Trim()) && (worksheet.Range[row, 19].Value.Trim() != ""))
+                            {
+                                columnnnumber = "19";
+                                string _stable = worksheet.Range[row, 19].Value.ToString();
+                                if (_stable.Contains("Access to Saving and Credit"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",3";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "3";
+                                    }
+                                }
+
+                            }
+                            //Supported to own & run an IGA
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 20].Value.Trim()) && (worksheet.Range[row, 20].Value.Trim() != ""))
+                            {
+                                columnnnumber = "16";
+                                string _stable = worksheet.Range[row, 20].Value.ToString();
+                                if (_stable.Contains("Supported to own"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",4";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "4";
+                                    }
+                                }
+
+                            }
+                            //Received IGA training & boost
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 21].Value.Trim()) && (worksheet.Range[row, 21].Value.Trim() != ""))
+                            {
+                                columnnnumber = "21";
+                                string _stable = worksheet.Range[row, 21].Value.ToString();
+                                if (_stable.Contains("Received IGA training and Boost"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",5";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "5";
+                                    }
+                                }
+
+                            }
+                            //Received Business skills training( F.L, SPM)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 22].Value.Trim()) && (worksheet.Range[row, 22].Value.Trim() != ""))
+                            {
+                                columnnnumber = "22";
+                                string _stable = worksheet.Range[row, 22].Value.ToString();
+                                if (_stable.Contains("Received IGA training and Boost"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",6";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "6";
+                                    }
+                                }
+
+                            }
+                            //Apprenticeship attachment
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 23].Value.Trim()) && (worksheet.Range[row, 23].Value.Trim() != ""))
+                            {
+                                columnnnumber = "23";
+                                string _stable = worksheet.Range[row, 23].Value.ToString();
+                                if (_stable.Contains("Apprenticeship attachment"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",7";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "7";
+                                    }
+                                }
+
+                            }
+                            //Received soft skill training (basket, briquette, jewelry, mats & brick making) 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 24].Value.Trim()) && (worksheet.Range[row, 24].Value.Trim() != ""))
+                            {
+                                columnnnumber = "24";
+                                string _stable = worksheet.Range[row, 24].Value.ToString();
+                                if (_stable.Contains("Received Soft skill training"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",9";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "9";
+                                    }
+                                }
+
+                            }
+                            //Provided Startup kit or Capital  
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 25].Value.Trim()) && (worksheet.Range[row, 25].Value.Trim() != ""))
+                            {
+                                columnnnumber = "25";
+                                string _stable = worksheet.Range[row, 25].Value.ToString();
+                                if (_stable.Contains("Provided Startup kit or Capital"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",8";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "8";
+                                    }
+                                }
+
+                            }
+                            //Referred to ES service
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 26].Value.Trim()) && (worksheet.Range[row, 26].Value.Trim() != ""))
+                            {
+                                columnnnumber = "26";
+                                string _stable = worksheet.Range[row, 26].Value.ToString();
+                                if (_stable.Contains("Provided Startup kit or Capital"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Stable))
+                                    {
+                                        HVSRDetails.Stable += ",10";
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Stable = "10";
+                                    }
+                                }
+
+                            }
+
+                            //4a.Supported to enroll/re-enroll in school
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 27].Value.Trim()) && (worksheet.Range[row, 27].Value.Trim() != ""))
+                            {
+                                columnnnumber = "27";
+                                string _stable = worksheet.Range[row, 27].Value.ToString();
+                                if (_stable.Contains("Supported to enroll/re-enroll in school"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",11";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "11";
+                                    }
+                                }
+
+                            }
+
+                            //4b.Monitored for regular attendance
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 28].Value.Trim()) && (worksheet.Range[row, 28].Value.Trim() != ""))
+                            {
+                                columnnnumber = "28";
+                                string _stable = worksheet.Range[row, 28].Value.ToString();
+                                if (_stable.Contains("Monitored for regular attendance"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",12";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "12";
+                                    }
+                                }
+
+                            }
+
+                            //4c.Provided school fees bursary    
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 29].Value.Trim()) && (worksheet.Range[row, 29].Value.Trim() != ""))
+                            {
+                                columnnnumber = "29";
+                                string _stable = worksheet.Range[row, 29].Value.ToString();
+                                if (_stable.Contains("Provided school fees bursary"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",13";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "13";
+                                    }
+                                }
+
+                            }
+
+                            //4d.Provided school meals  
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 30].Value.Trim()) && (worksheet.Range[row, 30].Value.Trim() != ""))
+                            {
+                                columnnnumber = "30";
+                                string _stable = worksheet.Range[row, 30].Value.ToString();
+                                if (_stable.Contains("Provided school meals"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",14";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "14";
+                                    }
+                                }
+
+                            }
+
+                            //4e.Provided with school uniform 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 31].Value.Trim()) && (worksheet.Range[row, 31].Value.Trim() != ""))
+                            {
+                                columnnnumber = "31";
+                                string _stable = worksheet.Range[row, 31].Value.ToString();
+                                if (_stable.Contains("Provided with school uniform"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",15";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "15";
+                                    }
+                                }
+
+                            }
+                            //4f.Provided scholastic/reading materials 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 32].Value.Trim()) && (worksheet.Range[row, 32].Value.Trim() != ""))
+                            {
+                                columnnnumber = "32";
+                                string _stable = worksheet.Range[row, 32].Value.ToString();
+                                if (_stable.Contains("Provided scholastic/reading materials"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",16";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "16";
+                                    }
+                                }
+
+                            }
+
+                            //4g.Provided vocational education  
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 33].Value.Trim()) && (worksheet.Range[row, 33].Value.Trim() != ""))
+                            {
+                                columnnnumber = "33";
+                                string _stable = worksheet.Range[row, 33].Value.ToString();
+                                if (_stable.Contains("Provided vocational education"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",17";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "17";
+                                    }
+                                }
+
+                            }
+
+                            //4h.Caregiver received ECD training 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 34].Value.Trim()) && (worksheet.Range[row, 34].Value.Trim() != ""))
+                            {
+                                columnnnumber = "34";
+                                string _stable = worksheet.Range[row, 34].Value.ToString();
+                                if (_stable.Contains("Caregiver received ECD training"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",18";
+                                        }
+                                        else
+                                        {
+                                            HVSRDetails.Schooled = null;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "18";
+                                    }
+                                }
+
+                            }
+
+                            //4i.Referred to other E&D services (Specify a service and the provider)…
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 35].Value.Trim()) && (worksheet.Range[row, 35].Value.Trim() != ""))
+                            {
+                                columnnnumber = "35";
+                                string _stable = worksheet.Range[row, 35].Value.ToString();
+                                if (_stable.Contains("Referred to other E&D services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Schooled))
+                                    {
+                                        if (HVSRDetails.Schooled == num)
+                                        {
+                                            HVSRDetails.Schooled += ",19";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Schooled = "19";
+                                    }
+                                }
+
+                            }
+
+                            /////////////////Schooled
+                            //5a.Provided Counselling and Guidance
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 36].Value.Trim()) && (worksheet.Range[row, 36].Value.Trim() != ""))
+                            {
+                                columnnnumber = "36";
+                                string _stable = worksheet.Range[row, 36].Value.ToString();
+                                if (_stable.Contains("Provided Counselling and Guidance"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",20";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "20";
+                                    }
+                                }
+
+                            }
+
+                            //5b.Supported to access basic needs
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 37].Value.Trim()) && (worksheet.Range[row, 37].Value.Trim() != ""))
+                            {
+                                columnnnumber = "37";
+                                string _stable = worksheet.Range[row, 37].Value.ToString();
+                                if (_stable.Contains("Supported to access basic needs"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",21";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "21";
+                                    }
+                                }
+
+                            }
+                            //5c.Supported to access to recreation activities
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 38].Value.Trim()) && (worksheet.Range[row, 38].Value.Trim() != ""))
+                            {
+                                columnnnumber = "38";
+                                string _stable = worksheet.Range[row, 38].Value.ToString();
+                                if (_stable.Contains("Supported to access to recreation activities"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",22";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "22";
+                                    }
+                                }
+
+                            }
+                            //5d.Provided palliative care for HIV positive.
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 39].Value.Trim()) && (worksheet.Range[row, 39].Value.Trim() != ""))
+                            {
+                                columnnnumber = "39";
+                                string _stable = worksheet.Range[row, 39].Value.ToString();
+                                if (_stable.Contains("Provided palliative care for HIV positive."))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",23";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "23";
+                                    }
+                                }
+
+                            }
+
+                            //Provided Post-violence trauma-informed counselling 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 40].Value.Trim()) && (worksheet.Range[row, 40].Value.Trim() != ""))
+                            {
+                                columnnnumber = "40";
+                                string _stable = worksheet.Range[row, 40].Value.ToString();
+                                if (_stable.Contains("Provided Post-violence trauma-informed counselling"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",24";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "24";
+                                    }
+                                }
+
+                            }
+
+                            //Provided Clothing & Beddings
+
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 41].Value.Trim()) && (worksheet.Range[row, 41].Value.Trim() != ""))
+                            {
+                                columnnnumber = "41";
+                                string _stable = worksheet.Range[row, 41].Value.ToString();
+                                if (_stable.Contains("Provided with Clothing and Beddings"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",25";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "25";
+                                    }
+                                }
+
+                            }
+                            //Referred to access other PSS services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 42].Value.Trim()) && (worksheet.Range[row, 42].Value.Trim() != ""))
+                            {
+                                columnnnumber = "42";
+                                string _stable = worksheet.Range[row, 42].Value.ToString();
+                                if (_stable.Contains("Referred to access other PSS services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",26";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "26";
+                                    }
+                                }
+
+                            }
+                            //Legal support for GBV victims
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 43].Value.Trim()) && (worksheet.Range[row, 43].Value.Trim() != ""))
+                            {
+                                columnnnumber = "43";
+                                string _stable = worksheet.Range[row, 43].Value.ToString();
+                                if (_stable.Contains("Legal support for GBV victims"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",27";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "27";
+                                    }
+                                }
+
+                            }
+                            //Provided Positive Parenting training
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 44].Value.Trim()) && (worksheet.Range[row, 44].Value.Trim() != ""))
+                            {
+                                columnnnumber = "44";
+                                string _stable = worksheet.Range[row, 44].Value.ToString();
+                                if (_stable.Contains("Provided Positive Parenting training"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",28";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "28";
+                                    }
+                                }
+
+                            }
+                            //Supported to handle child neglect & abusive
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 45].Value.Trim()) && (worksheet.Range[row, 45].Value.Trim() != ""))
+                            {
+                                columnnnumber = "45";
+                                string _stable = worksheet.Range[row, 45].Value.ToString();
+                                if (_stable.Contains("Supported to handle child neglect and abusive"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",32";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "32";
+                                    }
+                                }
+
+                            }
+
+                            //Supported to register birth
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 46].Value.Trim()) && (worksheet.Range[row, 46].Value.Trim() != ""))
+                            {
+                                columnnnumber = "46";
+                                string _stable = worksheet.Range[row, 46].Value.ToString();
+                                if (_stable.Contains("Supported to register birth"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",29";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "29";
+                                    }
+                                }
+
+                            }
+                            //Participated in community sensitization on CP
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 47].Value.Trim()) && (worksheet.Range[row, 47].Value.Trim() != ""))
+                            {
+                                columnnnumber = "47";
+                                string _stable = worksheet.Range[row, 47].Value.ToString();
+                                if (_stable.Contains("Participated in community sensitization on CP"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",30";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "30";
+                                    }
+                                }
+
+                            }
+
+                            //6e.Supported to withdraw from child labor  
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 48].Value.Trim()) && (worksheet.Range[row, 48].Value.Trim() != ""))
+                            {
+                                columnnnumber = "48";
+                                string _stable = worksheet.Range[row, 48].Value.ToString();
+                                if (_stable.Contains("Supported to withdraw from child labor"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",31";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "31";
+                                    }
+                                }
+
+                            }
+                            //Supported Child re-integration with Family
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 49].Value.Trim()) && (worksheet.Range[row, 49].Value.Trim() != ""))
+                            {
+                                columnnnumber = "49";
+                                string _stable = worksheet.Range[row, 49].Value.ToString();
+                                if (_stable.Contains("Supported Child re-integration with Family"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",33";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "33";
+                                    }
+                                }
+
+                            }
+                            //Provided SBCC on violence prevention & reporting (GBV, SVAC).
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 50].Value.Trim()) && (worksheet.Range[row, 50].Value.Trim() != ""))
+                            {
+                                columnnnumber = "50";
+                                string _stable = worksheet.Range[row, 50].Value.ToString();
+                                if (_stable.Contains("Provided SBCC on violence prevention and reporting (GBV,SVAC)"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",34";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "34";
+                                    }
+                                }
+
+                            }
+
+                            //Referred to access other Protection services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 51].Value.Trim()) && (worksheet.Range[row, 51].Value.Trim() != ""))
+                            {
+                                columnnnumber = "51";
+                                string _stable = worksheet.Range[row, 51].Value.ToString();
+                                if (_stable.Contains("Referred to access other Protection services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Safe))
+                                    {
+                                        if (HVSRDetails.Safe == num)
+                                        {
+                                            HVSRDetails.Safe += ",35";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Safe = "35";
+                                    }
+                                }
+
+                            }
+
+
+                            ////////////////Health
+                            ///Assisted to access safe water
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 52].Value.Trim()) && (worksheet.Range[row, 52].Value.Trim() != ""))
+                            {
+                                columnnnumber = "52";
+                                string _stable = worksheet.Range[row, 52].Value.ToString();
+                                if (_stable.Contains("Assisted to access safe water"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",36";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "36";
+                                    }
+                                }
+
+                            }
+                            //Provided with stable shelter
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 53].Value.Trim()) && (worksheet.Range[row, 53].Value.Trim() != ""))
+                            {
+                                columnnnumber = "53";
+                                string _stable = worksheet.Range[row, 53].Value.ToString();
+                                if (_stable.Contains("Provided with stable shelter"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",37";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "37";
+                                    }
+                                }
+
+                            }
+
+
+
+                            //Supported to access a pit latrine
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 54].Value.Trim()) && (worksheet.Range[row, 54].Value.Trim() != ""))
+                            {
+                                columnnnumber = "54";
+                                string _stable = worksheet.Range[row, 54].Value.ToString();
+                                if (_stable.Contains("Supported to access a pit latrine"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",38";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "38";
+                                    }
+                                }
+
+                            }
+
+                            //Supported to maintain a standard hand washing facility
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 55].Value.Trim()) && (worksheet.Range[row, 55].Value.Trim() != ""))
+                            {
+                                columnnnumber = "55";
+                                string _stable = worksheet.Range[row, 55].Value.ToString();
+                                if (_stable.Contains("Supported to maintain a standard Hand washing facility"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",39";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "39";
+                                    }
+                                }
+
+                            }
+
+                            //Provided/ supported to access ITNs
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 56].Value.Trim()) && (worksheet.Range[row, 56].Value.Trim() != ""))
+                            {
+                                columnnnumber = "56";
+                                string _stable = worksheet.Range[row, 56].Value.ToString();
+                                if (_stable.Contains("Provided with/Supported to access ITNs"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",40";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "40";
+                                    }
+                                }
+
+                            }
+
+                            //Provided SBCC on WASH
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 57].Value.Trim()) && (worksheet.Range[row, 57].Value.Trim() != ""))
+                            {
+                                columnnnumber = "57";
+                                string _stable = worksheet.Range[row, 57].Value.ToString();
+                                if (_stable.Contains("Provided SBCC on WASH"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",41";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "41";
+                                    }
+                                }
+
+                            }
+
+                            //Supported to access immunization
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 58].Value.Trim()) && (worksheet.Range[row, 58].Value.Trim() != ""))
+                            {
+                                columnnnumber = "58";
+                                string _stable = worksheet.Range[row, 58].Value.ToString();
+                                if (_stable.Contains("Supported to access immunization"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",42";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "42";
+                                    }
+                                }
+
+                            }
+
+                            //Supported to access antenatal care
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 59].Value.Trim()) && (worksheet.Range[row, 59].Value.Trim() != ""))
+                            {
+                                columnnnumber = "59";
+                                string _stable = worksheet.Range[row, 59].Value.ToString();
+                                if (_stable.Contains("Supported to access antenatal care"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",43";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "43";
+                                    }
+                                }
+
+                            }
+
+                            //Supported to access youth friendly services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 60].Value.Trim()) && (worksheet.Range[row, 60].Value.Trim() != ""))
+                            {
+                                columnnnumber = "60";
+                                string _stable = worksheet.Range[row, 60].Value.ToString();
+                                if (_stable.Contains("Supported to access youth friendly services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",44";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "44";
+                                    }
+                                }
+
+                            }
+                            //Provided SBCC on Malaria Prevention
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 61].Value.Trim()) && (worksheet.Range[row, 61].Value.Trim() != ""))
+                            {
+                                columnnnumber = "61";
+                                string _stable = worksheet.Range[row, 61].Value.ToString();
+                                if (_stable.Contains("Provided SBCC on Malaria Prevention"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",45";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "45";
+                                    }
+                                }
+
+                            }
+                            //Supported to access IPT for Pregnant Mother
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 62].Value.Trim()) && (worksheet.Range[row, 62].Value.Trim() != ""))
+                            {
+                                columnnnumber = "62";
+                                string _stable = worksheet.Range[row, 62].Value.ToString();
+                                if (_stable.Contains("Supported to access Intermittent"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",46";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "46";
+                                    }
+                                }
+
+                            }
+                            //HH supported to access IRS for Malaria Prevention
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 63].Value.Trim()) && (worksheet.Range[row, 63].Value.Trim() != ""))
+                            {
+                                columnnnumber = "63";
+                                string _stable = worksheet.Range[row, 63].Value.ToString();
+                                if (_stable.Contains("HH supported to access IRS for Malaria Prevention"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",47";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "47";
+                                    }
+                                }
+
+                            }
+                            //Supported to access Family Planning service
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 64].Value.Trim()) && (worksheet.Range[row, 64].Value.Trim() != ""))
+                            {
+                                columnnnumber = "64";
+                                string _stable = worksheet.Range[row, 64].Value.ToString();
+                                if (_stable.Contains("Supported to access Family Planning services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",48";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "48";
+                                    }
+                                }
+
+                            }
+                            //Referred to access other family health services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 65].Value.Trim()) && (worksheet.Range[row, 65].Value.Trim() != ""))
+                            {
+                                columnnnumber = "65";
+                                string _stable = worksheet.Range[row, 65].Value.ToString();
+                                if (_stable.Contains("Referred to access other"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",49";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "49";
+                                    }
+                                }
+
+                            }
+                            //Nutrition Education & Counselling
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 66].Value.Trim()) && (worksheet.Range[row, 66].Value.Trim() != ""))
+                            {
+                                columnnnumber = "66";
+                                string _stable = worksheet.Range[row, 66].Value.ToString();
+                                if (_stable.Contains("Nutrition Education and Counselling"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",50";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "50";
+                                    }
+                                }
+
+                            }
+                            //Food Relief/ Supplement Assistance
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 67].Value.Trim()) && (worksheet.Range[row, 67].Value.Trim() != ""))
+                            {
+                                columnnnumber = "67";
+                                string _stable = worksheet.Range[row, 67].Value.ToString();
+                                if (_stable.Contains("Food Relief/Supplement Assistance"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",51";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "51";
+                                    }
+                                }
+
+                            }
+                            //Trained on good agronomic practices
+                            //if (!string.IsNullOrEmpty(worksheet.Range[row, 68].Value.Trim()) && (worksheet.Range[row, 68].Value.Trim() != ""))
+                            //{
+                            //    columnnnumber = "68";
+                            //    string _stable = worksheet.Range[row, 68].Value.ToString();
+                            //    if (_stable.Contains("Received GAP training"))
+                            //    {
+
+                            //        if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                            //        {
+                            //            if (HVSRDetails.Healthy == num)
+                            //            {
+                            //                HVSRDetails.Healthy += ",52";
+                            //            }
+
+                            //        }
+                            //        else
+                            //        {
+                            //            HVSRDetails.Healthy = "52";
+                            //        }
+                            //    }
+
+                            //}
+
+                            //Received Farming Inputs
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 69].Value.Trim()) && (worksheet.Range[row, 69].Value.Trim() != ""))
+                            {
+                                columnnnumber = "69";
+                                string _stable = worksheet.Range[row, 69].Value.ToString();
+                                if (_stable.Contains("Received Farming Inputs"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",53";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "53";
+                                    }
+                                }
+
+                            }
+                            //Received Agric. Advisory Services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 70].Value.Trim()) && (worksheet.Range[row, 70].Value.Trim() != ""))
+                            {
+                                columnnnumber = "70";
+                                string _stable = worksheet.Range[row, 70].Value.ToString();
+                                if (_stable.Contains("Received Agric. Advisory Services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",54";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "54";
+                                    }
+                                }
+
+                            }
+                            //Supported to access output markets
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 71].Value.Trim()) && (worksheet.Range[row, 71].Value.Trim() != ""))
+                            {
+                                columnnnumber = "71";
+                                string _stable = worksheet.Range[row, 71].Value.ToString();
+
+                                if (_stable.Contains("Supported to access output markets"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",55";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "55";
+                                    }
+                                }
+
+                            }
+                            //Supported to access Post-Harvest handling
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 72].Value.Trim()) && (worksheet.Range[row, 72].Value.Trim() != ""))
+                            {
+                                columnnnumber = "72";
+                                string _stable = worksheet.Range[row, 72].Value.ToString();
+
+                                if (_stable.Contains("Supported to access Post-Harvest handling"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",56";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "56";
+                                    }
+                                }
+
+                            }
+
+                            //Provided Nutrition Assessment (MUAC)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 73].Value.Trim()) && (worksheet.Range[row, 73].Value.Trim() != ""))
+                            {
+                                columnnnumber = "73";
+                                string _stable = worksheet.Range[row, 73].Value.ToString();
+
+                                if (_stable.Contains("Provided Nutrition Assessment"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",57";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "57";
+                                    }
+                                }
+
+                            }
+                            //2i.Supported to setup Vegetable/Backyard gardening 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 74].Value.Trim()) && (worksheet.Range[row, 74].Value.Trim() != ""))
+                            {
+                                columnnnumber = "74";
+                                string _stable = worksheet.Range[row, 74].Value.ToString();
+
+                                if (_stable.Contains("Supported to setup Vegetable/Backyard gardening"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",58";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "58";
+                                    }
+                                }
+
+                            }
+                            //Beneficiary supported to access Farmer field schools
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 75].Value.Trim()) && (worksheet.Range[row, 75].Value.Trim() != ""))
+                            {
+                                columnnnumber = "75";
+                                string _stable = worksheet.Range[row, 75].Value.ToString();
+
+                                if (_stable.Contains("Beneficiary supported to access Farmer field schools"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",59";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "59";
+                                    }
+                                }
+
+                            }
+                            //Referred to access other FSN services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 76].Value.Trim()) && (worksheet.Range[row, 76].Value.Trim() != ""))
+                            {
+                                columnnnumber = "76";
+                                string _stable = worksheet.Range[row, 76].Value.ToString();
+
+                                if (_stable.Contains("Referred to access other FSN services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",60";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "60";
+                                    }
+                                }
+
+                            }
+                            //HIV risk assessment & HIV pre-test counselling
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 77].Value.Trim()) && (worksheet.Range[row, 77].Value.Trim() != ""))
+                            {
+                                columnnnumber = "77";
+                                string _stable = worksheet.Range[row, 77].Value.ToString();
+
+                                if (_stable.Contains("HIV risk assessment and HIV pre-test counselling"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",61";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "61";
+                                    }
+                                }
+
+                            }
+                            //Supported to test for HIV and receive HIV results
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 78].Value.Trim()) && (worksheet.Range[row, 78].Value.Trim() != ""))
+                            {
+                                columnnnumber = "78";
+                                string _stable = worksheet.Range[row, 78].Value.ToString();
+
+                                if (_stable.Contains("Supported to test for HIV and receive HIV results"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",62";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "62";
+                                    }
+                                }
+
+                            }
+                            //Provided HIV post-test counseling 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 79].Value.Trim()) && (worksheet.Range[row, 79].Value.Trim() != ""))
+                            {
+                                columnnnumber = "79";
+                                string _stable = worksheet.Range[row, 79].Value.ToString();
+
+                                if (_stable.Contains("provided HIV post-test counseling"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",63";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "63";
+                                    }
+                                }
+
+                            }
+                            //Supported to Disclose HIV status to Family
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 80].Value.Trim()) && (worksheet.Range[row, 80].Value.Trim() != ""))
+                            {
+                                columnnnumber = "80";
+                                string _stable = worksheet.Range[row, 80].Value.ToString();
+
+                                if (_stable.Contains("Supported to Disclose HIV status to Family"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",64";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "64";
+                                    }
+                                }
+
+                            }
+                            //Supported to enroll on ART
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 82].Value.Trim()) && (worksheet.Range[row, 82].Value.Trim() != ""))
+                            {
+                                columnnnumber = "82";
+                                string _stable = worksheet.Range[row, 82].Value.ToString();
+
+                                if (_stable.Contains("Supported to Enroll on ART"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",65";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "65";
+                                    }
+                                }
+
+                            }
+                            //Supported to access ART refills
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 83].Value.Trim()) && (worksheet.Range[row, 83].Value.Trim() != ""))
+                            {
+                                columnnnumber = "83";
+                                string _stable = worksheet.Range[row, 83].Value.ToString();
+
+                                if (_stable.Contains("Supported to access ART refills"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",66";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "66";
+                                    }
+                                }
+
+                            }
+                            //Provided  ART adherence support
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 84].Value.Trim()) && (worksheet.Range[row, 84].Value.Trim() != ""))
+                            {
+                                columnnnumber = "84";
+                                string _stable = worksheet.Range[row, 84].Value.ToString();
+
+                                if (_stable.Contains("Provided with ART adherence support"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",67";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "67";
+                                    }
+                                }
+
+                            }
+                            //Supported to test for VL 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 85].Value.Trim()) && (worksheet.Range[row, 85].Value.Trim() != ""))
+                            {
+                                columnnnumber = "85";
+                                string _stable = worksheet.Range[row, 85].Value.ToString();
+
+                                if (_stable.Contains("Supported to test for VL"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",68";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "68";
+                                    }
+                                }
+
+                            }
+                            //Supported to receive VL results
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 86].Value.Trim()) && (worksheet.Range[row, 86].Value.Trim() != ""))
+                            {
+                                columnnnumber = "86";
+                                string _stable = worksheet.Range[row, 86].Value.ToString();
+
+                                if (_stable.Contains("Supported to receive VL results"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",69";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "69";
+                                    }
+                                }
+
+                            }
+                            //Provided IAC for Non-Suppression
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 87].Value.Trim()) && (worksheet.Range[row, 87].Value.Trim() != ""))
+                            {
+                                columnnnumber = "87";
+                                string _stable = worksheet.Range[row, 87].Value.ToString();
+
+                                if (_stable.Contains("Provided IAC for Non-Suppression"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",70";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "70";
+                                    }
+                                }
+
+                            }
+                            //Referred for HIV TCT Services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 88].Value.Trim()) && (worksheet.Range[row, 88].Value.Trim() != ""))
+                            {
+                                columnnnumber = "88";
+                                string _stable = worksheet.Range[row, 88].Value.ToString();
+
+                                if (_stable.Contains("Referred for HIV TCT Services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",71";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "71";
+                                    }
+                                }
+
+                            }
+                            //Provided eMTCT services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 89].Value.Trim()) && (worksheet.Range[row, 89].Value.Trim() != ""))
+                            {
+                                columnnnumber = "89";
+                                string _stable = worksheet.Range[row, 89].Value.ToString();
+
+                                if (_stable.Contains("Provided eMTCT services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",72";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "72";
+                                    }
+                                }
+
+                            }
+                            //Supported to access PrEP
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 90].Value.Trim()) && (worksheet.Range[row, 90].Value.Trim() != ""))
+                            {
+                                columnnnumber = "90";
+                                string _stable = worksheet.Range[row, 90].Value.ToString();
+
+                                if (_stable.Contains("Supported to access PrEP"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",73";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "73";
+                                    }
+                                }
+
+                            }
+                            //Provided condoms
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 91].Value.Trim()) && (worksheet.Range[row, 91].Value.Trim() != ""))
+                            {
+                                columnnnumber = "91";
+                                string _stable = worksheet.Range[row, 91].Value.ToString();
+
+                                if (_stable.Contains("Provided condoms"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",74";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "74";
+                                    }
+                                }
+
+                            }
+                            //Supported to access VMMC/ SMC
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 92].Value.Trim()) && (worksheet.Range[row, 92].Value.Trim() != ""))
+                            {
+                                columnnnumber = "92";
+                                string _stable = worksheet.Range[row, 92].Value.ToString();
+
+                                if (_stable.Contains("Supported to access VMMC/SMC for male"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",75";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "75";
+                                    }
+                                }
+
+                            }
+                            //Provided SBCC on HIV prevention & education
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 93].Value.Trim()) && (worksheet.Range[row, 93].Value.Trim() != ""))
+                            {
+                                columnnnumber = "93";
+                                string _stable = worksheet.Range[row, 93].Value.ToString();
+
+                                if (_stable.Contains("Provided SBCC on HIV prevention and education"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",76";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "76";
+                                    }
+                                }
+
+                            }
+                            //Supported to access PEP
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 94].Value.Trim()) && (worksheet.Range[row, 94].Value.Trim() != ""))
+                            {
+                                columnnnumber = "94";
+                                string _stable = worksheet.Range[row, 94].Value.ToString();
+
+                                if (_stable.Contains("Supported to access PEP"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",77";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "77";
+                                    }
+                                }
+
+                            }
+                            //Provided with Self-Awareness Knowledge on HIV prevention
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 95].Value.Trim()) && (worksheet.Range[row, 95].Value.Trim() != ""))
+                            {
+                                columnnnumber = "95";
+                                string _stable = worksheet.Range[row, 95].Value.ToString();
+
+                                if (_stable.Contains("Provided with Self-Awareness Knowledge"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",78";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "78";
+                                    }
+                                }
+
+                            }
+                            //Referred to access other HIV prevention services
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 96].Value.Trim()) && (worksheet.Range[row, 96].Value.Trim() != ""))
+                            {
+                                columnnnumber = "96";
+                                string _stable = worksheet.Range[row, 96].Value.ToString();
+
+                                if (_stable.Contains("Referred to access other HIV prevention services"))
+                                {
+
+                                    if (!string.IsNullOrEmpty(HVSRDetails.Healthy))
+                                    {
+                                        if (HVSRDetails.Healthy == num)
+                                        {
+                                            HVSRDetails.Healthy += ",79";
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        HVSRDetails.Healthy = "79";
+                                    }
+                                }
+
+                            }
+
+
+                            HomeVisitServiceReportingToolHeader _table1 = db.HomeVisitServiceReportingToolHeader.FirstOrDefault(o => o.HouseHoldId == HVSRdata.HouseHoldId&& o.VisitationDate== HVSRdata.VisitationDate);
+
+                            if (_table1 != null)
+                            {
+
+                                HVSRdata.VisitServiceReportingToolHeaderId = _table1.VisitServiceReportingToolHeaderId;
+
+                            }
+                            else
+                            {
+                                int id = 1;
+                                var last = db.HomeVisitServiceReportingToolHeader.OrderBy(o => o.VisitServiceReportingToolHeaderId).ToList().LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VisitServiceReportingToolHeaderId + 1);
+                                }
+                                HVSRdata.VisitServiceReportingToolHeaderId = id;
+                                try
+                                {
+                                    db.HomeVisitServiceReportingToolHeader.Add(HVSRdata);
+                                    db.SaveChanges();
+                                }
+                                catch (Exception ex)
+                                {
+                                    throw ex;
+                                }
+
+                            }
+                            if (HVSRDetails.HouseHoldMemberId > 0)
+                            {
+                                HomeVisitServiceReportingToolDetail _table = db.HomeVisitServiceReportingToolDetail.FirstOrDefault(o => o.HouseHoldMemberId == HVSRDetails.HouseHoldMemberId && o.VisitServiceReportingToolHeaderId == HVSRdata.VisitServiceReportingToolHeaderId);
+
+                                HVSRDetails.VisitServiceReportingToolHeaderId = HVSRdata.VisitServiceReportingToolHeaderId;
+                                if (_table == null)
+                                {
+                                    int id = 1;
+                                    var last = db.HomeVisitServiceReportingToolDetail.OrderBy(o => o.VisitServiceReportingToolDetailId).ToList().LastOrDefault();
+                                    if (last != null)
+                                    {
+                                        id = (last.VisitServiceReportingToolDetailId + 1);
+                                    }
+                                    HVSRDetails.VisitServiceReportingToolDetailId = id;
+                                    try
+                                    {
+                                        db.HomeVisitServiceReportingToolDetail.Add(HVSRDetails);
+                                        db.SaveChanges();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        //  HVSRDetails.VisitServiceReportingToolHeaderId = _table.VisitServiceReportingToolHeaderId;
+                                        _table.Stable = HVSRDetails.Stable;
+                                        _table.Healthy = HVSRDetails.Healthy;
+                                        _table.Schooled = HVSRDetails.Schooled;
+                                        _table.Safe = HVSRDetails.Safe;
+                                        _table.ProgramParticipationId = HVSRDetails.ProgramParticipationId;
+                                        db.Entry(_table).CurrentValues.SetValues(HVSRDetails);
+                                        db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                        db.SaveChanges();
+
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                            }
+
+                        }
+                        StateHasChanged();
+                    }
+                    MessageResponse = "Home Visit Tool has been successfully uploaded";
+                    rownumber = null;
+                    await UploadingSpinner.HideAsync();
+                }
+            }
+            file.Stream.Close();
+        }
+    }
+}

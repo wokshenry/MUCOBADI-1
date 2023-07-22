@@ -1,0 +1,1748 @@
+﻿@page "/CaseTrackingRegisterPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> MONTHLY CASE TRACKING REGISTER  </li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="MonthlyCaseTrackingRegisterGrid" TValue="MonthlyCaseTrackingRegister" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(MonthlyCaseTrackingRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnMonthlyCaseTrackingRegisterActionBegin" OnActionComplete="@OnMonthlyCaseTrackingRegisterActionComplete" TValue="MonthlyCaseTrackingRegister"></GridEvents>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="MonthlyCaseTrackingRegisterContext">
+                    @{ 
+                        MonthlyCaseTrackingRegisterReviewData = (MonthlyCaseTrackingRegisterContext as MonthlyCaseTrackingRegister);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of IP/CSO</p>
+                                    <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="OnADistrictChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.SubcountyId)" Enabled="true" TItem="ASubcounty" TValue="int?" DataSource="@_SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of Office</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.OfficerName)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date of data collection</p>
+                                    <SfDatePicker @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.DataCollectionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                 <div class="form-group col-md-4">
+                                    <p>Term </p>
+                                    <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.TermId)" Enabled="true" TItem="ATerm" TValue="int?" DataSource="@TermData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ATerm.TermId)" Text="@nameof(ATerm.TermDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                @if(MonthlyCaseTrackingRegisterReviewData.ImplementingPartnerId > 0 && MonthlyCaseTrackingRegisterReviewData.DistrictId != null && MonthlyCaseTrackingRegisterReviewData.SubcountyId != null
+                               && !string.IsNullOrEmpty(MonthlyCaseTrackingRegisterReviewData.OfficerName) && MonthlyCaseTrackingRegisterReviewData.DataCollectionDate != null && MonthlyCaseTrackingRegisterReviewData.TermId != null)
+                                {
+                                    if (MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId == 0)
+                                    {
+                                        MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId = SaveHeader(MonthlyCaseTrackingRegisterReviewData);
+                                    }
+
+                                    var mQuery = new Query();
+                                    if (MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId > 0)
+                                    {
+                                        mQuery.AddParams("CaseTrackingRegisterId", MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId);
+                                        <SfGrid @ref="MonthlyCaseTrackingRegisterDetailGrid" TValue="MonthlyCaseTrackingRegisterDetail" AllowPaging="true" AllowFiltering="true" Query="@mQuery" Width="100%"
+                                                GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                            <SfDataManager AdaptorInstance="@typeof(MonthlyCaseTrackingRegisterDetailAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                <Template Context="MonthlyCaseTrackingRegisterDetailContext">
+                                                    @{
+                                                        MonthlyCaseTrackingRegisterDetailReviewData = (MonthlyCaseTrackingRegisterDetailContext as MonthlyCaseTrackingRegisterDetail);
+                                                        <div class="form-row" style="padding:10px;">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@MonthlyCaseTrackingRegisterDetailReviewData.CaseTrackingRegisterDetailId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@MonthlyCaseTrackingRegisterDetailReviewData.CaseTrackingRegisterId" Enabled="false"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>HH Member</p>
+                                                                <SfDropDownList ID="HouseHoldMemberId" @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                        <ItemTemplate>
+                                                                            <div style="margin-left:10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>
+                                                                        </ItemTemplate>
+                                                                        <ValueTemplate>
+                                                                            @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                         </ValueTemplate>
+                                                                    </DropDownListTemplates>
+                                                                    <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Village</p>
+                                                                <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.VillageId)" Enabled="true" TItem="AVillage" TValue="int?" DataSource="@VillageData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                    <DropDownListFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Case Category</h4>
+                                                            </div> 
+                                                            <div class="form-group col-md-4">
+                                                                <p>Sexual</p>
+                                                                <SfMultiSelect @ref="SexualObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SexualData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnSexualChange" DataBound="OnSexualBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>physical</p>
+                                                                <SfMultiSelect @ref="physicalObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@physicalData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnphysicalChange" DataBound="OnphysicalBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Neglect</p>
+                                                                <SfMultiSelect @ref="NeglectObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@NeglectData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnNeglectChange" DataBound="OnNeglectBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Emotional</p>
+                                                                <SfMultiSelect @ref="EmotionalObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@EmotionalData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnEmotionalChange" DataBound="OnEmotionalBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Other forms</p>
+                                                                <SfMultiSelect @ref="OtherformsObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@OtherformsData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnOtherformsChange" DataBound="OnOtherformsBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>HIV related</p>
+                                                                <SfMultiSelect @ref="HIVrelatedObj" TValue="int[]" TItem="ACaseCategoryItem" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@HIVrelatedData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please search ---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(ACaseCategoryItem.CaseCategoryItemId)" Text="@nameof(ACaseCategoryItem.CaseCategoryItemDesc)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="ACaseCategoryItem" ValueChange="OnHIVrelatedChange" DataBound="OnHIVrelatedBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Case status (Please indicate, Yes/No)</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Referred</p>
+                                                                <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.Referred)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Resolved</p>
+                                                                <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.Resolved)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Pending </p>
+                                                                <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.Pending)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Transferred</p>
+                                                                <SfDropDownList @bind-Value="@(MonthlyCaseTrackingRegisterDetailReviewData.Transferred)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Services provided</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Economic Stability and Security.</p>
+                                                                                            <SfMultiSelect @ref="StableObj" TValue="int[]" TItem="AServiceReceived" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@StableData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                <MultiSelectFieldSettings Value="@nameof(AServiceReceived.ServiceReceivedId)" Text="@nameof(AServiceReceived.ServiceReceivedDesc)" GroupBy="@nameof(AServiceReceived.ServiceClassiffication)"></MultiSelectFieldSettings>
+                                                                                                <MultiSelectEvents TValue="int[]" TItem="AServiceReceived" ValueChange="OnStableChange" DataBound="OnStableBound"></MultiSelectEvents>
+                                                                                            </SfMultiSelect>
+                                                                                        </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Education & Development</p>
+                                                                                            <SfMultiSelect @ref="SchoolObj" TValue="int[]" TItem="AServiceReceived" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SchoolData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                <MultiSelectFieldSettings Value="@nameof(AServiceReceived.ServiceReceivedId)" Text="@nameof(AServiceReceived.ServiceReceivedDesc)" GroupBy="@nameof(AServiceReceived.ServiceClassiffication)"></MultiSelectFieldSettings>
+                                                                                                <MultiSelectEvents TValue="int[]" TItem="AServiceReceived" ValueChange="OnSchoolChange" DataBound="OnSchoolBound"></MultiSelectEvents>
+                                                                                            </SfMultiSelect>
+                                                                                        </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Care and Protection.</p>
+                                                                                            <SfMultiSelect @ref="SafeObj" TValue="int[]" TItem="AServiceReceived" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SafeData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                <MultiSelectFieldSettings Value="@nameof(AServiceReceived.ServiceReceivedId)" Text="@nameof(AServiceReceived.ServiceReceivedDesc)" GroupBy="@nameof(AServiceReceived.ServiceClassiffication)"></MultiSelectFieldSettings>
+                                                                                                <MultiSelectEvents TValue="int[]" TItem="AServiceReceived" ValueChange="OnSafeChange" DataBound="OnSafeBound"></MultiSelectEvents>
+                                                                                            </SfMultiSelect>
+                                                                                        </div>
+                                                            <div class="form-group col-md-4">
+                                                                <p>Survival and Health</p>
+                                                                                            <SfMultiSelect @ref="HealthyObj" TValue="int[]" TItem="AServiceReceived" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@HealthyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                <MultiSelectFieldSettings Value="@nameof(AServiceReceived.ServiceReceivedId)" Text="@nameof(AServiceReceived.ServiceReceivedDesc)" GroupBy="@nameof(AServiceReceived.ServiceClassiffication)"></MultiSelectFieldSettings>
+                                                                                                <MultiSelectEvents TValue="int[]" TItem="AServiceReceived" ValueChange="OnHealthyChange" DataBound="OnHealthyBound"></MultiSelectEvents>
+                                                                                            </SfMultiSelect>
+                                                                                        </div>
+                                                        </div>
+                                                    }
+                                                </Template>
+                                            </GridEditSettings>
+                                            @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                            <GridEvents OnActionComplete="@OnMonthlyCaseTrackingRegisterDetailActionComplete" OnActionBegin="@OnMonthlyCaseTrackingRegisterDetailActionBegin" TValue="MonthlyCaseTrackingRegisterDetail"></GridEvents>
+                                            @*<GridEvents CellSaved="OnCellSaved" OnActionComplete="TemplateActionComplete" OnBatchSave="BatchSaveHandler" QueryCellInfo="QueryCellInfoHandler" TValue="CouncilofDecisionsCountry"></GridEvents>*@
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridColumns>
+                                                <GridColumn HeaderText="Manage Records" Width="80" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                    <GridCommandColumns>
+                                                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                    </GridCommandColumns>
+                                                </GridColumn>
+                                                <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.CaseTrackingRegisterDetailId) Visible="false" HeaderText="CaseTrackingRegisterDetailId" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HouseHoldMemberId) Visible="true" HeaderText="HouseHold Member Code" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HouseHoldMemberId) HeaderText="Name" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.FullName)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.VillageId) ForeignKeyField="@nameof(AVillage.VillageId)" ForeignKeyValue="@nameof(AVillage.VillageDescription)" ForeignDataSource="@VillageData" Visible="true" HeaderText="Village" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HouseHoldMemberId) Visible="true" HeaderText="Age" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.Age)" ForeignDataSource="@HouseHoldMembersData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HouseHoldMemberId) Visible="true" HeaderText="Sex"  ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.GenderDescription)" ForeignDataSource="@HouseHoldMembersData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                <GridColumn HeaderText="Case Category" TextAlign="TextAlign.Center">
+                                                    <GridColumns>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.SexualCaseCategoryItemId) Visible="true" HeaderText="Sexual" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.SexualCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.SexualCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = SexualData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.PhysicalCaseCategoryItemId) Visible="true" HeaderText="Physical" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.PhysicalCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.PhysicalCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = physicalData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.NeglectCaseCategoryItemId) Visible="true" HeaderText="Neglect" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.NeglectCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.NeglectCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = NeglectData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.EmotionalCaseCategoryItemId) Visible="true" HeaderText="Emotional" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.EmotionalCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.EmotionalCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = EmotionalData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.OtherFormsCaseCategoryItemId) Visible="true" HeaderText="Other Forms" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.OtherFormsCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.OtherFormsCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = OtherformsData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HivrelatedCaseCategoryItemId) Visible="true" HeaderText="HIV Related" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.HivrelatedCaseCategoryItemId))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.HivrelatedCaseCategoryItemId.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = HIVrelatedData.FirstOrDefault(o => o.CaseCategoryItemId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.CaseCategoryItemDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                    </GridColumns>
+                                                </GridColumn>
+                                                <GridColumn HeaderText="Case status (Please indicate, Yes/No)" TextAlign="TextAlign.Center">
+                                                    <GridColumns>
+                                                        <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.Referred) Visible="true" HeaderText="Referred"  ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                        <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.Resolved) Visible="true" HeaderText="Resolved" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                        <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.Pending) Visible="true" HeaderText="Pending" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                        <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.Transferred) Visible="true" HeaderText="Transferred" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridForeignColumn>
+                                                    </GridColumns>
+                                                </GridColumn>
+                                                <GridColumn HeaderText="Services provided" TextAlign="TextAlign.Center">
+                                                    <GridColumns>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.StableServiceProvided) Visible="true" HeaderText="Economic Stability and Security" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.StableServiceProvided))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.StableServiceProvided.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = StableData.FirstOrDefault(o => o.ServiceReceivedId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.SchooledServiceProvided) Visible="true" HeaderText="Education & Development" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.SchooledServiceProvided))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.SchooledServiceProvided.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = SchoolData.FirstOrDefault(o => o.ServiceReceivedId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.SafeServiceProvided) Visible="true" HeaderText="Care and Protection" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.SafeServiceProvided))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.SafeServiceProvided.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = SafeData.FirstOrDefault(o => o.ServiceReceivedId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                        <GridColumn Field=@nameof(MonthlyCaseTrackingRegisterDetail.HealthServiceProvided) Visible="true" HeaderText="Survival and Health" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                                            <Template>
+                                                                @{
+                                                                    var data = (context as MonthlyCaseTrackingRegisterDetail);
+                                                                    if (!string.IsNullOrEmpty(data.HealthServiceProvided))
+                                                                    {
+                                                                        string result = string.Empty;
+                                                                        var a = data.HealthServiceProvided.Split(",");
+                                                                        int count = 1;
+                                                                        foreach (var n in a)
+                                                                        {
+                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                            var x = HealthyData.FirstOrDefault(o => o.ServiceReceivedId == b);
+                                                                            if (x != null)
+                                                                            {
+                                                                                if (count != a.Length)
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc + ", ";
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    result += x.ServiceReceivedDesc;
+                                                                                }
+                                                                            }
+                                                                            count++;
+                                                                        }
+                                                                        <p>@result</p>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <p></p>
+                                                                    }
+                                                                }
+                                                            </Template>
+                                                        </GridColumn>
+                                                    </GridColumns>
+                                                </GridColumn>                                             
+                                            </GridColumns>
+                                        </SfGrid>
+                                    }
+                                    
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                }
+
+                                <div class="form-group col-md-4">
+                                    <p>Submitted by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.SubmittedBy)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.SubmittedTitle)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.SubmissionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Reviewed by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.ReviewedBy)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.ReviewTitle)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(MonthlyCaseTrackingRegisterReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                    <FooterTemplate>
+                        <SfButton CssClass="e-btn e-success" OnClick="SaveMonthlyCaseTrackingRegisterBtnClick"> Save Form</SfButton>
+                        <SfButton CssClass="e-btn e-danger" OnClick="CancelMonthlyCaseTrackingRegisterBtnClick"> Cancel</SfButton>
+                    </FooterTemplate>
+            </GridEditSettings>
+                <GridColumns>
+                    @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                    <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                        <GridCommandColumns>
+                            <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                        </GridCommandColumns>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(MonthlyCaseTrackingRegister.CaseTrackingRegisterId) HeaderText="Group Composition Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                    <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegister.ImplementingPartnerId) HeaderText="Name of IP/CSO" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="220"></GridForeignColumn>
+                    <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegister.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                    <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegister.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                    <GridColumn Field=@nameof(MonthlyCaseTrackingRegister.DataCollectionDate) HeaderText="Date of data collection" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                    <GridColumn Field=@nameof(MonthlyCaseTrackingRegister.OfficerName) HeaderText="Name of Office" Width="200"></GridColumn>
+                    <GridForeignColumn Field=@nameof(MonthlyCaseTrackingRegister.TermId) HeaderText="Term" ForeignKeyField="@nameof(ATerm.TermId)" ForeignKeyValue="@nameof(ATerm.TermDesc)" ForeignDataSource="@TermData" Width="220"></GridForeignColumn>
+                </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+    @code {
+        #region Toasters
+        public static string ToastContent { get; set; }
+        SfToast ToastObj;
+        SfToast DeleteToastObj;
+        private string ToastPosition = "Right";
+        private int AlarmTimeout { get; set; } = 120000;
+        private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+        #endregion Toasters
+
+        SfGrid<MonthlyCaseTrackingRegister> MonthlyCaseTrackingRegisterGrid;
+        private MonthlyCaseTrackingRegister MonthlyCaseTrackingRegisterReviewData { get; set; }
+        SfGrid<MonthlyCaseTrackingRegisterDetail> MonthlyCaseTrackingRegisterDetailGrid;
+        private MonthlyCaseTrackingRegisterDetail MonthlyCaseTrackingRegisterDetailReviewData { get; set; }
+
+        SfMultiSelect<int[], ACaseCategoryItem> SexualObj;
+        SfMultiSelect<int[], ACaseCategoryItem> physicalObj;
+        SfMultiSelect<int[], ACaseCategoryItem> NeglectObj;
+        SfMultiSelect<int[], ACaseCategoryItem> EmotionalObj;
+        SfMultiSelect<int[], ACaseCategoryItem> OtherformsObj;
+        SfMultiSelect<int[], ACaseCategoryItem> HIVrelatedObj;
+
+        SfMultiSelect<int[], AServiceReceived> StableObj;
+        SfMultiSelect<int[], AServiceReceived> SchoolObj;
+        SfMultiSelect<int[], AServiceReceived> SafeObj;
+        SfMultiSelect<int[], AServiceReceived> HealthyObj;
+
+        public Query MainQuery = new Query();
+        public Query ChildQuery = new Query();
+
+        private SearchPanel InputModel = new();
+
+        List<ASubcounty> SubcountyData { get; set; }
+        List<AParish> ParishData { get; set; }
+        List<AVillage> VillageData { get; set; }
+        List<ADistrict> DistrictData { get; set; }
+        List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+        List<AYesNo> YesNoData { get; set; }
+
+        List<AServiceReceived> StableData { get; set; }
+        List<AServiceReceived> SchoolData { get; set; }
+        List<AServiceReceived> SafeData { get; set; }
+        List<AServiceReceived> HealthyData { get; set; }
+
+        List<AVillage> _VillageData { get; set; }
+        List<AParish> _ParishData { get; set; }
+        List<ASubcounty> _SubcountyData { get; set; }
+        List<ADistrict> _DistrictData { get; set; }
+        List<ATerm> TermData { get; set; }
+        List<AImplementingPartner> ImplementingPartnerData { get; set; }
+        List<ACaseCategoryItem> SexualData { get; set; }
+        List<ACaseCategoryItem> physicalData { get; set; }
+        List<ACaseCategoryItem> NeglectData { get; set; }
+        List<ACaseCategoryItem> EmotionalData { get; set; }
+        List<ACaseCategoryItem> OtherformsData { get; set; }
+        List<ACaseCategoryItem> HIVrelatedData { get; set; }
+        bool isEnabled { get; set; } = false;
+
+        private void SearchRecords()
+        {
+            try
+            {
+                MainQuery = new Query();
+                if (InputModel.DistrictId != null)
+                {
+                    MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+                }
+                if (InputModel.SubcountyId != null)
+                {
+                    MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+                }
+                if (InputModel.ParishId != null)
+                {
+                    MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+                }
+                if (InputModel.VillageId != null)
+                {
+                    MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        private void ClearSearchBtnClick()
+        {
+            InputModel = new();
+            MainQuery = new Query();
+            using (var db = new MUCOBADIContext())
+            {
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+               if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+        }
+        private int SaveHeader(MonthlyCaseTrackingRegister value)
+        {
+            int CaseTrackingRegisterId = 0;
+            try
+            {
+
+                using(var db = new MUCOBADIContext())
+                {
+                    var exist = db.MonthlyCaseTrackingRegister.FirstOrDefault(o => o.CaseTrackingRegisterId == value.CaseTrackingRegisterId);
+                    if(exist== null)
+                    {
+                        int id = 1;
+                        var last = db.MonthlyCaseTrackingRegister.OrderBy(o => o.CaseTrackingRegisterId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CaseTrackingRegisterId + 1);
+                        }
+                        MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId = id;
+                        db.MonthlyCaseTrackingRegister.Add(MonthlyCaseTrackingRegisterReviewData);
+                        CaseTrackingRegisterId = id;
+                        db.SaveChanges();
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+            return CaseTrackingRegisterId;
+        }
+        private async Task SaveMonthlyCaseTrackingRegisterBtnClick()
+        {
+            try
+            {
+                await MonthlyCaseTrackingRegisterGrid.EndEditAsync();
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        private async Task CancelMonthlyCaseTrackingRegisterBtnClick()
+        {
+            try
+            {
+                await MonthlyCaseTrackingRegisterGrid.CloseEditAsync();
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        protected override async Task OnInitializedAsync()
+        {
+            await base.OnInitializedAsync();
+            try
+            {
+                if (!userManagement.IsSignedIn())
+                {
+                    Navigation.NavigateTo("/", true);
+                }
+                else
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                        ParishData = db.AParish.AsNoTracking().ToList();
+                        YesNoData = db.AYesNo.AsNoTracking().ToList();
+                        VillageData = db.AVillage.AsNoTracking().ToList();
+                        SexualData = db.ACaseCategoryItem.Where(o=> o.CaseCategoryId==1).AsNoTracking().ToList();
+                        physicalData = db.ACaseCategoryItem.Where(o => o.CaseCategoryId == 2).AsNoTracking().ToList();
+                        NeglectData = db.ACaseCategoryItem.Where(o => o.CaseCategoryId == 3).AsNoTracking().ToList();
+                        EmotionalData = db.ACaseCategoryItem.Where(o => o.CaseCategoryId == 4).AsNoTracking().ToList();
+                        OtherformsData = db.ACaseCategoryItem.Where(o=> o.CaseCategoryId==5).AsNoTracking().ToList();
+                        HIVrelatedData = db.ACaseCategoryItem.Where(o => o.CaseCategoryId == 6).AsNoTracking().ToList();
+                        DistrictData = db.ADistrict.AsNoTracking().ToList();
+                        TermData = db.ATerm.AsNoTracking().ToList();
+                        ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                        HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                        StableData = db.AServiceReceived.Where(o => o.ServiceCategoryId == 1).AsNoTracking().ToList();
+                        SchoolData = db.AServiceReceived.Where(o => o.ServiceCategoryId == 2).AsNoTracking().ToList();
+                        SafeData = db.AServiceReceived.Where(o => o.ServiceCategoryId == 3).AsNoTracking().ToList();
+                        HealthyData = db.AServiceReceived.Where(o => o.ServiceCategoryId == 4).AsNoTracking().ToList();
+
+                        InputModel = new();
+                        _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                       if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                        {
+                            var districtlist = userManagement.GetUserDistrict();
+                            if (districtlist != null && districtlist.Count > 0)
+                            {
+                                List<int?> m = new List<int?>();
+                                foreach (var n in districtlist)
+                                {
+                                    m.Add(n);
+                                }
+
+                                InputModel.DistrictId = m.ToArray();
+                                _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                                MainQuery = new Query();
+                                MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                            }
+                            var subcountyList = userManagement.GetUserSubcounty();
+                            if (subcountyList != null && subcountyList.Count > 0)
+                            {
+                                List<int?> m = new List<int?>();
+                                foreach (var n in subcountyList)
+                                {
+                                    m.Add(n);
+                                }
+                                InputModel.SubcountyId = m.ToArray();
+                                _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                                MainQuery = new Query();
+                                MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                            }
+                        }
+                        else
+                        {
+                            isEnabled = true;
+                        }
+
+
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+        {
+            if (args.Value != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+                }
+            }
+        }
+        public void OnADistrictChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+        {
+            if (args.ItemData != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.Value).AsNoTracking().ToList();
+                }
+            }
+        }
+
+        private void OnSexualChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.SexualCaseCategoryItemId = string.Join(",", args.Value);
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.SexualCaseCategoryItemId = null;
+            }
+        }
+        private void OnSexualBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.SexualCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.SexualCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                SexualObj.Value = c.ToArray();
+            }
+        }
+
+        private void OnphysicalChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.PhysicalCaseCategoryItemId = string.Join(",", args.Value);
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.PhysicalCaseCategoryItemId = null;
+            }
+
+        }
+        private void OnphysicalBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.PhysicalCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.PhysicalCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                physicalObj.Value = c.ToArray();
+            }
+        }
+
+        private void OnNeglectChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.NeglectCaseCategoryItemId = string.Join(",", args.Value);
+
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.NeglectCaseCategoryItemId = null;
+            }
+        }
+        private void OnNeglectBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.NeglectCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.NeglectCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                NeglectObj.Value = c.ToArray();
+            }
+        }
+
+        private void OnEmotionalChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.EmotionalCaseCategoryItemId = string.Join(",", args.Value);
+
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.EmotionalCaseCategoryItemId = null;
+            }
+        }
+        private void OnEmotionalBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.EmotionalCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.EmotionalCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                EmotionalObj.Value = c.ToArray();
+            }
+        }
+
+        private void OnOtherformsChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.OtherFormsCaseCategoryItemId = string.Join(",", args.Value);
+
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.OtherFormsCaseCategoryItemId = null;
+            }
+        }
+        private void OnOtherformsBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.OtherFormsCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.OtherFormsCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                OtherformsObj.Value = c.ToArray();
+            }
+        }
+
+        private void OnHIVrelatedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            if (args.Value != null)
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.HivrelatedCaseCategoryItemId = string.Join(",", args.Value);
+
+            }
+            else
+            {
+                MonthlyCaseTrackingRegisterDetailReviewData.HivrelatedCaseCategoryItemId = null;
+            }
+        }
+        private void OnHIVrelatedBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.HivrelatedCaseCategoryItemId))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.HivrelatedCaseCategoryItemId.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                HIVrelatedObj.Value = c.ToArray();
+            }
+        }
+        private void OnSafeChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            MonthlyCaseTrackingRegisterDetailReviewData.SafeServiceProvided = string.Join(",", args.Value);
+        }
+
+        private void OnSafeBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.SafeServiceProvided))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.SafeServiceProvided.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                SafeObj.Value = c.ToArray();
+            }
+        }
+        private void OnSchoolChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            MonthlyCaseTrackingRegisterDetailReviewData.SchooledServiceProvided = string.Join(",", args.Value);
+        }
+
+        private void OnSchoolBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.SchooledServiceProvided))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.SchooledServiceProvided.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                SchoolObj.Value = c.ToArray();
+            }
+        }
+        private void OnStableChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            MonthlyCaseTrackingRegisterDetailReviewData.StableServiceProvided = string.Join(",", args.Value);
+        }
+
+        private void OnStableBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.StableServiceProvided))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.StableServiceProvided.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                StableObj.Value = c.ToArray();
+            }
+        }
+        private void OnHealthyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+        {
+            MonthlyCaseTrackingRegisterDetailReviewData.HealthServiceProvided = string.Join(",", args.Value);
+        }
+
+        private void OnHealthyBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+        {
+            if (!string.IsNullOrEmpty(MonthlyCaseTrackingRegisterDetailReviewData.HealthServiceProvided))
+            {
+                var a = MonthlyCaseTrackingRegisterDetailReviewData.HealthServiceProvided.Split(',');
+                List<int> c = new List<int>();
+                foreach (var n in a)
+                {
+                    int b = Convert.ToInt32(n.Trim());
+                    c.Add(b);
+                }
+                HealthyObj.Value = c.ToArray();
+            }
+        }
+
+
+        #region Monthly Case Tracking Register Header
+        public class MonthlyCaseTrackingRegisterAdapter : DataAdaptor
+        {
+            public IToastService toastService;
+            //private UserManagement _userManagement;
+            public MonthlyCaseTrackingRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+            {
+                //_userManagement = userManagement;
+                toastService = ts;
+            }
+            public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+            {
+                var data = new List<MonthlyCaseTrackingRegister>();
+                try
+                {
+                    string DistrictId = null;
+                    string SubcountyId = null;
+                    string ParishId = null;
+                    string VillageId = null;
+                    if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                    {
+                        var val = dataManagerRequest.Params;
+                        if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                        {
+                            DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                        {
+                            SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                        {
+                            ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                        }
+                        if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                        {
+                            VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                        }
+                    }
+
+                    string[] _district = new string[] { };
+                    if (!string.IsNullOrEmpty(DistrictId))
+                    {
+                        _district = DistrictId.Split(',');
+                    }
+                    string[] _SubcountyId = new string[] { };
+                    if (!string.IsNullOrEmpty(SubcountyId))
+                    {
+                        _SubcountyId = SubcountyId.Split(',');
+                    }
+                    string[] _ParishId = new string[] { };
+                    if (!string.IsNullOrEmpty(ParishId))
+                    {
+                        _ParishId = ParishId.Split(',');
+                    }
+                    string[] _VillageId = new string[] { };
+                    if (!string.IsNullOrEmpty(VillageId))
+                    {
+                        _VillageId = VillageId.Split(',');
+                    }
+
+                    using (var dbContext = new SPToCoreContext())
+                    {
+                        data = await dbContext.MonthlyCaseTrackingRegister.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+                    (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true))).ToListAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message.ToString());
+                }
+
+                IEnumerable GridData = data;
+                int _count = data.Count;
+                if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+                {
+                    // Searching
+                    GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+                }
+                if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+                {
+                    // Filtering
+                    GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+                }
+                if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+                {
+                    GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+                }
+                if (dataManagerRequest.Skip != 0)
+                {
+                    GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+                }
+                if (dataManagerRequest.Take != 0)
+                {
+                    GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+                }
+                IDictionary<string, object> aggregates = new Dictionary<string, object>();
+                if (dataManagerRequest.Aggregates != null) // Aggregation
+                {
+                    aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+                }
+                if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+                {
+                    foreach (var group in dataManagerRequest.Group)
+                    {
+                        GridData = DataUtil.Group<MonthlyCaseTrackingRegister>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                    }
+                }
+                return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+            }
+            public override Object Insert(DataManager dataManager, object value, string key)
+            {
+                try
+                {
+                    var val = (value as MonthlyCaseTrackingRegister);
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.MonthlyCaseTrackingRegister.FirstOrDefault(o => o.CaseTrackingRegisterId == val.CaseTrackingRegisterId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.MonthlyCaseTrackingRegister.OrderBy(o => o.CaseTrackingRegisterId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CaseTrackingRegisterId + 1);
+                            }
+                            val.CaseTrackingRegisterId = id;
+                            db.MonthlyCaseTrackingRegister.Add(val);
+                            db.SaveChanges();
+                            toastService.ShowSuccess("Record Saved Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+            public override object Remove(DataManager dataManager, object value, string keyField, string key)
+            {
+                return value;
+            }
+            public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+            {
+                try
+                {
+                    var val = (value as MonthlyCaseTrackingRegister);
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.MonthlyCaseTrackingRegister.FirstOrDefault(o => o.CaseTrackingRegisterId == val.CaseTrackingRegisterId);
+                        if (exist != null)
+                        {
+                            db.Entry(exist).CurrentValues.SetValues(val);
+                            db.Entry(exist).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            toastService.ShowSuccess("Record updated Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+        }
+        public async Task OnMonthlyCaseTrackingRegisterActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<MonthlyCaseTrackingRegister> args)
+        {
+            try
+            {
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        _SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.RowData.DistrictId).AsNoTracking().ToList();
+                    }
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+                {
+                    using (var db = new SPToCoreContext())
+                    {
+                        //MonthlyCaseTrackingRegisterDetailDatasource = await db.MonthlyCaseTrackingRegisterDetail.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                        //VslaGroupShareOutIndirectMemberDatasource = await db.VslaGroupShareOutIndirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    }
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+                {
+
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+                {
+                    if (args.Data.ImplementingPartnerId == 0)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Implementing Partner", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (args.Data.TermId == null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Term", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (args.Data.DataCollectionDate == null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date of data collection.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (args.Data.SubcountyId == null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (args.Data.DistrictId == null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (String.IsNullOrEmpty(args.Data.OfficerName))
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of Office.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        public void OnMonthlyCaseTrackingRegisterActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<MonthlyCaseTrackingRegister> args)
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                MonthlyCaseTrackingRegisterGrid.PreventRender(false);
+            }
+        }
+        #endregion
+
+        #region Monthly Case Tracking Register Details
+        public class MonthlyCaseTrackingRegisterDetailAdapter : DataAdaptor
+        {
+            public IToastService toastService;
+            //private UserManagement _userManagement;
+            public MonthlyCaseTrackingRegisterDetailAdapter(IToastService ts/*, UserManagement userManagement*/)
+            {
+                //_userManagement = userManagement;
+                toastService = ts;
+            }
+            public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+            {
+                var data = new List<MonthlyCaseTrackingRegisterDetail>();
+                try
+                {
+                    int? CaseTrackingRegisterId = null;
+                    if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                    {
+                        var val = dataManagerRequest.Params;
+                        if (val.FirstOrDefault(o => o.Key == "CaseTrackingRegisterId").Value != null)
+                        {
+                            CaseTrackingRegisterId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "CaseTrackingRegisterId").Value.ToString());
+                        }
+                    }
+
+                    using (var dbContext = new SPToCoreContext())
+                    {
+                        data = await dbContext.MonthlyCaseTrackingRegisterDetail.Where(o => o.CaseTrackingRegisterId== CaseTrackingRegisterId).ToListAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message.ToString());
+                }
+
+                IEnumerable GridData = data;
+                int _count = data.Count;
+                if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+                {
+                    // Searching
+                    GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+                }
+                if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+                {
+                    // Filtering
+                    GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+                }
+                if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+                {
+                    GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+                }
+                if (dataManagerRequest.Skip != 0)
+                {
+                    GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+                }
+                if (dataManagerRequest.Take != 0)
+                {
+                    GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+                }
+                IDictionary<string, object> aggregates = new Dictionary<string, object>();
+                if (dataManagerRequest.Aggregates != null) // Aggregation
+                {
+                    aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+                }
+                if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+                {
+                    foreach (var group in dataManagerRequest.Group)
+                    {
+                        GridData = DataUtil.Group<MonthlyCaseTrackingRegisterDetail>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                    }
+                }
+                return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+            }
+            public override Object Insert(DataManager dataManager, object value, string key)
+            {
+                try
+                {
+                    var val = (value as MonthlyCaseTrackingRegisterDetail);
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.MonthlyCaseTrackingRegisterDetail.FirstOrDefault(o => o.CaseTrackingRegisterDetailId == val.CaseTrackingRegisterDetailId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.MonthlyCaseTrackingRegisterDetail.OrderBy(o => o.CaseTrackingRegisterDetailId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CaseTrackingRegisterDetailId + 1);
+                            }
+                            val.CaseTrackingRegisterDetailId = id;
+                            db.MonthlyCaseTrackingRegisterDetail.Add(val);
+                            db.SaveChanges();
+                            toastService.ShowSuccess("Record Saved Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+            public override object Remove(DataManager dataManager, object value, string keyField, string key)
+            {
+                return value;
+            }
+            public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+            {
+                try
+                {
+                    var val = (value as MonthlyCaseTrackingRegisterDetail);
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.MonthlyCaseTrackingRegisterDetail.FirstOrDefault(o => o.CaseTrackingRegisterDetailId == val.CaseTrackingRegisterDetailId);
+                        if (exist != null)
+                        {
+                            db.Entry(exist).CurrentValues.SetValues(val);
+                            db.Entry(exist).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            toastService.ShowSuccess("Record updated Successfully", "Success");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    toastService.ShowError(ex.Message, "Error");
+                }
+                return value;
+            }
+        }
+        public async Task OnMonthlyCaseTrackingRegisterDetailActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<MonthlyCaseTrackingRegisterDetail> args)
+        {
+            try
+            {
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+                {
+                    //using (var db = new SPToCoreContext())
+                    //{
+                    //    //MonthlyCaseTrackingRegisterDetailDatasource = await db.MonthlyCaseTrackingRegisterDetail.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //    //VslaGroupShareOutIndirectMemberDatasource = await db.VslaGroupShareOutIndirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //}
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+                {
+                    args.RowData.CaseTrackingRegisterId = MonthlyCaseTrackingRegisterReviewData.CaseTrackingRegisterId;
+                    //using (var db = new SPToCoreContext())
+                    //{
+                    //    //MonthlyCaseTrackingRegisterDetailDatasource = await db.MonthlyCaseTrackingRegisterDetail.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //    //VslaGroupShareOutIndirectMemberDatasource = await db.VslaGroupShareOutIndirectMember.Where(o => o.VslashareOutHeaderId == args.RowData.VslashareOutHeaderId).ToListAsync();
+                    //}
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+                {
+
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+                {
+                    if (args.Data.HouseHoldMemberId == 0)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Household Member", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    else if (args.Data.VillageId == null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Village", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                        args.Cancel = true;
+                    }
+                    //else if (args.Data.DataCollectionDate == null)
+                    //{
+                    //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date of data collection.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    //    args.Cancel = true;
+                    //}
+                    //else if (args.Data.SubcountyId == null)
+                    //{
+                    //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    //    args.Cancel = true;
+                    //}
+                    //else if (args.Data.DistrictId == null)
+                    //{
+                    //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    //    args.Cancel = true;
+                    //}
+                    //else if (String.IsNullOrEmpty(args.Data.OfficerName))
+                    //{
+                    //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of Office.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    //    args.Cancel = true;
+                    //}
+                    else
+                    {
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        public void OnMonthlyCaseTrackingRegisterDetailActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<MonthlyCaseTrackingRegisterDetail> args)
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                MonthlyCaseTrackingRegisterDetailGrid.PreventRender(false);
+            }
+        }
+        #endregion
+
+    }

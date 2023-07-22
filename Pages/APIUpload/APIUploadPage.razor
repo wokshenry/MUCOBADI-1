@@ -1,0 +1,1244 @@
+﻿@page "/APIUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> API UPLOAD PAGE </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+        }
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            if (MessageResponse.Contains("error") || MessageResponse.Contains("Failure"))
+            {
+                <p class="badge-danger" style="padding:10px">
+                    @MessageResponse
+                </p>
+            }
+            else if (MessageResponse.Contains("success"))
+            {
+                <p class="badge-success" style="padding:10px">
+                    @MessageResponse
+                </p>
+            }
+        }
+    </div>
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@OnLoadRecords">
+            <DataAnnotationsValidator />
+            <div class="row" style="margin-bottom:10px;">              
+                <div class="col col-md-3">
+                   <SfMultiSelect @bind-Value="@InputModel.District" TValue="string[]" TItem="string" AllowFiltering="true" Placeholder="District" Mode="@VisualMode.CheckBox" DataSource="@DistinctDistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="DistrictName" Text="DistrictName"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="string[]" TItem="string" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="col col-md-3">                   
+                     <SfMultiSelect @bind-Value="@InputModel.Subcounty" TValue="string[]" TItem="string" AllowFiltering="true" Enabled="@isSubcountyEnabled" Placeholder="Subcounty" Mode="@VisualMode.CheckBox" DataSource="@DistinctSubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Subcounty" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="SubcountyName" Text="SubcountyName"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                 <div class="col col-md-3">
+                     <SfMultiSelect @bind-Value="@InputModel.FinancialYear" TValue="string[]" TItem="string" AllowFiltering="true" Placeholder="Financial Year" Mode="@VisualMode.CheckBox" DataSource="@DistinctFinancialYearData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Financial Year" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="Fyear" Text="Fyear"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                <div class="col col-md-3">
+                    <SfMultiSelect @bind-Value="@InputModel.ReportingPeriod" TValue="string[]" TItem="string" AllowFiltering="true" Placeholder="Reporting Period" Mode="@VisualMode.CheckBox" DataSource="@DistinctReportingPeriodData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Reporting Period" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="ReportingPeriod" Text="ReportingPeriod"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                <div class="col col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit" Class="buttonClass">Load Records</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+            </div>
+            <ValidationSummary />
+        </EditForm>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="UploadGrid" TValue="Apiupload" Query="@ChildQuery" GridLines="GridLine.Both"
+                AllowPaging="true" Width="auto" Height="320"
+                ShowColumnChooser="false" EnableAltRow="true" AllowFiltering="true" AllowTextWrap="true"
+                EnableHover="true" AllowSorting="true" AllowSelection="true">
+            <GridSelectionSettings CheckboxOnly="true" Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <SfDataManager AdaptorInstance="@typeof(APIUploadAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="false" ShowConfirmDialog="false" Mode="EditMode.Dialog"></GridEditSettings>
+            <GridPageSettings PageSize="100"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Field=@nameof(Apiupload.Id) AllowEditing="false" IsPrimaryKey="true" Visible="false" HeaderTextAlign="TextAlign.Center" ShowInColumnChooser="false" HeaderText="Id" ValidationRules="@(new ValidationRules{Required=true})" Width="30"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.IpreferenceIdorChildNin) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="IP Reference Id or Child Nin" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.Dreams) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Dreams" Width="60"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.ChildName) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Child Name" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.Fyear) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Financial Year" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.ReportingPeriod) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Reporting Period" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.DistrictName) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="District" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.SubcountyName) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Subcounty" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.Parish) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Parish" Width="80"></GridColumn>
+                <GridColumn Field=@nameof(Apiupload.Village) Visible="true" AllowEditing="false" HeaderTextAlign="TextAlign.Left" ShowInColumnChooser="true" HeaderText="Village" Width="80"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    SfGrid<Apiupload> ApiuploadGrid;
+    string MessageResponse { get; set; }
+    SfGrid<Apiupload> UploadGrid;
+    public Query ChildQuery = new Query();
+    private APISearchPanel InputModel = new APISearchPanel();
+    List<Apiupload> DistrictData { get; set; }
+    List<string> DistinctDistrictData { get; set; } 
+    private List<Apiupload> SubcountyData { get; set; }
+    List<string> DistinctSubcountyData { get; set; } 
+    private List<Apiupload> FinancialYearData { get; set; }
+    List<string> DistinctFinancialYearData { get; set; } 
+    private List<Apiupload> ReportingPeriodData { get; set; }
+    List<string> DistinctReportingPeriodData { get; set; } 
+    bool DistrictEnabled { get; set; } = true;
+    bool isSubcountyEnabled { get; set; } = false;
+    SfMultiSelect<string[], string> DropdownObj; 
+
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                InputModel = new APISearchPanel();
+                using (var db = new MUCOBADIContext())
+                {
+                    this.DistinctDistrictData = db.Apiupload.Select(x => x.DistrictName).Distinct().ToList();
+                    this.DistinctSubcountyData = db.Apiupload.Select(x => x.SubcountyName).Distinct().ToList();
+                    this.DistinctFinancialYearData = db.Apiupload.Select(x => x.Fyear).Distinct().ToList(); 
+                    this.DistinctReportingPeriodData = db.Apiupload.Select(x => x.ReportingPeriod).Distinct().ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new APISearchPanel();
+    }
+
+    private async void OnLoadRecords()
+    {
+        try
+        {            
+            string _District = null;
+            if (InputModel.District != null)
+            {
+                _District = string.Join(",", InputModel.District);
+            }
+
+            string _Subcounty = null;
+            if (InputModel.Subcounty != null)
+            {
+                _Subcounty = string.Join(",", InputModel.Subcounty);
+            }
+
+            string _FinancialYear = null;
+            if (InputModel.FinancialYear != null)
+            {
+                _FinancialYear = string.Join(",", InputModel.FinancialYear);
+            }
+
+            string _ReportingPeriod = null;
+            if (InputModel.ReportingPeriod != null)
+            {
+                _ReportingPeriod = string.Join(",", InputModel.ReportingPeriod);
+            }
+
+            ChildQuery = new Query().AddParams("District",_District).AddParams("Subcounty",_Subcounty).AddParams("FinancialYear",_FinancialYear).AddParams("ReportingPeriod",_ReportingPeriod);
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            MessageResponse = null;
+            await UploadingSpinner.ShowAsync();
+            foreach (var file in args.Files)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+
+                    //Instantiate the Excel application object
+                    IApplication application = excelEngine.Excel;
+
+                    file.Stream.Position = 0;
+                    //Set the default application version
+                    application.DefaultVersion = ExcelVersion.Xlsx;
+                    IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                    //Get the first worksheet in the workbook into IWorksheet
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    if (worksheet.Range["A1"].Value.Contains("reference") && worksheet.Range["B1"].Value.Contains("dreams")&& worksheet.Range["C1"].Value.Contains("name"))
+                    {
+                        Apiupload apiuploadata = new Apiupload();
+                        using (var db = new MUCOBADIContext())
+                        {
+                            for (int row = 4; row <= worksheet.UsedRange.LastRow; row++)
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+                                apiuploadata = new Apiupload();
+                                if (worksheet.IsRowVisible(row))
+                                {
+                                    rownumber = row.ToString();
+                                    await Task.Delay(10);
+
+                                    for (int column = 1; column <= worksheet.UsedRange.LastColumn; column++)
+                                    {
+                                        switch (column)
+                                        {
+                                            //case 1:
+                                            //    if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                            //    {
+                                            //        string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                            //        apiuploadata.Id = Convert.ToInt32(apiid);
+                                            //    }
+                                            //    break;
+                                            case 1:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.IpreferenceIdorChildNin = apiid;
+                                                }
+                                                break;
+                                            case 2:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Dreams = apiid;
+                                                }
+                                                break;
+                                            case 3:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.ChildName = apiid;
+                                                }
+                                                break;
+                                            case 4:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.HouseHoldStatus = apiid;
+                                                }
+                                                break;
+                                            case 5:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.ChildDob = apiid;
+                                                }
+                                                break;
+                                            case 6:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Sex = apiid;
+                                                }
+                                                break;
+                                            case 7:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.AgeGroup = apiid;
+                                                }
+                                                break;
+
+                                            case 8:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.HivStatus = apiid;
+                                                }
+                                                break;
+
+                                            case 9:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.HhNameorCaregiverNin = apiid;
+                                                }
+                                                break;
+
+                                            case 10:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Fyear = apiid;
+                                                }
+                                                break;
+                                            case 11:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.ReportingPeriod = apiid;
+                                                }
+                                                break;
+                                            case 12:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Agency = apiid;
+                                                }
+                                                break;
+                                            case 13:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.OrgName = apiid;
+                                                }
+                                                break;
+                                            case 14:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.DistrictName = apiid;
+                                                }
+                                                break;
+                                            case 15:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.SubcountyName = apiid;
+                                                }
+                                                break;
+                                            case 16:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Parish = apiid;
+                                                }
+                                                break;
+                                            case 17:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Village = apiid;
+                                                }
+                                                break;
+                                            case 18:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.EnrollmentFyr = apiid;
+                                                }
+                                                break;
+                                            case 19:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.EnrollmentQtr = apiid;
+                                                }
+                                                break;
+                                            case 20:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response1 = apiid;
+                                                }
+                                                break;
+                                            case 21:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response2 = apiid;
+                                                }
+                                                break;
+                                            case 22:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response3 = apiid;
+                                                }
+                                                break;
+                                            case 23:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response4 = apiid;
+                                                }
+                                                break;
+                                            case 24:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response5 = apiid;
+                                                }
+                                                break;
+                                            case 25:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response6 = apiid;
+                                                }
+                                                break;
+                                            case 26:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response7 = apiid;
+                                                }
+                                                break;
+                                            case 27:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response8 = apiid;
+                                                }
+                                                break;
+                                            case 28:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response9 = apiid;
+                                                }
+                                                break;
+                                            case 29:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response10 = apiid;
+                                                }
+                                                break;
+                                            case 30:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response11 = apiid;
+                                                }
+                                                break;
+                                            case 31:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response12 = apiid;
+                                                }
+                                                break;
+                                            case 32:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response13 = apiid;
+                                                }
+                                                break;
+                                            case 33:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response14 = apiid;
+                                                }
+                                                break;
+                                            case 34:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response15 = apiid;
+                                                }
+                                                break;
+                                            case 35:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response16 = apiid;
+                                                }
+                                                break;
+                                            case 36:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response17 = apiid;
+                                                }
+                                                break;
+
+                                            case 37:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response18 = apiid;
+                                                }
+                                                break;
+
+                                            case 38:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response19 = apiid;
+                                                }
+                                                break;
+
+                                            case 39:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response20 = apiid;
+                                                }
+                                                break;
+
+                                            case 40:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response21 = apiid;
+                                                }
+                                                break;
+
+                                            case 41:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response22 = apiid;
+                                                }
+                                                break;
+
+                                            case 42:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response23 = apiid;
+                                                }
+                                                break;
+
+                                            case 43:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response24 = apiid;
+                                                }
+                                                break;
+
+                                            case 44:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response25 = apiid;
+                                                }
+                                                break;
+
+                                            case 45:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response26 = apiid;
+                                                }
+                                                break;
+
+                                            case 46:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response27 = apiid;
+                                                }
+                                                break;
+
+                                            case 47:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response28 = apiid;
+                                                }
+                                                break;
+
+                                            case 48:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response29 = apiid;
+                                                }
+                                                break;
+
+                                            case 49:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response30 = apiid;
+                                                }
+                                                break;
+
+                                            case 50:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response31 = apiid;
+                                                }
+                                                break;
+
+                                            case 51:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response32 = apiid;
+                                                }
+                                                break;
+
+                                            case 52:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response33 = apiid;
+                                                }
+                                                break;
+
+                                            case 53:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response34 = apiid;
+                                                }
+                                                break;
+
+                                            case 54:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response35 = apiid;
+                                                }
+                                                break;
+
+                                            case 55:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response36 = apiid;
+                                                }
+                                                break;
+
+                                            case 56:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response37 = apiid;
+                                                }
+                                                break;
+
+                                            case 57:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response38 = apiid;
+                                                }
+                                                break;
+
+                                            case 58:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response39 = apiid;
+                                                }
+                                                break;
+
+                                            case 59:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response40 = apiid;
+                                                }
+                                                break;
+
+                                            case 60:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response41 = apiid;
+                                                }
+                                                break;
+
+                                            case 61:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response42 = apiid;
+                                                }
+                                                break;
+
+                                            case 62:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response43 = apiid;
+                                                }
+                                                break;
+
+                                            case 63:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response44 = apiid;
+                                                }
+                                                break;
+
+                                            case 64:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response45 = apiid;
+                                                }
+                                                break;
+
+                                            case 65:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response46 = apiid;
+                                                }
+                                                break;
+
+                                            case 66:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response47 = apiid;
+                                                }
+                                                break;
+
+                                            case 67:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response48 = apiid;
+                                                }
+                                                break;
+
+                                            case 68:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response49 = apiid;
+                                                }
+                                                break;
+
+                                            case 69:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response50 = apiid;
+                                                }
+                                                break;
+
+                                            case 70:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response51 = apiid;
+                                                }
+                                                break;
+
+                                            case 71:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response52 = apiid;
+                                                }
+                                                break;
+                                            case 72:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response53 = apiid;
+                                                }
+                                                break;
+                                            case 73:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response54 = apiid;
+                                                }
+                                                break;
+                                            case 74:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response55 = apiid;
+                                                }
+                                                break;
+                                            case 75:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response56 = apiid;
+                                                }
+                                                break;
+                                            case 76:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response57 = apiid;
+                                                }
+                                                break;
+                                            case 77:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response58 = apiid;
+                                                }
+                                                break;
+                                            case 78:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response59 = apiid;
+                                                }
+                                                break;
+                                            case 79:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response60 = apiid;
+                                                }
+                                                break;
+                                            case 80:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response61 = apiid;
+                                                }
+                                                break;
+                                            case 81:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response62 = apiid;
+                                                }
+                                                break;
+                                            case 82:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response63 = apiid;
+                                                }
+                                                break;
+                                            case 83:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response64 = apiid;
+                                                }
+                                                break;
+                                            case 84:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response65 = apiid;
+                                                }
+                                                break;
+                                            case 85:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response66 = apiid;
+                                                }
+                                                break;
+                                            case 86:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response67 = apiid;
+                                                }
+                                                break;
+                                            case 87:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response68 = apiid;
+                                                }
+                                                break;
+                                            case 88:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response69 = apiid;
+                                                }
+                                                break;
+                                            case 89:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response70 = apiid;
+                                                }
+                                                break;
+                                            case 90:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response71 = apiid;
+                                                }
+                                                break;
+                                            case 91:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response72 = apiid;
+                                                }
+                                                break;
+                                            case 92:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response73 = apiid;
+                                                }
+                                                break;
+                                            case 93:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response74 = apiid;
+                                                }
+                                                break;
+                                            case 94:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response75 = apiid;
+                                                }
+                                                break;
+                                            case 95:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response76 = apiid;
+                                                }
+                                                break;
+                                            case 96:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response77 = apiid;
+                                                }
+                                                break;
+                                            case 97:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response78 = apiid;
+                                                }
+                                                break;
+                                            case 98:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response79 = apiid;
+                                                }
+                                                break;
+                                            case 99:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response80 = apiid;
+                                                }
+                                                break;
+                                            case 100:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response81 = apiid;
+                                                }
+                                                break;
+                                            case 101:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string apiid = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    apiuploadata.Response82 = apiid;
+                                                }
+                                                break;
+                                        }
+                                    }
+
+                                    Apiupload _table = db.Apiupload.FirstOrDefault(o => o.IpreferenceIdorChildNin == apiuploadata.IpreferenceIdorChildNin && o.Fyear==apiuploadata.Fyear && (o.ReportingPeriod.ToLower()).Trim()==(apiuploadata.ReportingPeriod.ToLower()).Trim());
+
+                                    if (_table == null)
+                                    {
+                                        int id = 1;
+                                        var last = db.Apiupload.OrderBy(o => o.Id).ToList().LastOrDefault();
+                                        if (last != null)
+                                        {
+                                            id = (last.Id + 1);
+                                        }
+                                        apiuploadata.Id = id;
+                                        try
+                                        {
+                                            apiuploadata.LastUploadDate = DateTime.Now;
+                                            db.Apiupload.Add(apiuploadata);
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+                                    else
+                                    {
+
+                                        try
+                                        {
+                                            apiuploadata.Id = _table.Id;
+                                            apiuploadata.LastUploadDate = DateTime.Now;
+                                            db.Entry(_table).CurrentValues.SetValues(apiuploadata);
+                                            db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                    else
+                    {
+                        if (string.IsNullOrEmpty(MessageResponse))
+                        {
+                            MessageResponse = "Failure: You are uploading a wrong file. Please refresh the page to upload the right file again";
+                        }
+                    }
+                    file.Stream.Close();
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageResponse = "error: " + ex.Message.ToString();
+        }
+        finally
+        {
+            if (string.IsNullOrEmpty(MessageResponse))
+            {
+                MessageResponse = "Success: All the records were uploaded successfully. Please refresh the page to upload again";
+            }
+            await UploadingSpinner.HideAsync();
+            await Task.CompletedTask;
+            UploadGrid.Refresh();
+            StateHasChanged();
+        }
+
+
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<string[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.DistinctSubcountyData = db.Apiupload.Where(o => args.Value.Any(a => a == o.DistrictName) == true).Select(x => x.SubcountyName).Distinct().ToList();
+                isSubcountyEnabled = true;
+            }
+        }
+    }
+
+
+    public class APIUploadAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        public APIUploadAdapter(IToastService ts)
+        {
+            toastService = ts;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<Apiupload>();
+
+            try
+            {
+                string FinancialYear = null;
+                string District = null;
+                string Subcounty = null;
+                string ReportingPeriod = null;
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "Subcounty").Value != null)
+                    {
+                        Subcounty = val.FirstOrDefault(o => o.Key == "Subcounty").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "District").Value != null)
+                    {
+                        District = val.FirstOrDefault(o => o.Key == "District").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "FinancialYear").Value != null)
+                    {
+                        FinancialYear = val.FirstOrDefault(o => o.Key == "FinancialYear").Value.ToString();
+                    }
+                     if (val.FirstOrDefault(o => o.Key == "ReportingPeriod").Value != null)
+                    {
+                        ReportingPeriod = val.FirstOrDefault(o => o.Key == "ReportingPeriod").Value.ToString();
+                    }
+                }
+
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    string[] _Subcounty = new string[] { };
+                    if (!string.IsNullOrEmpty(Subcounty))
+                    {
+                        _Subcounty = Subcounty.Split(',');
+                    }
+                    string[] _District = new string[] { };
+                    if (!string.IsNullOrEmpty(District))
+                    {
+                        _District = District.Split(',');
+                    }
+                    string[] _FinancialYear = new string[] { };
+                    if (!string.IsNullOrEmpty(FinancialYear))
+                    {
+                        _FinancialYear = FinancialYear.Split(',');
+                    }
+                    string[] _ReportingPeriod = new string[] { };
+                    if (!string.IsNullOrEmpty(ReportingPeriod))
+                    {
+                        _ReportingPeriod = ReportingPeriod.Split(',');
+                    }
+                    //data = await dbContext.Apiupload.Where(o => (_district.Length == 0 || (o.DistrictName != null && _district.Any(a => a == o.DistrictName) == true) && (_Subcounty.Length == 0 || (o.SubcountyName != null && _Subcounty.Any(a => a == o.SubcountyName) == true)) && (_FinancialYear.Length == 0 || (o.Fyear != null && _FinancialYear.Any(a => a == o.Fyear) == true))  && (_ReportingPeriod.Length == 0 || (o.ReportingPeriod != null && _ReportingPeriod.Any(a => a == o.ReportingPeriod) == true)))).ToListAsync();
+                    data = await dbContext.Apiupload.Where(o => 
+                        (_District.Length == 0 || (o.DistrictName != null && _District.Any(a => a == o.DistrictName) == true) && 
+                        (_Subcounty.Length == 0 || (o.SubcountyName != null && _Subcounty.Any(a => a == o.SubcountyName) == true)) && 
+                        (_FinancialYear.Length == 0 || (o.Fyear != null && _FinancialYear.Any(a => a == o.Fyear) == true)) && 
+                        (_ReportingPeriod.Length == 0 || (o.ReportingPeriod != null && _ReportingPeriod.Any(a => a == o.ReportingPeriod) == true))))
+                        .ToListAsync();
+                    //data = await dbContext.Apiupload.Where(o => (_ReportingPeriod.Length == 0 || (o.ReportingPeriod != null && _ReportingPeriod.Any(a => a == o.ReportingPeriod) == true))).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<Apiupload>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+    }
+}

@@ -1,0 +1,304 @@
+﻿@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    /*Increase font size for Multi Line Text Box Place Holder*/
+    .e-multi-line-input label.e-float-text {
+        font-size: 17px !important;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Group Position</strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<SfGrid @ref="GroupPositionGrid" TValue="AGroupPosition"
+        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="true" ShowColumnChooser="true" AllowTextWrap="true"
+        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+    <SfDataManager AdaptorInstance="@typeof(GroupPositionAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+    <GridEvents OnActionBegin="OnGroupPositionActionBegin" TValue="AGroupPosition"></GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+        <HeaderTemplate>
+            @{
+                var text = GetGroupPositionHeader((context as AGroupPosition));
+                <div class="headerbandimg" /><span>@text</span>
+            }
+        </HeaderTemplate>
+        <Template Context="GroupPositionContext">
+            @{
+                var GroupPositionData = (GroupPositionContext as AGroupPosition);
+                <div style="padding:15px;">
+                    <div class="form-row">
+                        <div class="form-group col-md-12" hidden>
+                            <SfNumericTextBox ID="MemberStausId" @bind-Value="@(GroupPositionData.GroupPositionId)" Enabled="false" Placeholder="Group Position Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <SfTextBox Multiline="true" ID="MemberStatusDesc" @bind-Value="@(GroupPositionData.GroupPositionDesc)" Placeholder="Group Position Description" FloatLabelType="FloatLabelType.Always"></SfTextBox>
+                        </div>
+                    </div>
+                </div>
+            }
+        </Template>
+    </GridEditSettings>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+    <GridPageSettings PageSize="20"></GridPageSettings>
+    <GridColumns>
+        <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+        <GridColumn Field=@nameof(AGroupPosition.GroupPositionId) HeaderText="Group Position Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+        <GridColumn Field=@nameof(AGroupPosition.GroupPositionDesc) HeaderText="Group Position Description"></GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private SfGrid<AGroupPosition> GroupPositionGrid;
+    public string ButtonText { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    #region Group Position
+    public class GroupPositionAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public GroupPositionAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<AGroupPosition>();
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    data = await dbContext.AGroupPosition.OrderByDescending(o => o.GroupPositionId).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<AGroupPosition>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AGroupPosition);
+                    var exists = dbContext.AGroupPosition.FirstOrDefault(o => o.GroupPositionId == val.GroupPositionId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.AGroupPosition.OrderBy(o => o.GroupPositionId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.GroupPositionId + 1);
+                        }
+                        val.GroupPositionId = id;
+
+                        dbContext.AGroupPosition.Add(val);
+                        dbContext.SaveChanges();
+                        toastService.ShowSuccess("Record saved successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.AGroupPosition.FirstOrDefault(o => o.GroupPositionId == data);
+                    if (exists != null)
+                    {
+                        dbContext.AGroupPosition.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as AGroupPosition);
+                    var exist = db.AGroupPosition.FirstOrDefault(o => o.GroupPositionId == val.GroupPositionId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+
+    public void OnGroupPositionActionBegin(ActionEventArgs<AGroupPosition> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (string.IsNullOrEmpty(args.Data.GroupPositionDesc))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the group position description before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.AGroupPosition.FirstOrDefault(o => (o.GroupPositionDesc.ToLower() == args.Data.GroupPositionDesc.ToLower()));
+                    if (exists != null && exists.GroupPositionId != args.Data.GroupPositionId)
+                    {
+                        ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "This Group Position already exists in the database and will not be saved.", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetGroupPositionHeader(AGroupPosition Value)
+    {
+        if (Value.GroupPositionId == 0)
+        {
+            ButtonText = "Insert";
+            return "Add a new Group Position";
+        }
+        else
+        {
+            ButtonText = "Save Changes";
+            return "Edit Details for " + Value.GroupPositionDesc;
+        }
+    }
+
+    #endregion Group Position
+}

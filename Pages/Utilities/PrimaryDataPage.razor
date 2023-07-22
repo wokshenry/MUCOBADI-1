@@ -1,0 +1,1240 @@
+﻿@page "/PrimaryDataPage"
+
+<style>
+    /*For Actual Application*/
+    .e-edit-dialog {
+        max-height: 80%;
+        max-width: 80%;
+        min-width: 80%;
+        min-height: 80%;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;">
+        <strong>
+            <img src="/Login/images/MucobadiLogo2.png" width="40" height="25" /> USAID/ICARE
+        </strong>| Primary Data
+    </li>
+</ol>
+
+<SfAccordion ExpandMode="@ExpandMode.Single">
+    <AccordionItems>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>Administrative Units (Districts,Subcounties,Parishes,Villages)</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Districts"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <DistrictPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Subcounties"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SubcountyPage/>
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Parishes"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ParishPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Villages"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <VillagePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            @*<TabItem>
+                                    <ChildContent>
+                                        <TabHeader Text="Passport Type"></TabHeader>
+                                    </ChildContent>
+                                    <ContentTemplate>
+                                        <div class="tab-content">
+                                            <PassportTypePage />
+                                        </div>
+                                    </ContentTemplate>
+                                </TabItem>*@
+
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>A - C</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Administration Phase"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AdministrationPhasePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Adolosents Enrolled Attending School"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AdolosentsEnrolledAttendingSchoolPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Adolescent Health Service Referred"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AdolescentHealthServiceReferredPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Adolescence Issue of Abuse"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AdolescenceIssueofAbussePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Applicable Options"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ApplicableOptionsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Assessment Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AssessmentStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Assets"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AssetsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Attendency"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <AttendencyPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Candidate Classes"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CandidateClassesPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Care Nature Reported"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CaseNatureReportedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Care Giver"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CareGiverPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Case Plan"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CasePlanPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Case Plan Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CasePLanStausPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Child Abuse"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ChildAbusePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Child Abuse Occurances"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ChildAbuseOccurancesPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Children Complications"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ChildrenComplicationsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Client Classification"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CientClassificationPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Client Care Modality"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ClientCareModalityPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Client Member Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ClientMemberStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Contacts"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ContactsPage/>
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Current Class"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <CurrentClassPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>D - F</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Daily Meals"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <DailyMealsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Drug Dispensing Modality"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <DrugDispensingModalityPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Drug Dispensing Model"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <DrugDispensingModelPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Economic Activity"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <EconomicActivityPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Education Level"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <EducationLevelPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="EID Cascade"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <EIDCascadePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Expense Payment"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ExpensePaymentPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Facilities"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <FacilitiesPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Feeding Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <FeedingStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Follow Up Mean"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <FollowUpMeansPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Food Consumed Source"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <FoodConsumedSourcePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Food Groups"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <FoodGroupsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>G - I</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Gender Based Violence"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GenderBasedViolencePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Graduation Criteria"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GraduationCriteriaPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Group Member Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GroupMemberStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Group Position"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GroupPositionPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="GroupCycle"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GroupCyclePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem Visible="false">
+                                <ChildContent>
+                                    <TabHeader Text="Groups"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GroupsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Group Type"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <GroupTypePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Has Disability"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HasDisabilityPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Home Visit Reason"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HomeVisitReasonPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="HIV Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HIVStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="HouseHold Income"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHIncomePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="HouseHold Income Source"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHIncomeSourcePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="HouseHold Incurred Expenses"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHIncurredExpensesPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="HouseHold Pre School Not Enrolled"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHPreSchoolNotEnrolledPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Implementing Partner"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ImplementingPartnerPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Infection Ways"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <InfectionWaysPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>J - M</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Known HIV Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHKnownHIVStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Job Caused Harm"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <JobCausedHarmPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Known Risk Factors"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <KnownRiskFactorsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Linkage Service Category"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <LinkageServiceCategoryPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Member Benefits"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <MemberBenefitsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>N - P</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Non Adherence"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <NonAdherencePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="OVC Service Provider"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <OVCServiceProviderPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Parenting Group Session"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ParentingGroupSessionPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Parenting Group Session Type"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ParentingGroupSessionTypePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="PCR Test"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <PCRTestPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Person Contacted"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <PersonContactedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Priority Area"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <PriorityAreaPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Priority Area Codes"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <PriorityAreaCodesPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Program Participation Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ProgramParticipationStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>Q - T</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Reason For Borrowing Loan"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ReasonForBorrowingLoanPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Referred Disability"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ReferredDisabilityPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Regimen"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <RegimenPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Regimen Category"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <RegimenCategoryPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Registration Status"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <RegistrationStatusPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Relationship"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <RelationshipPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Saving Scheme"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SavingSchemePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="School Enrolment"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SchoolEnrolmentPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="School Not Progressing Reason"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SchoolNotProgressingReasonPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Self Protection"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SelfProtectionPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Service Provided"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <Service_ProvidedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Service Provider"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <Service_ProviderPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Service Received"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <Service_ReceivedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Service Category"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ServiceCategoryPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Service Linked To"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ServiceLinkedToPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Source Document"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SourceDocumentPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Source of Identification"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <SourceofIdentificationPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Stable Shelter"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <StableShelterPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                    <ChildContent>
+                                        <TabHeader Text="Targets"></TabHeader>
+                                    </ChildContent>
+                                    <ContentTemplate>
+                                        <div class="tab-content">
+                                            <TargetsPage />
+                                        </div>
+                                    </ContentTemplate>
+                                </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="TB Client Refered"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TBClientReferedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="TB Test Result"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TBTestResultPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="TB Treatment Duration"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TBTReatmentDurationPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="TB Treatment"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TBTreatmentPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Term"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TermPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Training Session"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <Training_SessionPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Training Curriculum"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <Trainning_CurriculumPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Treatment Adherance"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHTreatmentAdherancePage/>
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Tuberclosis Treatment"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <TuberclosisTreatmentPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>U - W</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        <TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Level"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ViralLoadLevelPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Results"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ViralLoadResultsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Suppressed"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ViralLoadSuppressedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="VSLA Group Trainer"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <VSLA_Group_TrainerPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Blood Test"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHViralLoadBloodTestPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Suppressed"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHViralLoadSuppressedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+
+        <AccordionItem Expanded="false">
+            <HeaderTemplate>X - Z</HeaderTemplate>
+            <ContentTemplate>
+                <div style="padding:10px;">
+                    <SfTab Width="98%" Height="auto" ShowCloseButton="false" HeaderPlacement="HeaderPosition.Left" CssClass="default-tab">
+                        @*<TabItems>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Treatment Adherance"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHTreatmentAdherancePage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Results"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ViralLoadResultsPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Suppressed"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <ViralLoadSuppressedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="VSLA Group Trainer"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <VSLA_Group_TrainerPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Blood Test"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHViralLoadBloodTestPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Viral Load Suppressed"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="tab-content">
+                                        <HHViralLoadSuppressedPage />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        </TabItems>*@
+                    </SfTab>
+                </div>
+            </ContentTemplate>
+        </AccordionItem>
+    </AccordionItems>
+
+
+</SfAccordion>
+
+@code {
+
+}

@@ -1,0 +1,498 @@
+﻿@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Districts</strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+@{
+    var Div = (new string[] { "RegionDescription" });
+}
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="true">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>Region</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.RegionId" TValue="int?[]" TItem="ARegion" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@RegionData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Region" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ARegion.RegionId)" Text="@nameof(ARegion.RegionDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ARegion" ValueChange="OnRegionChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>                                            
+                                        </SfMultiSelect>
+                                    </div>                                    
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+
+    <div class="form-group col-md-12">
+        <SfGrid @ref="DistrictGrid" TValue="ViewADistrict" Query="@MainQuery"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="true" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridGroupSettings Columns="@Div" ShowDropArea="false">
+                <CaptionTemplate>
+                    @{
+                        var dvn = (context as CaptionTemplateContext);
+                        string _field = string.Empty;
+                        if (dvn.Field.Contains("Region"))
+                        {
+                            _field = "Region";
+                        }
+                        <div><p class="pp"><strong>@_field: @dvn.Key</strong></p></div>
+                    }
+
+                </CaptionTemplate>
+            </GridGroupSettings>
+            <SfDataManager AdaptorInstance="@typeof(DistrictAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionBegin="OnDistrictActionBegin" TValue="ViewADistrict"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <HeaderTemplate>
+                    @{
+                        var text = GetDistrictsHeader((context as ViewADistrict));
+                        <div class="headerbandimg" /><span>@text</span>
+                    }
+                </HeaderTemplate>
+                <Template Context="DistrictContext">
+                    @{
+                        var DistrictData = (DistrictContext as ViewADistrict);
+                        <div style="padding:15px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox ID="DistrictId" @bind-Value="@(DistrictData.DistrictId)" Enabled="false" Placeholder="District Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfDropDownList ID="RegionId" @bind-Value="@(DistrictData.RegionId)" TItem="ARegion" AllowFiltering="true" TValue="int?" DataSource="@RegionData" Placeholder="Region" FloatLabelType="FloatLabelType.Always">
+                                        <DropDownListFieldSettings Value="@nameof(ARegion.RegionId)" Text="@nameof(ARegion.RegionDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ARegion" TValue="int?" ValueChange="ChangeRegion"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfTextBox Multiline="false" ID="DistrictDescription" @bind-Value="@(DistrictData.DistrictDescription)" ValueChange="@OnDistrictDescChange" Enabled="@DistrictTextBox" Placeholder="District" FloatLabelType="FloatLabelType.Always"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfTextBox Multiline="false" ID="DistricCode" @bind-Value="@(DistrictData.DistricCode)" Enabled="@DistrictCodeTextBox" Placeholder="District Code" FloatLabelType="FloatLabelType.Always">
+                                    </SfTextBox>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+                <GridColumn Field=@nameof(ViewADistrict.DistrictId) HeaderText="District Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(ViewADistrict.DistrictDescription) HeaderText="District"></GridColumn>
+                <GridColumn Field=@nameof(ViewADistrict.DistricCode) HeaderText="District Code"></GridColumn>
+                <GridColumn Field=@nameof(ViewADistrict.RegionDescription) HeaderText="Region Id"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private UtilitiesSearchPanel InputModel = new();
+
+    private SfGrid<ViewADistrict> DistrictGrid;
+    private List<ARegion> RegionData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+    public string ButtonText { get; set; }
+    public bool DistrictTextBox = false;
+    public bool DistrictCodeTextBox = false;
+    public Query MainQuery = new Query();
+    bool isEnabled { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+            RegionData = _context.ARegion.ToList();
+            DistrictData = _context.ADistrict.ToList();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.RegionId != null)
+            {
+                MainQuery.AddParams("RegionId", string.Join(",", InputModel.RegionId));
+            }
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+        }
+
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+    }
+
+    public void OnRegionChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                DistrictData = db.ADistrict.Where(o => args.Value.Any(a => a == o.RegionId) == true).ToList();
+                isEnabled = true;
+            }
+        }
+    }
+
+    public void ChangeRegion(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ARegion> args)
+    {
+        this.DistrictTextBox = true;
+        StateHasChanged();
+    }
+
+    protected async Task OnDistrictDescChange(Syncfusion.Blazor.Inputs.ChangedEventArgs args)
+    {
+        this.DistrictCodeTextBox = true;
+        StateHasChanged();
+    }
+
+    #region Districts Region
+    public class DistrictAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public DistrictAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+        
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ViewADistrict>();
+
+            try
+            {
+                string RegionId = null;
+                string DistrictId = null;
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "RegionId").Value != null)
+                    {
+                        RegionId = val.FirstOrDefault(o => o.Key == "RegionId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                }
+
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    string[] _RegionId = new string[] { };
+                    if (!string.IsNullOrEmpty(RegionId))
+                    {
+                        _RegionId = RegionId.Split(',');
+                    }
+                    string[] _district = new string[] { };
+                    if (!string.IsNullOrEmpty(DistrictId))
+                    {
+                        _district = DistrictId.Split(',');
+                    }
+
+                    data = await dbContext.ViewADistrict.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+                    (_RegionId.Length == 0 || (o.RegionId != null && _RegionId.Any(a => a == o.RegionId.ToString()) == true))).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ViewADistrict>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        public override async Task<Object> InsertAsync(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as ViewADistrict);
+                    ADistrict distinsert = new ADistrict();
+                    var exists = dbContext.ViewADistrict.FirstOrDefault(o => o.DistrictId == val.DistrictId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.ViewADistrict.OrderBy(o => o.DistrictId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.DistrictId + 1);
+                        }
+
+                        distinsert.DistrictId = id;
+                        distinsert.DistrictDescription = val.DistrictDescription;
+                        distinsert.DistricCode = val.DistricCode;
+                        distinsert.RegionId = val.RegionId;
+
+                        dbContext.ADistrict.Add(distinsert);
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    string result = "Record Saved Successfully";
+                    toastService.ShowInfo(result);
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.ADistrict.FirstOrDefault(o => o.DistrictId == data);
+                    if (exists != null)
+                    {
+                        dbContext.ADistrict.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as ViewADistrict);
+                    ADistrict distupdate = new ADistrict();
+                    var exists = dbContext.ADistrict.FirstOrDefault(o => o.DistrictId == val.DistrictId);
+                    if (exists != null)
+                    {
+                        distupdate.DistrictDescription = val.DistrictDescription;
+                        distupdate.DistricCode = val.DistricCode;
+                        distupdate.RegionId = val.RegionId;
+
+                        dbContext.Entry(exists).CurrentValues.SetValues(val);
+                        dbContext.Entry(exists).State = EntityState.Modified;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    string result = "Record Updated Successfully";
+                    toastService.ShowInfo(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+    public void OnDistrictActionBegin(ActionEventArgs<ViewADistrict> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            this.DistrictTextBox = true;
+            this.DistrictCodeTextBox = true;
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.RegionId == null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please choose a Region before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else if (string.IsNullOrEmpty(args.Data.DistrictDescription))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please fill in the District before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else if (string.IsNullOrEmpty(args.Data.DistricCode))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please fill in the District Code before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.ViewADistrict.FirstOrDefault(o => (o.DistrictDescription.ToLower() == args.Data.DistrictDescription.ToLower()) && (o.RegionId == args.Data.RegionId));
+                    if (exists != null && exists.DistrictId != args.Data.DistrictId)
+                    {
+                        ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "This District already exists in the database and will not be saved.", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetDistrictsHeader(ViewADistrict Value)
+    {
+        if (Value.DistrictId == 0)
+        {
+            ButtonText = "Insert";
+            return "Add a new District";
+        }
+        else
+        {
+            ButtonText = "Save Changes";
+            return "Edit Details for " + Value.DistrictDescription;
+        }
+    }
+
+    #endregion Districts Region
+}

@@ -1,0 +1,990 @@
+﻿@page "/ProjectsTargetsPage"
+@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext db;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject IToastService toastService;
+
+<style>
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+
+    .e-edit-dialog {
+        /*max-height: 95%;
+        max-width: 100%;
+        min-width: 100%;
+            min-height: 95%;*/
+    }
+
+    /*stick grid headers*/
+    .e-gridheader {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 56px;
+        z-index: 1;
+    }
+    /*stick grid headers*/
+
+</style>
+
+@{
+    var Div = (new string[] { "ServiceProviderId", "FinancialYearId", "DistrictId" });
+}
+
+<div class="form-group col-md-12">
+    <SfAccordion ExpandMode="@ExpandMode.Single">
+        <AccordionItems>
+            <AccordionItem Expanded="true">
+                <HeaderTemplate>Search Panel</HeaderTemplate>
+                <ContentTemplate>
+                    <div style="padding:10px;">
+                        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>Indicator</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.IndicatorId" TValue="int?[]" TItem="AIndicators" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@IndicatorData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Indicator" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AIndicators.IndicatorId)" Text="@nameof(AIndicators.IndicatorDescription)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Financial Year</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.FinancialYearId" TValue="int?[]" TItem="AFinancialYear" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@FinancialYearData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Year" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)" Text="@nameof(AFinancialYear.FinancialYearDesc)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>                                
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictsData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div> 
+                                <div class="form-group col-md-3">
+                                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                </ContentTemplate>
+            </AccordionItem>
+        </AccordionItems>
+    </SfAccordion>
+</div>
+
+<div class="form-group col-md-12">
+
+   <SfGrid @ref="@MainGrid" TValue="ViewProjectIndicatorTargetsHeader" ID="GridMain" Query="@MainQuery" Toolbar="@ToolbarMenuMain"
+                AllowPaging="true" AllowFiltering="false" AllowTextWrap="true" AllowGrouping="true" GridLines="GridLine.Both">
+        <GridGroupSettings Columns="@Div" ShowDropArea="false">
+            <CaptionTemplate>
+                @{
+                    var dvn = (context as CaptionTemplateContext);
+                    string text = "";
+                    if (dvn.Field == "ServiceProviderId" && ServiceProviderData != null)
+                    {
+                        var data = ServiceProviderData.FirstOrDefault(o => o.ServiceProviderId != null && o.ServiceProviderId.ToString() == dvn.Key);
+                        if(data != null)
+                        {
+                            text = data.ServiceProviderDesc;
+                        }
+                    }
+                    if (dvn.Field == "FinancialYearId" && FinancialYearData != null)
+                    {
+                        var data = FinancialYearData.FirstOrDefault(o => o.FinancialYearId != null && o.FinancialYearId.ToString() == dvn.Key);
+                        if (data != null)
+                        {
+                            text = data.FinancialYearDesc;
+                        }
+                    }
+                    if (dvn.Field == "DistrictId" && DistrictsData != null)
+                    {
+                        var data = DistrictsData.FirstOrDefault(o => o.DistrictId != null && o.DistrictId.ToString() == dvn.Key);
+                        if (data != null)
+                        {
+                            text = data.DistrictDescription;
+                        }
+                    }
+                    
+                    <div><p class="pp"><strong>@text</strong></p></div>
+                }
+            </CaptionTemplate>
+        </GridGroupSettings>
+    <GridEditSettings AllowAdding="true" AllowDeleting="true" AllowEditing="true" Mode="EditMode.Dialog" ShowConfirmDialog="false">
+        <Template>           
+           @{
+                    <center>
+                        <h5>
+                            <strong>CAPTURE TARGETS</strong>
+                        </h5>
+                    </center>
+
+                    CaptureMainData = (context as ViewProjectIndicatorTargetsHeader);
+
+                    <div style="padding:15px;">
+                         <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <p>Project:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.ServiceProviderId)"
+                                            Enabled="@ServiceProviderDD" TItem="AServiceProvider" TValue="int?"
+                                            DataSource="@ServiceProviderData" Placeholder="Please select"
+                                            FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                            FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="servprovideredit">
+                                    <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)"
+                                                           Text="@nameof(AServiceProvider.ServiceProviderDesc)">
+                                    </DropDownListFieldSettings>
+                                </SfDropDownList>
+                            </div>
+
+                            <div class="form-group col-md-6">
+                                <p>Indicator:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.IndicatorId)"
+                                            Enabled="@IndicatorDD" TItem="AIndicators" TValue="int?"
+                                            DataSource="@IndicatorData" Placeholder="Please select"
+                                            FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                            FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="indicatoredit">
+                                    <DropDownListFieldSettings Value="@nameof(AIndicators.IndicatorId)"
+                                                           Text="@nameof(AIndicators.IndicatorDescription)">
+                                    </DropDownListFieldSettings>
+                                    <DropDownListEvents TValue="int?"
+                                                    TItem="AIndicators" ValueChange="OnIndicatorChange">
+                                    </DropDownListEvents>
+                                </SfDropDownList>
+                            </div>
+
+                            <div class="form-group col-md-6">
+                                <p>Financial Year:<span style="color:red;">*</span></p>
+                                <SfDropDownList @bind-Value="@(CaptureMainData.FinancialYearId)"
+                                            Enabled="@FinancialYearDD" TItem="AFinancialYear" TValue="int?"
+                                            DataSource="@FinancialYearData" Placeholder="Please select"
+                                            FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                            FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" @ref="finyearedit">
+                                    <DropDownListFieldSettings Value="@nameof(AFinancialYear.FinancialYearId)"
+                                                           Text="@nameof(AFinancialYear.FinancialYearDesc)">
+                                    </DropDownListFieldSettings>
+                                    <DropDownListEvents TValue="int?"
+                                                    TItem="AFinancialYear" ValueChange="OnFinancialYearChange">
+                                    </DropDownListEvents>
+                                </SfDropDownList>
+                            </div>
+
+                            <div class="form-group col-md-12">
+                                <SfGrid @ref="@DataGrid"
+                                    TValue="ViewProjectIndicatorTargetsDatasource"
+                                    ID="Grid"
+                                    DataSource="@TargetCaptureDataSource"
+                                    AllowPaging="false"
+                                    AllowFiltering="false"
+                                    AllowReordering="true"
+                                    AllowResizing="true"
+                                    AllowGrouping="true"
+                                    AllowExcelExport="true"
+                                    AllowPdfExport="true"
+                                    AllowSelection="true"
+                                    AllowSorting="true"
+                                    Toolbar="@ToolbarMenu">
+                                    <GridEditSettings AllowAdding="false"
+                                                  AllowEditing="true"
+                                                  AllowDeleting="false"
+                                                  Mode="Syncfusion.Blazor.Grids.EditMode.Batch"
+                                                  ShowConfirmDialog="false">
+                                    </GridEditSettings>
+                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.FilterBar"></GridFilterSettings>
+                                    <GridPageSettings PageSizes="true"></GridPageSettings>
+                                    <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Single" CellSelectionMode="CellSelectionMode.Box" Mode="Syncfusion.Blazor.Grids.SelectionMode.Cell"></GridSelectionSettings>
+                                    <GridEvents CellSelected="CellSelectHandler"
+                                            TValue="ViewProjectIndicatorTargetsDatasource">
+                                    </GridEvents>
+                                    <GridColumns>
+                                        <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+                                        <GridColumn Field=@nameof(ViewProjectIndicatorTargetsDatasource.IndicatorTargetValueId) HeaderText="TargetId" AllowEditing="false" Visible="false" IsPrimaryKey="true" Width="80"></GridColumn>
+                                        <GridForeignColumn Field=@nameof(ViewProjectIndicatorTargetsDatasource.DistrictId)
+                                                       Visible="true"
+                                                       HeaderText="District"
+                                                       Width="80"
+                                                       ForeignKeyField="@nameof(ADistrict.DistrictId)"
+                                                       ForeignKeyValue="@nameof(ADistrict.DistrictDescription)"
+                                                       ForeignDataSource="@DistrictsData"
+                                                       ValidationRules="@(new ValidationRules {Required=true})"
+                                                       AllowEditing="false">
+                                        </GridForeignColumn>
+
+                                        <GridColumn Field=@nameof(ViewProjectIndicatorTargetsDatasource.TargetValue)
+                                                HeaderText="Target"
+                                                Width="80"
+                                                AllowEditing="true">
+                                        </GridColumn>
+                                    </GridColumns>
+                                </SfGrid>
+                            </div>
+
+                        </div>
+                    </div>
+           }
+        </Template>
+            <FooterTemplate>
+                @if (userdetail != null && userdetail.ServiceProviderId != 1)
+                {
+                    <button @onclick="@onSubmitForm" class="btn btn-primary" data-ripple="true" style="margin-right:10px;">Save Form</button>
+                    <button @onclick="@DialogCancelBtnclicked" class="btn btn-danger" data-ripple="true">Cancel</button>
+                }
+            </FooterTemplate>
+    
+    </GridEditSettings>
+        <SfDataManager AdaptorInstance="@typeof(ProjectsTargetAdaptor)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridEvents OnActionComplete="ActionCompleteMain"
+                OnActionBegin="ActionBeginMain"
+                    TValue="ViewProjectIndicatorTargetsHeader">
+    </GridEvents>
+
+    <GridColumns>
+         <GridColumn Type="ColumnType.CheckBox" Width="20"></GridColumn>
+         <GridColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.ProjectTargetValueHeaderId) HeaderText="ID" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+            <GridForeignColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.ServiceProviderId)
+                               Visible="true"
+                               HeaderText="Service Provider"
+                               Width="80"
+                               ForeignKeyField="@nameof(AServiceProvider.ServiceProviderId)"
+                               ForeignKeyValue="@nameof(AServiceProvider.ServiceProviderDesc)"
+                               ForeignDataSource="@ServiceProviderData"
+                               AllowEditing="false">
+            </GridForeignColumn>
+            <GridForeignColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.FinancialYearId)
+                               Visible="true"
+                               HeaderText="Financial Year"
+                               Width="80"
+                               ForeignKeyField="@nameof(AFinancialYear.FinancialYearId)"
+                               ForeignKeyValue="@nameof(AFinancialYear.FinancialYearDesc)"
+                               ForeignDataSource="@FinancialYearData"
+                               AllowEditing="false">
+            </GridForeignColumn>
+            <GridForeignColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.IndicatorId)
+                               Visible="true"
+                               HeaderText="Indicator"
+                               Width="80"
+                               ForeignKeyField="@nameof(AIndicators.IndicatorId)"
+                               ForeignKeyValue="@nameof(AIndicators.IndicatorDescription)"
+                               ForeignDataSource="@IndicatorData"
+                               AllowEditing="false">
+            </GridForeignColumn>
+            <GridForeignColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.DistrictId)
+                               Visible="true"
+                               HeaderText="District"
+                               Width="80"
+                               ForeignKeyField="@nameof(ADistrict.DistrictId)"
+                               ForeignKeyValue="@nameof(ADistrict.DistrictDescription)"
+                               ForeignDataSource="@DistrictsData"
+                               AllowEditing="false">
+            </GridForeignColumn>
+            <GridColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.DistrictDescription)
+                        Visible="true"
+                        HeaderText="Indicator"
+                        Width="80"
+                        AllowEditing="false">
+            </GridColumn>
+            <GridColumn Field=@nameof(ViewProjectIndicatorTargetsHeader.TargetValue)
+                        HeaderText="Target"
+                        TextAlign="TextAlign.Left"
+                        Width="80">
+            </GridColumn>
+    </GridColumns>
+   </SfGrid>
+
+</div>
+
+
+@code {
+    private UtilitiesSearchPanel InputModel = new();
+    public Query MainQuery = new Query();
+    SfGrid<ViewProjectIndicatorTargetsHeader>? MainGrid;
+    SfGrid<ViewProjectIndicatorTargetsDatasource> DataGrid;
+    private static ViewProjectIndicatorTargetsHeader? CaptureMainData { get; set; }
+    List<ADistrict> DistrictsData { get; set; }
+    List<AFinancialYear> FinancialYearData { get; set; }
+    List<AIndicators> IndicatorData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<ViewUserManagement> UserManagementData { get; set; }
+    public bool FinancialYearDD = false;
+    public bool IndicatorDD = true;
+    public bool ServiceProviderDD = false;
+    public bool QuarterDD = false;
+    int? finyear = null;
+    int? SvcPvdId = null;
+    int? QtrId = null;
+    int? IndId = null;
+    SfDropDownList<int?, AFinancialYear> finyearedit { get; set; }
+    SfDropDownList<int?, AIndicators> indicatoredit { get; set; }
+    SfDropDownList<int?, AServiceProvider> servprovideredit { get; set; }
+    List<ViewProjectIndicatorTargetsDatasource> TargetCaptureDataSource { get; set; }
+    List<ViewDashboardTargetDatasource> ServiceProviderDistrictsData { get; set; }
+    private static ViewUserManagement? userdetail { get; set; }
+
+    private List<object> ToolbarMenuMain = new List<object>()
+    {
+        new ItemModel() { Text = "Capture Target", PrefixIcon = "e-add", Id = "GridMain_add"},
+        new ItemModel(){ Text = "Edit Target", PrefixIcon= "e-edit", Id="GridMain_edit"},
+        //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+        new ItemModel(){ Text = "Update Target", PrefixIcon= "e-update", Id="GridMain_update"},
+        new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="GridMain_cancel"}
+    };
+
+    private List<object> ToolbarMenu = new List<object>()
+    {
+        new ItemModel() { Text = "Capture Target", PrefixIcon = "e-add", Id = "Grid_add"},
+        new ItemModel(){ Text = "Edit Target", PrefixIcon= "e-edit", Id="Grid_edit"},
+        //new ItemModel(){ Text = "Delete Target", PrefixIcon= "e-delete", Id="Grid_delete"},
+        new ItemModel(){ Text = "Update Target", PrefixIcon= "e-update", Id="Grid_update"},
+        new ItemModel(){ Text = "Cancel Changes", PrefixIcon= "e-cancel", Id="Grid_cancel"}
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        DistrictsData = db.ADistrict.AsNoTracking().ToList();
+        FinancialYearData = db.AFinancialYear.AsNoTracking().ToList();
+        IndicatorData = db.AIndicators.AsNoTracking().ToList();
+        ServiceProviderData = db.AServiceProvider.AsNoTracking().ToList();
+        QuarterData = db.AQuarter.Where(o => o.QuarterId >= 1 && o.QuarterId <= 4).ToList();
+        UserManagementData = db.ViewUserManagement.ToList();
+        //TargetCaptureDataSource = db.ViewProjectIndicatorTargetsDatasource.ToList();
+        ServiceProviderDistrictsData = db.ViewDashboardTargetDatasource
+        .OrderBy(o=>o.DistrictDescription).ToList();
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.IndicatorId != null)
+            {
+                MainQuery.AddParams("IndicatorId", string.Join(",", InputModel.IndicatorId));
+            }
+            if (InputModel.FinancialYearId != null)
+            {
+                MainQuery.AddParams("FinancialYearId", string.Join(",", InputModel.FinancialYearId));
+            }
+            if (InputModel.QuarterId != null)
+            {
+                MainQuery.AddParams("QuarterId", string.Join(",", InputModel.QuarterId));
+            }
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+        }
+
+        catch (Exception ex)
+        {
+            toastService.ShowWarning(ex.Message.ToString());
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+    }
+
+    public async void OnIndicatorChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AIndicators> args)
+    {
+        FinancialYearDD = true;
+        //Return empty datasource on adding new record
+        TargetCaptureDataSource = null;
+    }
+
+    public async void OnFinancialYearChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AFinancialYear> args)
+    {
+        SvcPvdId = CaptureMainData.ServiceProviderId;
+        finyear = CaptureMainData.FinancialYearId;
+        IndId = CaptureMainData.IndicatorId;
+
+        var datasource = new List<ViewProjectIndicatorTargetsDatasource>();
+        var dist = ServiceProviderDistrictsData
+        .Where(o => o.ServiceProviderId == SvcPvdId)
+        .OrderBy(o=>o.DistrictDescription)
+        .ToList();
+        int countid = -1000;
+
+        List<ProjectIndicatorTargetsDetails> mn = new List<ProjectIndicatorTargetsDetails>();
+
+        TargetCaptureDataSource = db.ViewProjectIndicatorTargetsDatasource
+        .Where(o => o.ServiceProviderId == SvcPvdId
+            && o.FinancialYearId == finyear
+            && o.IndicatorId == IndId).ToList();
+
+        if (TargetCaptureDataSource.Count > 0)
+        {
+            foreach (var n in TargetCaptureDataSource)
+            {
+                var countdata = db.ViewProjectIndicatorTargetsDatasource
+                    .FirstOrDefault(o => o.ServiceProviderId == SvcPvdId
+                        && o.FinancialYearId == finyear
+                    && o.IndicatorId == IndId);
+
+                datasource = db.ViewProjectIndicatorTargetsDatasource
+                .Where(o => o.ServiceProviderId == SvcPvdId
+                    && o.FinancialYearId == finyear
+                    && o.IndicatorId == IndId).ToList();
+
+                if (countdata == null)
+                {
+                    foreach (var item in dist)
+                    {
+                        var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                        if (exist == null)
+                        {
+                            var m = new ViewProjectIndicatorTargetsDatasource();
+
+                            m.IndicatorTargetValueId = countid;
+                            m.DistrictId = item.DistrictId;
+                            m.TargetValue = 0;
+
+                            TargetCaptureDataSource.Add(m);
+                            countid++;
+                        }
+                    }
+
+                }
+
+                else
+                {
+                    foreach (var item in dist)
+                    {
+                        var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                        var countdata1 = db.ViewProjectIndicatorTargetsDatasource
+                            .FirstOrDefault(o => o.ServiceProviderId == SvcPvdId
+                                && o.FinancialYearId == finyear
+                                && o.IndicatorId == IndId 
+                                && o.DistrictId == item.DistrictId);
+
+                        if (exist == null)
+                        {
+                            if(countdata1!=null)
+                            {
+                                var m = new ViewProjectIndicatorTargetsDatasource();
+                                m.IndicatorTargetValueId = countid;
+                                m.DistrictId = item.DistrictId;
+                                m.ProjectTargetValueHeaderId = countdata1.ProjectTargetValueHeaderId;
+                                m.TargetValue = countdata1.TargetValue;
+
+                                TargetCaptureDataSource.Add(m);
+                                countid++;
+                            }
+
+                        }
+                    }
+                }
+            }
+
+        }
+
+        else
+        {
+            TargetCaptureDataSource = new List<ViewProjectIndicatorTargetsDatasource>();
+            foreach (var item in dist)
+            {
+                var exist = TargetCaptureDataSource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                if (exist == null)
+                {
+                    var m = new ViewProjectIndicatorTargetsDatasource();
+                    m.IndicatorTargetValueId = countid;
+                    m.DistrictId = item.DistrictId;
+                    m.TargetValue = 0;
+
+                    countid++;
+                    TargetCaptureDataSource.Add(m);
+                }
+            }
+        }
+
+    }
+
+    public class ProjectsTargetAdaptor : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        private MUCOBADIContext _dbContext;
+        public ProjectsTargetAdaptor(IToastService ts, UserManagement userManagement, MUCOBADIContext dbContext)
+        {
+            toastService = ts;
+            _userManagement = userManagement;
+            _dbContext = dbContext;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ViewProjectIndicatorTargetsHeader>();
+            try
+            {
+                string FinancialYearId = null;
+                string QuarterId = null;
+                string IndicatorId = null;
+                string DistrictId = null;
+
+                int? ServiceProviderIdd = null;
+
+                if (_userManagement.GetServiceProviderId() != null)
+                {
+                    ServiceProviderIdd = _userManagement.GetServiceProviderId();
+                }
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "FinancialYearId").Value != null)
+                    {
+                        FinancialYearId = val.FirstOrDefault(o => o.Key == "FinancialYearId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "QuarterId").Value != null)
+                    {
+                        QuarterId = val.FirstOrDefault(o => o.Key == "QuarterId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "IndicatorId").Value != null)
+                    {
+                        IndicatorId = val.FirstOrDefault(o => o.Key == "IndicatorId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                }
+
+                string[] _FinancialYearId = new string[] { };
+                if (!string.IsNullOrEmpty(FinancialYearId))
+                {
+                    _FinancialYearId = FinancialYearId.Split(',');
+                }
+                string[] _QuarterId = new string[] { };
+                if (!string.IsNullOrEmpty(QuarterId))
+                {
+                    _QuarterId = QuarterId.Split(',');
+                }
+
+                string[] _IndicatorId = new string[] { };
+                if (!string.IsNullOrEmpty(IndicatorId))
+                {
+                    _IndicatorId = IndicatorId.Split(',');
+                }
+                string[] _DistrictId = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _DistrictId = DistrictId.Split(',');
+                }
+
+                //data = _dbContext.ViewProjectIndicatorTargetsHeader.Where(o => o.ServiceProviderId == ServiceProviderIdd).ToList();
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    //For Mucobadi Staff
+                    if (ServiceProviderIdd == 1)
+                    {
+                        data = await dbContext.ViewProjectIndicatorTargetsHeader.Where(o => (_FinancialYearId.Length == 0 || (o.FinancialYearId != null
+                            && _FinancialYearId.Any(a => a == o.FinancialYearId.ToString()) == true))
+                            && (_IndicatorId.Length == 0 || (o.IndicatorId != null && _IndicatorId.Any(a => a == o.IndicatorId.ToString()) == true))
+                            && (_DistrictId.Length == 0 || (o.DistrictId != null && _DistrictId.Any(a => a == o.DistrictId.ToString()) == true))).ToListAsync();
+                    }
+                    else
+                    {
+                        data = await dbContext.ViewProjectIndicatorTargetsHeader.Where(o => (o.ServiceProviderId == ServiceProviderIdd)
+                        && (_FinancialYearId.Length == 0 || (o.FinancialYearId != null && _FinancialYearId.Any(a => a == o.FinancialYearId.ToString()) == true))
+                        && (_IndicatorId.Length == 0 || (o.IndicatorId != null && _IndicatorId.Any(a => a == o.IndicatorId.ToString()) == true))
+                        && (_DistrictId.Length == 0 || (o.DistrictId != null && _DistrictId.Any(a => a == o.DistrictId.ToString()) == true))).ToListAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ViewProjectIndicatorTargetsHeader>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+    }
+
+    public void ActionCompleteMain(ActionEventArgs<ViewProjectIndicatorTargetsHeader> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) ||
+        args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            MainGrid.PreventRender(false);
+        }
+    }
+
+    public async void ActionBeginMain(ActionEventArgs<ViewProjectIndicatorTargetsHeader> Args)
+    {
+        var data = Args.Data;
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            userdetail = UserManagementData.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+            IndicatorDD = false;
+
+            var datasource = new List<ViewProjectIndicatorTargetsDatasource>();
+            var dist = ServiceProviderDistrictsData
+            .Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId)
+            .OrderBy(o=>o.DistrictDescription)
+            .ToList();
+            int countid = -1000;
+
+            List<ProjectIndicatorTargetsDetails> mn = new List<ProjectIndicatorTargetsDetails>();
+
+            TargetCaptureDataSource = db.ViewProjectIndicatorTargetsDatasource
+            .Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId
+                && o.FinancialYearId == Args.RowData.FinancialYearId
+                    && o.IndicatorId == Args.RowData.IndicatorId).ToList();
+
+            if (TargetCaptureDataSource.Count > 0)
+            {
+                foreach (var n in TargetCaptureDataSource)
+                {
+                    var countdata = db.ViewProjectIndicatorTargetsDatasource
+                        .FirstOrDefault(o => o.ServiceProviderId == Args.RowData.ServiceProviderId
+                            && o.FinancialYearId == Args.RowData.FinancialYearId
+                        && o.IndicatorId == Args.RowData.IndicatorId);
+
+                    datasource = db.ViewProjectIndicatorTargetsDatasource
+                    .Where(o => o.ServiceProviderId == Args.RowData.ServiceProviderId
+                        && o.FinancialYearId == Args.RowData.FinancialYearId
+                        && o.IndicatorId == Args.RowData.IndicatorId).ToList();
+
+                    if (countdata == null)
+                    {
+                        foreach (var item in dist)
+                        {
+                            var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                            if (exist == null)
+                            {
+                                var m = new ViewProjectIndicatorTargetsDatasource();
+
+                                m.IndicatorTargetValueId = countid;
+                                m.DistrictId = item.DistrictId;
+                                m.TargetValue = 0;
+
+                                TargetCaptureDataSource.Add(m);
+                                countid++;
+                            }
+                        }
+
+                    }
+
+                    else
+                    {
+                        foreach (var item in dist)
+                        {
+                            var exist = datasource.FirstOrDefault(o => o.DistrictId == item.DistrictId);
+                            var countdata1 = db.ViewProjectIndicatorTargetsDatasource
+                                .FirstOrDefault(o => o.ServiceProviderId == SvcPvdId
+                                    && o.FinancialYearId == finyear
+                                    && o.IndicatorId == IndId 
+                                    && o.DistrictId == item.DistrictId);
+
+                            if (exist == null)
+                            {
+                                if(countdata1!=null)
+                                {
+                                    var m = new ViewProjectIndicatorTargetsDatasource();
+                                    m.IndicatorTargetValueId = countid;
+                                    m.DistrictId = item.DistrictId;
+                                    m.ProjectTargetValueHeaderId = countdata1.ProjectTargetValueHeaderId;
+                                    m.TargetValue = countdata1.TargetValue;
+
+                                    TargetCaptureDataSource.Add(m);
+                                    countid++;
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (Args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            Args.Data.ServiceProviderId = userManagement.GetServiceProviderId();
+            userdetail = UserManagementData.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+
+            //Return empty datasource on adding new record
+            TargetCaptureDataSource = null;
+        }
+    }
+
+    //Enable cell edit on single click
+    public async Task CellSelectHandler(CellSelectEventArgs<ViewProjectIndicatorTargetsDatasource> args)
+    {
+        try
+        {
+            //get selected cell index
+            var CellIndexes = await DataGrid.GetSelectedRowCellIndexesAsync();
+
+            //get the row and cell index
+            var CurrentEditRowIndex = CellIndexes[0].Item1;
+            var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+            //get the available fields
+            var fields = await DataGrid.GetColumnFieldNamesAsync();
+            // edit the selected cell using the cell index and column name
+            await DataGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+        }
+        catch (Exception ex)
+        {
+            // throw ex;
+        }
+    }
+
+    public async Task onSubmitForm()
+    {
+        try
+        {
+            if (CaptureMainData.ServiceProviderId == null)
+            {
+                toastService.ShowWarning("Please select the service provider.");
+            }
+            else if (CaptureMainData.IndicatorId == null)
+            {
+                toastService.ShowWarning("Please select the indicator.");
+            }
+            else if (CaptureMainData.FinancialYearId == null)
+            {
+                toastService.ShowWarning("Please select the financial year.");
+            }
+
+            else
+            {
+                await DataGrid.EndEditAsync();
+
+                //Save Header Table
+                ProjectIndicatorTargetsHeader objheader = new ProjectIndicatorTargetsHeader();
+                ProjectIndicatorTargetsDetails objdetails = new ProjectIndicatorTargetsDetails();
+
+                var moheader = await db.ProjectIndicatorTargetsHeader
+                    .FirstOrDefaultAsync(o => o.ServiceProviderId == CaptureMainData.ServiceProviderId
+                        && o.IndicatorId == CaptureMainData.IndicatorId
+                        && o.FinancialYearId == CaptureMainData.FinancialYearId);
+
+                if (moheader == null)
+                {
+                    int idheader = 1;
+                    var lastheader = db.ProjectIndicatorTargetsHeader
+                    .OrderBy(o => o.ProjectTargetValueHeaderId).ToList().LastOrDefault();
+                    if (lastheader != null)
+                    {
+                        idheader = (lastheader.ProjectTargetValueHeaderId + 1);
+                    }
+
+                    objheader.ProjectTargetValueHeaderId = idheader;
+                    objheader.ServiceProviderId = CaptureMainData.ServiceProviderId;
+                    objheader.FinancialYearId = CaptureMainData.FinancialYearId;
+                    objheader.IndicatorId = CaptureMainData.IndicatorId;
+                    objheader.DateCaptured = DateTime.Now;
+                    objheader.CapturedBy = userManagement.GetUserName();
+
+                    await db.ProjectIndicatorTargetsHeader.AddAsync(objheader);
+                    await db.SaveChangesAsync();
+                    db.Entry(objheader).State = EntityState.Detached;
+                    await db.SaveChangesAsync();
+
+                    //Save Details Table
+                    foreach (ViewProjectIndicatorTargetsDatasource item in TargetCaptureDataSource)
+                    {
+
+                        var modetails = await db.ViewProjectIndicatorTargetsDatasource
+                        .FirstOrDefaultAsync(o => o.ServiceProviderId == CaptureMainData.ServiceProviderId
+                            && o.IndicatorId == CaptureMainData.IndicatorId
+                            && o.DistrictId == item.DistrictId
+                            && o.FinancialYearId == CaptureMainData.FinancialYearId);
+
+                        if (modetails == null)
+                        {
+                            int iddetails = 1;
+                            var lastdetails = db.ProjectIndicatorTargetsDetails
+                            .OrderBy(o => o.IndicatorTargetValueId).ToList().LastOrDefault();
+                            if (lastdetails != null)
+                            {
+                                iddetails = (lastdetails.IndicatorTargetValueId + 1);
+                            }
+
+                            objdetails.IndicatorTargetValueId = iddetails;
+                            objdetails.ProjectTargetValueHeaderId = idheader;
+                            objdetails.DistrictId = item.DistrictId;
+                            objdetails.TargetValue = item.TargetValue;
+                            objdetails.DateCaptured = DateTime.Now;
+                            objdetails.CapturedBy = userManagement.GetUserName();
+
+                            await db.ProjectIndicatorTargetsDetails.AddAsync(objdetails);
+                            await db.SaveChangesAsync();
+                            db.Entry(objdetails).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+
+                        else
+                        {
+                            modetails.DistrictId = item.DistrictId;
+                            modetails.TargetValue = item.TargetValue;
+
+                            db.Entry(modetails).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            db.Entry(modetails).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+
+                    }
+
+                }
+
+                else
+                {
+                    moheader.ServiceProviderId = CaptureMainData.ServiceProviderId;
+                    moheader.FinancialYearId = CaptureMainData.FinancialYearId;
+                    moheader.IndicatorId = CaptureMainData.IndicatorId;
+
+                    db.Entry(moheader).State = EntityState.Modified;
+                    await db.SaveChangesAsync();
+                    db.Entry(moheader).State = EntityState.Detached;
+                    await db.SaveChangesAsync();
+
+                    //Save Details Table on Update
+                    foreach (ViewProjectIndicatorTargetsDatasource item in TargetCaptureDataSource)
+                    {
+
+                        var modetails = await db.ViewProjectIndicatorTargetsDatasource
+                        .FirstOrDefaultAsync(o => o.ServiceProviderId == CaptureMainData.ServiceProviderId
+                            && o.IndicatorId == CaptureMainData.IndicatorId
+                            && o.DistrictId == item.DistrictId
+                            && o.FinancialYearId == CaptureMainData.FinancialYearId);
+
+                        if (modetails == null)
+                        {
+                            int iddetails = 1;
+                            var lastdetails = db.ProjectIndicatorTargetsDetails
+                            .OrderBy(o => o.IndicatorTargetValueId).ToList().LastOrDefault();
+                            if (lastdetails != null)
+                            {
+                                iddetails = (lastdetails.IndicatorTargetValueId + 1);
+                            }
+
+                            objdetails.IndicatorTargetValueId = iddetails;
+                            objdetails.ProjectTargetValueHeaderId = moheader.ProjectTargetValueHeaderId;
+                            objdetails.DistrictId = item.DistrictId;
+                            objdetails.TargetValue = item.TargetValue;
+                            objdetails.DateCaptured = DateTime.Now;
+                            objdetails.CapturedBy = userManagement.GetUserName();
+
+                            await db.ProjectIndicatorTargetsDetails.AddAsync(objdetails);
+                            await db.SaveChangesAsync();
+                            db.Entry(objdetails).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+
+                        else
+                        {
+                            //modetails.ProjectTargetValueHeaderId = modetails.ProjectTargetValueHeaderId;
+                            //modetails.DistrictId = item.DistrictId;
+                            //modetails.TargetValue = item.TargetValue;
+
+                            //db.Entry(objdetails).State = EntityState.Modified;
+                            //await db.SaveChangesAsync();
+                            //db.Entry(objdetails).State = EntityState.Detached;
+                            //await db.SaveChangesAsync();
+
+                            objdetails.DistrictId = item.DistrictId;
+                            objdetails.TargetValue = item.TargetValue;
+
+                            db.Entry(objdetails).CurrentValues.SetValues(item);
+                            db.Entry(objdetails).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            db.Entry(objdetails).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+
+                    }
+                }
+
+                if (MainGrid != null)
+                {
+                    await MainGrid.EndEditAsync();
+                    toastService.ShowSuccess("Record Saved Successfully");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowWarning(ex.Message.ToString());
+        }
+        finally
+        {
+            //await LoadingDialogue.HideAsync();
+            StateHasChanged();
+        }
+    }
+
+    public async void DialogCancelBtnclicked()
+    {
+        if (DataGrid != null)
+        {
+            await DataGrid.CloseEdit();
+        }
+        if (MainGrid != null)
+        {
+            await MainGrid.CloseEdit();
+        }
+    }
+}

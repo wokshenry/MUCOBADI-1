@@ -1,0 +1,746 @@
+﻿@page "/GraduationBenchmarkPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@inject MUCOBADIContext db;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID/ICARE |</strong>Household Graduation Benchmark Assessment Tool</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+               <p>District</p>
+               <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                   <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                   <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+               </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+               <p>Sub-County</p>
+               <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                   <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                   <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+               </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+               <p>Parish</p>
+               <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                   <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                   <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+               </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+               <p>Village</p>
+               <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                   <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+               </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+               <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+               <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+               <DataAnnotationsValidator />
+               <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="GraduationBenchMarkGrid" TValue="GraduationBenchMark" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+            <SfDataManager AdaptorInstance="@typeof(GraduationBenchMarkAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridEvents OnActionComplete="OnGraduationBenchMarkActionComplete" OnActionBegin="OnGraduationBenchMarkActionBegin" TValue="GraduationBenchMark"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                   <Template Context="GraduationChecklistHeaderContext">
+                       @{
+                        GraduationBenchMarkReviewData = (GraduationChecklistHeaderContext as GraduationBenchMark);
+                           <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                               <div class="form-row">
+                                   <div class="form-group col-md-12" hidden>
+                                       <SfNumericTextBox @bind-Value="@GraduationBenchMarkReviewData.GraduationBenchMarkId" Enabled="false"></SfNumericTextBox>
+                                   </div>
+                                   <div class="form-group col-md-4">
+                                       <p>Date of Assessment</p>
+                                       <SfDatePicker @bind-Value="@(GraduationBenchMarkReviewData.AssessmentDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                   </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of implementing partner</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.SubCountyId)" Enabled="true" TItem="ASubcounty"
+                                   TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never"
+                                   Query="@(new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = GraduationBenchMarkReviewData.DistrictId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Parish</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.ParishId)" Enabled="true" TItem="AParish"
+                                       TValue="int?" DataSource="@ParishData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never"
+                                       Query="@(new Query().Where(new WhereFilter() { Field = "SubCountyId", Operator = "equal", value = GraduationBenchMarkReviewData.SubCountyId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Village</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.VillageId)" Enabled="true" TItem="AVillage"
+                                       TValue="int?" DataSource="@VillageData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never"
+                                       Query="@(new Query().Where(new WhereFilter() { Field = "ParishId", Operator = "equal", value = GraduationBenchMarkReviewData.ParishId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of person administering</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(GraduationBenchMarkReviewData.AdministeringPersonName)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Phone number</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(GraduationBenchMarkReviewData.AdministeringPersonPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Household </p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.HouseholdId)" Enabled="true" TItem="BeneficiaryIdentificationRegister" TValue="int?" DataSource="@HouseholdData"
+                                           Placeholder="Please select" FloatLabelType="FloatLabelType.Never" Query="@(new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = GraduationBenchMarkReviewData.SubCountyId, IgnoreCase = false, IgnoreAccent = false }))">
+                                   <DropDownListFieldSettings Value="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" Text="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)"></DropDownListFieldSettings>
+                                   <DropDownListEvents TItem="BeneficiaryIdentificationRegister" TValue="int?" ValueChange="OnHouseholdChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                <div class="form-group col-md-12">
+                                    <p>5. Improved financial stability</p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <p>School Fees: Were you or another caregiver in the household able to pay school fees for the last school year for all children and adolescents in your household under the age of 18 WITHOUT?</p>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <p>5.1  A cash transfer or scholarship?</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.ImprovedfinancialstabilityScholashipYesNoId)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData"
+                                           Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                   <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <p>5.2  Selling something used to generate income that you did not want/ plan  to sell (livestock, land, tools, equipment)</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.ImprovedfinancialstabilitySellingIncomeGeneratingSomethingYesNoId)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData"
+                                                Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <p>Medical Costs: Were you or another caregiver in the household able to pay all medical costs (medicine, clinical fees, transport) in the past 6 months for all children and adolescents in your household underthe age of 18 WITHOUT?</p>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <p>5.1  A cash transfer or scholarship?</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.MedicalCostCashTransfertYesNoId)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData"
+                                           Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                   <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <p>5.2  Selling something used to generate income that you did not want/ plan  to sell (livestock, land, tools, equipment)</p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.MedicalCostSellingIncomeGeneratingSomethingYesNoId)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData"
+                                                Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if(GraduationBenchMarkReviewData.GraduationBenchMarkDetail != null && GraduationBenchMarkReviewData.GraduationBenchMarkDetail.Count > 0
+                                && GraduationBenchMarkReviewData.HouseholdId != null)
+                                {
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                 
+                                    <div class="form-group col-md-12">
+                                        <GraduationBenchMarkDetailPage @ref=@DetailPage GraduationBenchMarkDetailData="@GraduationBenchMarkReviewData.GraduationBenchMarkDetail.ToList()"
+                                                               HouseHoldMembersData="@(HouseHoldMembersData.Where(o=> o.HouseHoldId==GraduationBenchMarkReviewData.HouseholdId).ToList())"
+                                                               HouseHoldId="@GraduationBenchMarkReviewData.HouseholdId" YesNoData="@YesNoData" />
+                                    </div>
+                                }
+                                
+
+                                   <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                   <div class="form-group col-md-12">
+                                    <p>General Comments <i>(met and those not met):</i></p>
+                                    <SfTextBox Multiline="true" @bind-Value="@(GraduationBenchMarkReviewData.GeneralComment)" Enabled="true" Placeholder="Pleses enter the Comment" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Enrolled HH Status </p>
+                                    <SfDropDownList @bind-Value="@(GraduationBenchMarkReviewData.HouseholdStatusId)" Enabled="true" TItem="AEnrolledHouseholdStatus" TValue="int?" DataSource="@HouseholdStatusData"
+                                               Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                       <DropDownListFieldSettings Value="@nameof(AEnrolledHouseholdStatus.HouseholdStatusId)" Text="@nameof(AEnrolledHouseholdStatus.HouseholdStatusDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of Home Visitor/ Assessor</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(GraduationBenchMarkReviewData.NameofAssessor)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(GraduationBenchMarkReviewData.AssessorTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Code</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(GraduationBenchMarkReviewData.AssessorCode)" Enabled="true" Placeholder="Pleses enter the Code" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+
+                           </div>
+                           </div>
+                       }
+                   </Template>
+                   <FooterTemplate>
+                       <SfButton CssClass="e-btn e-success" OnClick="SaveGraduationChecklistHeaderBtnClick"> Save Benchmark</SfButton>
+                       <SfButton CssClass="e-btn e-danger" OnClick="CancelGraduationChecklistHeaderBtnClick"> Cancel</SfButton>
+                   </FooterTemplate>
+                   
+               </GridEditSettings>
+               <GridColumns>
+                       <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                <GridColumn Field=@nameof(GraduationBenchMark.GraduationBenchMarkId) HeaderText="Graduation BenchMark Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="180"></GridColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMark.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMark.SubCountyId) HeaderText="Sub county" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridColumn Field=@nameof(GraduationBenchMark.AssessmentDate) HeaderText="Date of Assessment" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMark.HouseholdId) HeaderText="Household Code" ForeignKeyField="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" ForeignKeyValue="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)" ForeignDataSource="@HouseholdData" Width="220">
+                </GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMark.HouseholdStatusId) HeaderText="Enrolled HH Status" ForeignKeyField="@nameof(AEnrolledHouseholdStatus.HouseholdStatusId)" ForeignKeyValue="@nameof(AEnrolledHouseholdStatus.HouseholdStatusDescription)" ForeignDataSource="@HouseholdStatusData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(GraduationBenchMark.AdministeringPersonName) HeaderText="Name of person administering" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(GraduationBenchMark.AdministeringPersonPhoneNumber) HeaderText="Phone number" Width="220"></GridColumn>
+                   </GridColumns>
+            </SfGrid>
+        </div>
+        </div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast? ToastObj;
+    SfToast? DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+
+    SfGrid<GraduationBenchMark>? GraduationBenchMarkGrid;
+    private GraduationBenchMark? GraduationBenchMarkReviewData { get; set; }
+
+
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<BeneficiaryIdentificationRegister> HouseholdData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+
+    public Query MainQuery = new Query();
+
+    private SearchPanel InputModel = new();
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AEnrolledHouseholdStatus> HouseholdStatusData { get; set; }
+
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+
+    bool isEnabled { get; set; } = false;
+
+    GraduationBenchMarkDetailPage DetailPage { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                HouseholdData = db.BeneficiaryIdentificationRegister.AsNoTracking().ToList();
+                HouseholdStatusData = db.AEnrolledHouseholdStatus.AsNoTracking().ToList();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            //await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private async Task SaveGraduationChecklistHeaderBtnClick()
+    {
+        if(DetailPage != null)
+        {
+            GraduationBenchMarkReviewData.GraduationBenchMarkDetail = await DetailPage.ReturnDetail();
+        }
+        await GraduationBenchMarkGrid.EndEditAsync();
+    }
+    private async Task CancelGraduationChecklistHeaderBtnClick()
+    {
+        await GraduationBenchMarkGrid.CloseEditAsync();
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+        if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+        {
+            var districtlist = userManagement.GetUserDistrict();
+            if (districtlist != null && districtlist.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in districtlist)
+                {
+                    m.Add(n);
+                }
+
+                InputModel.DistrictId = m.ToArray();
+                _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                MainQuery = new Query();
+                MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+            }
+            var subcountyList = userManagement.GetUserSubcounty();
+            if (subcountyList != null && subcountyList.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in subcountyList)
+                {
+                    m.Add(n);
+                }
+                InputModel.SubcountyId = m.ToArray();
+                _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                MainQuery = new Query();
+                MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+            }
+        }
+        else
+        {
+            isEnabled = true;
+        }
+    }
+
+    private void OnHouseholdChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, BeneficiaryIdentificationRegister> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                var members = HouseHoldMembersData.Where(o => o.HouseHoldId == args.Value).ToList();
+                if(members != null && members.Count > 0)
+                {
+                    GraduationBenchMarkReviewData.GraduationBenchMarkDetail = new List<GraduationBenchMarkDetail>();
+                    Random rand = new Random();
+                    foreach(var item in members){
+                        var exists = GraduationBenchMarkReviewData.GraduationBenchMarkDetail.FirstOrDefault(o=> o.HouseHoldMemberId==item.HouseHoldMemberId);
+                        if (exists == null)
+                        {
+                            GraduationBenchMarkReviewData.GraduationBenchMarkDetail.Add(new GraduationBenchMarkDetail()
+                        {
+                            HouseHoldMemberId = item.HouseHoldMemberId,
+                                GraduationBenchMarkDetailId = rand.Next(-10000, -1),
+                        });
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    #region Graduation Checklist Header
+    public class GraduationBenchMarkAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private readonly MUCOBADIContext db;
+        //private UserManagement _userManagement;
+        public GraduationBenchMarkAdapter(IToastService ts/*, UserManagement userManagement*/, MUCOBADIContext db)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+            this.db = db;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<GraduationBenchMark>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                data = await db.GraduationBenchMark.Include(o=> o.GraduationBenchMarkDetail)/*.Where(o => o.HouseholdId == HouseHoldId)*/.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<GraduationBenchMark>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as GraduationBenchMark);
+                int lastDetailId = 1;
+                var lastDetail = db.GraduationBenchMarkDetail.OrderBy(o => o.GraduationBenchMarkDetailId).ToList().LastOrDefault();
+                if(lastDetail != null)
+                {
+                    lastDetailId = (lastDetail.GraduationBenchMarkDetailId + 1);
+                }
+                int count = 0;
+                foreach(var item in val.GraduationBenchMarkDetail)
+                {
+                    if (item.GraduationBenchMarkDetailId < 0)
+                    {
+                        item.GraduationBenchMarkDetailId = (lastDetailId + count);
+                        count++;
+                    }
+                }
+
+
+
+                var exist = db.GraduationBenchMark.FirstOrDefault(o => o.GraduationBenchMarkId == val.GraduationBenchMarkId);
+                if (exist == null)
+                {
+                    int id = 1;
+                    var last = db.GraduationBenchMark.OrderBy(o => o.GraduationBenchMarkId).LastOrDefault();
+                    if (last != null)
+                    {
+                        id = (last.GraduationBenchMarkId + 1);
+                    }
+                    val.GraduationBenchMarkId = id;
+                    db.GraduationBenchMark.Add(val);
+                    db.SaveChanges();
+                    toastService.ShowSuccess("Record Saved Successfully", "Success");
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as GraduationBenchMark);
+                //int lastDetailId = 1;
+                //var lastDetail = db.GraduationBenchMarkDetail.OrderBy(o => o.GraduationBenchMarkDetailId).ToList().LastOrDefault();
+                //if (lastDetail != null)
+                //{
+                //    lastDetailId = (lastDetail.GraduationBenchMarkDetailId + 1);
+                //}
+                //int count = 0;
+                //foreach (var item in val.GraduationBenchMarkDetail)
+                //{
+                //    if (item.GraduationBenchMarkDetailId < 0)
+                //    {
+                //        item.GraduationBenchMarkDetailId = (lastDetailId + count);
+                //        count++;
+                //    }
+                //}
+
+                var exist = db.GraduationBenchMark.FirstOrDefault(o => o.GraduationBenchMarkId == val.GraduationBenchMarkId);
+                if (exist != null)
+                {
+                    db.Entry(exist).CurrentValues.SetValues(val);
+                    db.Entry(exist).State = EntityState.Modified;
+                    await db.SaveChangesAsync();
+                    db.Entry(exist).State = EntityState.Detached;
+                    await db.SaveChangesAsync();
+                }
+
+                if(val.GraduationBenchMarkDetail != null && val.GraduationBenchMarkDetail.Count > 0)
+                {
+                    foreach (var item in val.GraduationBenchMarkDetail)
+                    {
+                        var _exists = db.GraduationBenchMarkDetail.FirstOrDefault(o=> o.GraduationBenchMarkDetailId==item.GraduationBenchMarkDetailId);
+                        if(_exists == null)
+                        {
+                            int lastDetailId = 1;
+                            var lastDetail = db.GraduationBenchMarkDetail.OrderBy(o => o.GraduationBenchMarkDetailId).ToList().LastOrDefault();
+                            if (lastDetail != null)
+                            {
+                                lastDetailId = (lastDetail.GraduationBenchMarkDetailId + 1);
+                            }
+                            item.GraduationBenchMarkId = val.GraduationBenchMarkId;
+                            item.GraduationBenchMarkDetailId = lastDetailId;
+                            db.GraduationBenchMarkDetail.Add(item);
+                            await db.SaveChangesAsync();
+                            db.Entry(item).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            item.GraduationBenchMarkId = val.GraduationBenchMarkId;
+                            db.Entry(_exists).CurrentValues.SetValues(item);
+                            db.Entry(_exists).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                            db.Entry(_exists).State = EntityState.Detached;
+                            await db.SaveChangesAsync();
+                        }
+                    }
+                }
+                toastService.ShowSuccess("Record updated Successfully", "Success");
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnGraduationBenchMarkActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<GraduationBenchMark> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                if (args.RowData.GraduationBenchMarkDetail == null)
+                {
+                    args.RowData.GraduationBenchMarkDetail = new List<GraduationBenchMarkDetail>();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.GraduationBenchMarkDetail = new List<GraduationBenchMarkDetail>();
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.HouseholdId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.AssessmentDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Date of Assessment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.NameofAssessor))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the person that ASSENTED this record", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.AssessorTitle))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the title of the assessor.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnGraduationBenchMarkActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<GraduationBenchMark> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            GraduationBenchMarkGrid.PreventRender(false);
+        }
+    }
+    #endregion Graduation Checklist Header
+
+    
+}

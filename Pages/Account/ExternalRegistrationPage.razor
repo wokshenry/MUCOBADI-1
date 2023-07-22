@@ -1,0 +1,275 @@
+﻿@page "/ExternalRegistrationPage"
+@using MUCOBADI.Data;
+@using MUCOBADI.Models;
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@inject NavigationManager NavManager;
+@inject UserManager<IdentityUser> _userManager;
+@using System.Net;
+@using System.Net.Mail;
+<style>
+    body {
+        margin: 0px;
+        padding: 0px;
+        background: url(../image/bg.png);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position-y: -68px;
+        height: 100%;
+        background-color: #000 !important;
+        /*font-family: 'Roboto', 'Roboto Condensed' !important;*/
+        width: 100%;
+        overflow-x: hidden !important;
+    }
+
+    h3 {
+            color: ghostwhite;
+            font-family: 'Roboto', 'Roboto Condensed' !important;
+    }
+
+    p {
+        word-wrap: break-word;
+    }
+    .e-input-group, .e-input-group.e-control-wrapper, .e-float-input, .e-float-input.e-input-group, .e-float-input.e-control-wrapper, .e-float-input.e-input-group.e-control-wrapper {
+        background: white;
+        color: black;
+        height: 48px;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 16px;
+    }
+    .e-checkbox-wrapper .e-label, .e-css.e-checkbox-wrapper .e-label {
+        color: white;
+        font-size: 18px;
+    }
+    .e-checkbox-wrapper .e-checkbox:focus + .e-frame.e-stop, .e-css.e-checkbox-wrapper .e-checkbox:focus + .e-frame.e-stop {
+        box-shadow: none;
+        color: white;
+    }
+</style>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<h3 style="margin-left:10%;">Register</h3>
+<EditForm Model="@InputModel" class="form-row" style="margin-left:10%; margin-right:10%;" OnValidSubmit="@RegisterUser">
+    <div class="form-group col-md-6">
+        <label class="label" for="AccountHolderName" style="color:#96CFF0;float:left;">Name</label>
+        <input type="text" id="AccountHolderName" name="AccountHolderName" @bind-value="@InputModel.AccountHolderName" class="form-control" placeholder="Name" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="ConfirmPassword" style="color:#96CFF0;float:left;">Email (Official Emails Only)</label>
+        <input type="email" name="Email" id="Email" @bind-value="@InputModel.Email" class="form-control" placeholder="Email" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="PhoneNumber" style="color:#96CFF0;float:left;">Phone Number (Start with country code e.g For Uganda: +256XXXXXXXX)</label>
+        <input type="tel" id="PhoneNumber" name="PhoneNumber" @bind-value="@InputModel.PhoneNumber" class="form-control" placeholder="Phone Number" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="UserName" style="color:#96CFF0;float:left;">User Name</label>
+        <input type="text" name="UserName" readonly id="UserName" @bind-value="@InputModel.UserName" class="form-control" placeholder="User Name" required>
+    </div>
+    @*<div class="form-group col-md-6">
+        <label class="label" for="PorjectId" style="color:#96CFF0;float:left;">Project</label>
+        <SfDropDownList ID="PorjectId" @bind-Value="@InputModel.PorjectId" TValue="int?" TItem="AProject" Width="100%" DataSource="@ProjectData" Placeholder="Select Project" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+            <DropDownListFieldSettings Text="@(nameof(AProject.ProjectName))" Value="@nameof(AProject.ProjectId)"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="OperationAreaId" style="color:#96CFF0;float:left;">Contract Area</label>
+        <SfDropDownList ID="OperationAreaId" @bind-Value="@InputModel.OperationAreaId" TValue="int?" TItem="AOperationArea" Width="100%" DataSource="@OperationAreaData" Placeholder="Select the Contract Area" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+            <DropDownListFieldSettings Text="@(nameof(AOperationArea.OperationAreaDescription))" Value="@nameof(AOperationArea.OperationAreaId)"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="OperatorId" style="color:#96CFF0;float:left;">Operator</label>
+        <SfDropDownList ID="OperatorId" @bind-Value="InputModel.OperatorId" TValue="double?" TItem="AOperator" Width="100%" DataSource="@OperatorData" Placeholder="Select the Operator" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+            <DropDownListFieldSettings Text="@(nameof(AOperator.OperatorName))" Value="@nameof(AOperator.OperatorId)"></DropDownListFieldSettings>
+        </SfDropDownList>
+    </div>*@
+    @*@if (InputModel.IsContractorAccount == true)
+    {
+        <div class="form-group col-md-6">
+            <label class="label" for="ContractorId" style="color:#96CFF0;float:left;">Contractor</label>
+            <SfDropDownList ID="ContractorId" @bind-Value="@InputModel.ContractorId" TValue="double?" TItem="AContractor" Width="100%" DataSource="@ContractorData" Placeholder="Please select the contractor" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                <DropDownListFieldSettings Text="@(nameof(AContractor.ContractorName))" Value="@nameof(AContractor.ContractorId)"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+    }*@
+    <div class="form-group col-md-6">
+        <label class="label" for="Password" style="color:#96CFF0;float:left;">Password</label>
+        <input type="password" @bind-value="@InputModel.Password" class="form-control" placeholder="Password" required>
+    </div>
+    <div class="form-group col-md-6">
+        <label class="label" for="ConfirmPassword" style="color:#96CFF0;float:left;">Confirm Password</label>
+        <input type="password" @bind-value="@InputModel.ConfirmPassword" class="form-control" placeholder="Confirm Password" required>
+    </div>
+    <div class="form-group col-md-6">
+    </div>
+    <div class="form-group col-md-12">
+        <button type="submit" class="form-control btn btn-primary rounded submit px-3">Create Account</button>
+    </div>
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+</EditForm>
+<p class="text-center">Already have an account? <a data-toggle="tab" href="#" @onclick="@BackToLoginClick">Login here</a></p>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private ExternalRegisterViewModel InputModel = new ExternalRegisterViewModel();
+    protected override void OnInitialized()
+    {
+        try
+        {
+            using(var db = new MUCOBADIContext())
+            {
+
+            }
+        }
+        catch(Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { base.OnInitialized(); }
+
+    }
+    private void BackToLoginClick()
+    {
+        NavManager.NavigateTo("/", true);
+    }
+
+    private async Task RegisterUser()
+    {
+        try
+        {
+            var user = new IdentityUser { UserName = InputModel.UserName, Email = InputModel.Email, PhoneNumber = InputModel.PhoneNumber, LockoutEnabled = false };
+            var result = await _userManager.CreateAsync(user, InputModel.Password);
+            if (result.Succeeded)
+            {
+                IdentityResult _result = new IdentityResult();
+                //var _result = await _userManager.AddToRoleAsync(user, InputModel.UserRole);
+                _result = await _userManager.AddToRoleAsync(user, "Administrator");
+
+                if (_result.Succeeded)
+                {
+                    string url = NavManager.BaseUri;
+                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+                    using (var dbContext = new MUCOBADIContext())
+                    {
+                        double id = 1;
+                        var _last = dbContext.AspNetEmailConfirmationCode.AsNoTracking().ToList().LastOrDefault();
+                        if (_last != null)
+                        {
+                            id = (_last.ConfirmationId + 1);
+                        }
+                        var exist = dbContext.AspNetUsers.FirstOrDefault(o => o.Id == user.Id);
+                        if (exist != null)
+                        {
+                            //exist.StaffId = InputModel.StaffId;
+                            exist.AccountHolderName = InputModel.AccountHolderName;
+                            //exist.EmailConfirmed = true;
+                            //exist.LockoutEnabled = false;
+                            exist.PhoneNumberConfirmed = true;
+                            dbContext.Entry(exist).State = EntityState.Modified;
+                            dbContext.SaveChanges();
+                        }
+                        AspNetEmailConfirmationCode x = new AspNetEmailConfirmationCode()
+                        {
+                            UserName = InputModel.UserName,
+                            ConfirmationCode = code,
+                            CreationDate = DateTime.Now,
+                            ConfirmationId = id
+                        };
+                        dbContext.AspNetEmailConfirmationCode.Add(x);
+                        dbContext.SaveChanges();
+
+                    }
+
+                    byte[] c = System.Text.ASCIIEncoding.ASCII.GetBytes(InputModel.UserName);
+                    string username = Convert.ToBase64String(c);
+
+                    string _message = url + "ConfirmEmailPage/" + username;
+                    if (!string.IsNullOrEmpty(InputModel.Email))
+                    {
+                        using (var message = new MailMessage("apps.noreply@pau.go.ug", InputModel.Email))
+                        {
+                            message.Subject = "MUCOBADI Account Activation";
+                            message.Body = "Dear " + InputModel.AccountHolderName + ",<br/><br/> please click <a href='" + _message + "'>here</a> to activate you account.</p>" +
+                                "<br/> <br/> Regards,<br/><br/> System Notification, <br/> MUCOBADI.<br/><br/>" + DateTime.Now;
+                            message.IsBodyHtml = true;
+                            using (SmtpClient client = new SmtpClient
+                            {
+                                //EnableSsl = false,
+                                ////Host = "smtp.gmail.com",//GoogleHost
+                                //Host = "mail.ibs.co.ug",//IBS Host
+                                ////Host = "mail.pau.go.ug",//PAU Host
+                                //Port = 587,
+                                ////Port = 25,
+                                //DeliveryMethod = SmtpDeliveryMethod.Network,
+                                //Credentials = new NetworkCredential("donotreply@ibs.co.ug", "**Root@85")
+                                ////Credentials = new NetworkCredential("apps.noreply@pau.go.ug", "N5Dn0r3p1y")
+
+                                EnableSsl = true,
+                                Host = "smtp.office365.com",//PAU Host
+                                Port = 587,
+                                DeliveryMethod = SmtpDeliveryMethod.Network,
+                                Credentials = new NetworkCredential("apps.noreply@pau.go.ug", "N5Dn0r3p1y")
+                            })
+                            {
+                                //client.EnableSsl = true;
+                                client.Send(message);
+                            }
+                        }
+                    }
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Success!", Content = InputModel.AccountHolderName + " has been successfully registered!. Please contact your Operator to activate this account inorder to access EWPRS.", CssClass = "e-toast-success", Icon = "e-success toast-icons" });
+
+                    //Clear Fields On Save
+                    InputModel = new ExternalRegisterViewModel();
+                }
+                else
+                {
+                    string _error = string.Empty;
+                    foreach (var error in _result.Errors)
+                    {
+                        // ModelState.AddModelError(string.Empty, error.Description);
+                        _error += error.Description + ",";
+                    }
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = _error, CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                }
+
+            }
+            else
+            {
+                string _error = string.Empty;
+                foreach (var error in result.Errors)
+                {
+                    // ModelState.AddModelError(string.Empty, error.Description);
+                    _error += error.Description + ",";
+                }
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = _error, CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+}

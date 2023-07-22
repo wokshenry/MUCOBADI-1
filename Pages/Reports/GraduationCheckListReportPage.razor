@@ -1,0 +1,689 @@
+﻿@page "/GraduationCheckListReportPage"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject MUCOBADIContext db;
+@inject SPToCoreContext spdb;
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>OVC HOUSEHOLD GRADUATION CHECKLIST REPORT</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+<EditForm Model="@InputModel" OnValidSubmit="@OnSearchSubmit">
+    <DataAnnotationsValidator />
+    <div class="row" style="margin-bottom:10px;">
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.HouseHoldId" TValue="int?[]" TItem="BeneficiaryIdentificationRegister" AllowFiltering="true" Placeholder="HouseHold Id" Mode="@VisualMode.CheckBox" DataSource="@HouseHoldData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="House Hold" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" Text="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="District" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="District" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="ChangeDistrict"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" Enabled="@EnableSubcountyDropDown" AllowFiltering="true" Placeholder="Subcounty" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Subcounty" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" Enabled="@EnableParishDropDown" AllowFiltering="true" Placeholder="Parish" Mode="@VisualMode.CheckBox" DataSource="@ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Parish" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" Enabled="@EnableVillageDropDown" AllowFiltering="true" Placeholder="Village" Mode="@VisualMode.CheckBox" DataSource="@VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Village" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+
+        @if (Downloadreport == false)
+        {
+            <div class="col col-md-3">
+                <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+            </div>
+
+        }
+
+        @if (!string.IsNullOrEmpty(Response))
+        {
+            <div class="form-group col-md-12">
+                @if (Response.Contains("No Record"))
+                {
+                    <p class="alert alert-danger" style="padding:10px;">@Response</p>
+                }
+                else
+                {
+                    <p class="alert alert-success" style="padding:10px;">@Response</p>
+                }
+            </div>
+        }
+
+
+        <div class="form-group col-md-12">
+            <SfSpinner @ref="DownloadingSpinner" Label="Downloading Report Please Wait....." Size="50" Type="@SpinnerType.Bootstrap"></SfSpinner>
+        </div>
+    </div>
+    <ValidationSummary />
+</EditForm>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private BeneficiaryRegisterSearch InputModel = new BeneficiaryRegisterSearch();
+    private List<BeneficiaryIdentificationRegister> HouseHoldData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+    private List<ASubcounty> SubcountyData { get; set; }
+    private List<AParish> ParishData { get; set; }
+    private List<AVillage> VillageData { get; set; }
+    public bool EnableSubcountyDropDown = false;
+    public bool EnableParishDropDown = false;
+    public bool EnableVillageDropDown = false;
+    public Query DistricttQuery { get; set; } = null;
+    string Response { get; set; }
+    SfSpinner DownloadingSpinner;
+    bool Downloadreport { get; set; } = false;
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                InputModel = new BeneficiaryRegisterSearch();
+                HouseHoldData = db.BeneficiaryIdentificationRegister.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+
+                FianacialYearData = new List<FianacialYear>();
+                QuarterData = db.AQuarter.AsNoTracking().ToList();
+                int current_year = DateTime.Now.Year;
+                var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o => o.DateofIdentification.HasValue == true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                if (firstHomeVisitdata != null)
+                {
+                    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    for (int i = 0; i <= (current_year - firstyear); i++)
+                    {
+
+                        if ((current_year - (firstyear + i)) > 0)
+                        {
+                            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                        }
+                    }
+                }
+                FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new BeneficiaryRegisterSearch();
+    }
+
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableSubcountyDropDown = true;
+            SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableParishDropDown = true;
+            ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableVillageDropDown = true;
+            VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    private async Task OnSearchSubmit()
+    {
+        Downloadreport = true;
+        await DownloadingSpinner.ShowAsync();
+
+        try
+        {
+            string HouseHoldId = null;
+            string DistrictId = null;
+            string SubcountyId = null;
+            string ParishId = null;
+            string VillageId = null;
+
+            if (InputModel.HouseHoldId != null && InputModel.HouseHoldId.Length > 0)
+            {
+                HouseHoldId = string.Join(",", InputModel.HouseHoldId);
+            }
+
+            if (InputModel.DistrictId != null && InputModel.DistrictId.Length > 0)
+            {
+                DistrictId = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null && InputModel.SubcountyId.Length > 0)
+            {
+                SubcountyId = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null && InputModel.ParishId.Length > 0)
+            {
+                ParishId = string.Join(",", InputModel.ParishId);
+            }
+            if (InputModel.VillageId != null && InputModel.VillageId.Length > 0)
+            {
+                VillageId = string.Join(",", InputModel.VillageId);
+            }
+
+            var data = await spdb.spViewGraduationChecklistHeaderReportAsync(HouseHoldId, DistrictId, SubcountyId, ParishId, VillageId);
+
+            if (data.Count > 0)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+                    IApplication application = excelEngine.Excel;
+                    application.DefaultVersion = ExcelVersion.Excel2013;
+                    IWorkbook workbook = application.Workbooks.Create(1);
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    worksheet.Name = "OVC HOUSEHOLD GRADUATION CHECKLIST";
+
+                    #region Styles
+                    var headerStyle = workbook.Styles.Add("headerStyle");
+
+                    headerStyle.BeginUpdate();
+                    headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                    headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    headerStyle.Font.Bold = true;
+                    headerStyle.Font.FontName = "Arial";
+                    headerStyle.Font.Size = 8f;
+                    headerStyle.Font.Color = ExcelKnownColors.White;
+
+                    headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    headerStyle.Borders.Color = ExcelKnownColors.White;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                    headerStyle.WrapText = true;
+
+                    headerStyle.EndUpdate();
+
+                    var Style = workbook.Styles.Add("bodyStyle");
+
+                    Style.BeginUpdate();
+                    Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                    Style.Font.Bold = false;
+                    Style.Font.FontName = "Arial";
+                    Style.Font.Size = 8f;
+                    Style.Font.Color = ExcelKnownColors.Black;
+                    Style.WrapText = true;
+                    Style.Borders.Color = ExcelKnownColors.Black;
+                    Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    Style.EndUpdate();
+
+
+                    var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                    CategoryStyle.BeginUpdate();
+                    CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                    /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                    CategoryStyle.Font.Bold = true;
+                    CategoryStyle.Font.FontName = "Arial";
+                    CategoryStyle.Font.Size = 15f;
+                    CategoryStyle.Font.Color = ExcelKnownColors.White;
+                    CategoryStyle.WrapText = true;
+                    CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.EndUpdate();
+
+                    var HHHeadStyle = workbook.Styles.Add("HHHeadStyle");
+
+                    HHHeadStyle.BeginUpdate();
+                    HHHeadStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    HHHeadStyle.Color = Syncfusion.Drawing.Color.FromArgb(140, 152, 152); //ASBESTOS
+                    HHHeadStyle.Font.Bold = true;
+                    HHHeadStyle.Font.FontName = "Arial";
+                    HHHeadStyle.Font.Size = 12f;
+                    HHHeadStyle.Font.Color = ExcelKnownColors.White;
+                    HHHeadStyle.WrapText = true;
+                    HHHeadStyle.Borders.Color = ExcelKnownColors.White;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.EndUpdate();
+
+                    var HHMembersStyle = workbook.Styles.Add("HHMembersStyle");
+
+                    HHMembersStyle.BeginUpdate();
+                    HHMembersStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    HHMembersStyle.Color = Syncfusion.Drawing.Color.FromArgb(237, 145, 33); // CARROT ORANGE
+                    HHMembersStyle.Font.Bold = true;
+                    HHMembersStyle.Font.FontName = "Arial";
+                    HHMembersStyle.Font.Size = 12f;
+                    HHMembersStyle.Font.Color = ExcelKnownColors.White;
+                    HHMembersStyle.WrapText = true;
+                    HHMembersStyle.Borders.Color = ExcelKnownColors.White;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.EndUpdate();
+
+                    var priorityarea1 = workbook.Styles.Add("priorityarea1");
+                    priorityarea1.BeginUpdate();
+                    priorityarea1.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    priorityarea1.Color = Syncfusion.Drawing.Color.FromArgb(39, 60, 118);
+                    priorityarea1.Font.Bold = true;
+                    priorityarea1.Font.FontName = "Arial";
+                    priorityarea1.Font.Size = 12f;
+                    priorityarea1.Font.Color = ExcelKnownColors.White;
+                    priorityarea1.WrapText = true;
+                    priorityarea1.Borders.Color = ExcelKnownColors.White;
+                    priorityarea1.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea1.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea1.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea1.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea1.EndUpdate();
+
+                    var priorityarea2 = workbook.Styles.Add("priorityarea2");
+                    priorityarea2.BeginUpdate();
+                    priorityarea2.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    priorityarea2.Color = Syncfusion.Drawing.Color.FromArgb(232, 65, 32);
+                    priorityarea2.Font.Bold = true;
+                    priorityarea2.Font.FontName = "Arial";
+                    priorityarea2.Font.Size = 12f;
+                    priorityarea2.Font.Color = ExcelKnownColors.White;
+                    priorityarea2.WrapText = true;
+                    priorityarea2.Borders.Color = ExcelKnownColors.White;
+                    priorityarea2.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea2.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea2.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea2.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea2.EndUpdate();
+
+                    var priorityarea3 = workbook.Styles.Add("priorityarea3");
+                    priorityarea3.BeginUpdate();
+                    priorityarea3.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    priorityarea3.Color = Syncfusion.Drawing.Color.FromArgb(178, 16, 60);
+                    priorityarea3.Font.Bold = true;
+                    priorityarea3.Font.FontName = "Arial";
+                    priorityarea3.Font.Size = 12f;
+                    priorityarea3.Font.Color = ExcelKnownColors.White;
+                    priorityarea3.WrapText = true;
+                    priorityarea3.Borders.Color = ExcelKnownColors.White;
+                    priorityarea3.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea3.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea3.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea3.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea3.EndUpdate();
+
+                    var priorityarea4 = workbook.Styles.Add("priorityarea4");
+                    priorityarea4.BeginUpdate();
+                    priorityarea4.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    priorityarea4.Color = Syncfusion.Drawing.Color.FromArgb(33, 56, 171);
+                    priorityarea4.Font.Bold = true;
+                    priorityarea4.Font.FontName = "Arial";
+                    priorityarea4.Font.Size = 12f;
+                    priorityarea4.Font.Color = ExcelKnownColors.White;
+                    priorityarea4.WrapText = true;
+                    priorityarea4.Borders.Color = ExcelKnownColors.White;
+                    priorityarea4.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea4.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea4.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea4.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea4.EndUpdate();
+
+                    var priorityarea5 = workbook.Styles.Add("priorityarea5");
+                    priorityarea5.BeginUpdate();
+                    priorityarea5.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    priorityarea5.Color = Syncfusion.Drawing.Color.FromArgb(136, 84, 208);
+                    priorityarea5.Font.Bold = true;
+                    priorityarea5.Font.FontName = "Arial";
+                    priorityarea5.Font.Size = 12f;
+                    priorityarea5.Font.Color = ExcelKnownColors.White;
+                    priorityarea5.WrapText = true;
+                    priorityarea5.Borders.Color = ExcelKnownColors.White;
+                    priorityarea5.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea5.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea5.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea5.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    priorityarea5.EndUpdate();
+
+                    var assessmentstatus = workbook.Styles.Add("assessmentstatus");
+                    assessmentstatus.BeginUpdate();
+                    assessmentstatus.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    assessmentstatus.Color = Syncfusion.Drawing.Color.FromArgb(111, 30, 81);
+                    assessmentstatus.Font.Bold = true;
+                    assessmentstatus.Font.FontName = "Arial";
+                    assessmentstatus.Font.Size = 12f;
+                    assessmentstatus.Font.Color = ExcelKnownColors.White;
+                    assessmentstatus.WrapText = true;
+                    assessmentstatus.Borders.Color = ExcelKnownColors.White;
+                    assessmentstatus.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    assessmentstatus.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    assessmentstatus.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    assessmentstatus.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    assessmentstatus.EndUpdate();
+                    #endregion
+
+                    int row = 1;
+                    worksheet.Range["A" + row].Text = "OVC HOUSEHOLD GRADUATION CHECKLIST";
+                    worksheet.Range["A" + row + ":X" + row].CellStyle = CategoryStyle;
+                    worksheet.Range["A" + row + ":X" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    worksheet.Range["A" + row + ":X" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["A" + row].RowHeight = 30;
+                    worksheet.Range["A" + row + ":X" + row].Merge();
+                    row++;
+                    row++;
+
+                    worksheet.Range["I" + row].Text = "HEALTH";
+                    worksheet.Range["I" + row + ":N" + row].CellStyle = HHHeadStyle;
+                    worksheet.Range["I" + row + ":N" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["I" + row + ":N" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["I" + row].RowHeight = 20;
+                    worksheet.Range["I" + row + ":N" + row].Merge();
+
+                    worksheet.Range["O" + row].Text = "SAFE";
+                    worksheet.Range["O" + row + ":P" + row].CellStyle = priorityarea1;
+                    worksheet.Range["O" + row + ":P" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["O" + row + ":P" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["O" + row].RowHeight = 20;
+                    worksheet.Range["O" + row + ":P" + row].Merge();
+
+                    worksheet.Range["Q" + row].Text = "STABLE";
+                    worksheet.Range["Q" + row + ":Q" + row].CellStyle = priorityarea2;
+                    worksheet.Range["Q" + row + ":Q" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["Q" + row + ":Q" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["Q" + row].RowHeight = 20;
+                    worksheet.Range["Q" + row + ":Q" + row].Merge();
+
+                    worksheet.Range["R" + row].Text = "SCHOOLED";
+                    worksheet.Range["R" + row + ":R" + row].CellStyle = priorityarea3;
+                    worksheet.Range["R" + row + ":R" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["R" + row + ":R" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["R" + row].RowHeight = 20;
+                    worksheet.Range["R" + row + ":R" + row].Merge();
+
+                    worksheet.Range["S" + row].Text = "ASSESSMENT/REVIEW DETAILS";
+                    worksheet.Range["S" + row + ":X" + row].CellStyle = priorityarea3;
+                    worksheet.Range["S" + row + ":X" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["S" + row + ":X" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["S" + row].RowHeight = 20;
+                    worksheet.Range["S" + row + ":X" + row].Merge();
+
+                    row++;
+
+                    worksheet.Range["A" + row].Text = "HouseHold Code";
+                    worksheet.Range["A" + row].ColumnWidth = 20;
+
+                    worksheet.Range["B" + row].Text = "District";
+                    worksheet.Range["B" + row].ColumnWidth = 20;
+
+                    worksheet.Range["C" + row].Text = "Subcounty";
+                    worksheet.Range["C" + row].ColumnWidth = 20;
+
+                    worksheet.Range["D" + row].Text = "Parish";
+                    worksheet.Range["D" + row].ColumnWidth = 20;
+
+                    worksheet.Range["E" + row].Text = "Village";
+                    worksheet.Range["E" + row].ColumnWidth = 20;
+
+                    worksheet.Range["F" + row].Text = "Household CareGiver's Unique Identifier";
+                    worksheet.Range["F" + row].ColumnWidth = 20;
+
+                    worksheet.Range["G" + row].Text = "Household CareGiver's Name";
+                    worksheet.Range["G" + row].ColumnWidth = 20;
+
+                    worksheet.Range["H" + row].Text = "Date of Assessment";
+                    worksheet.Range["H" + row].ColumnWidth = 20;
+
+                    //Health
+                    worksheet.Range["I" + row].Text = "1.All children, adolescents & caregivers in the HH have known HIV status or test is not required based on HIV risk assessment.";
+                    worksheet.Range["I" + row].ColumnWidth = 20;
+
+                    worksheet.Range["J" + row].Text = "2.All HIV+ are currently on ART.";
+                    worksheet.Range["J" + row].ColumnWidth = 20;
+
+                    worksheet.Range["K" + row].Text = "3.All HIV+ currently on ART are virally suppressed";
+                    worksheet.Range["K" + row].ColumnWidth = 20;
+
+                    worksheet.Range["L" + row].Text = "4.All adolescents 10-17 years of age in the HH have key knowledge about preventing HIV infection.";
+                    worksheet.Range["L" + row].ColumnWidth = 20;
+
+                    worksheet.Range["M" + row].Text = "5.All HEI (aged 18+ months) completed PCR & tested Negative.";
+                    worksheet.Range["M" + row].ColumnWidth = 20;
+
+                    worksheet.Range["N" + row].Text = "6.No children < 5 years in the HH is malnourished.";
+                    worksheet.Range["N" + row].ColumnWidth = 20;
+
+                    //Safe
+                    worksheet.Range["O" + row].Text = "7.All children & adolescents in the HH are under the care of a stable adult caregiver (NOT child Headed HH)";
+                    worksheet.Range["O" + row].ColumnWidth = 20;
+
+                    worksheet.Range["P" + row].Text = "8.No child, adolescent & caregiver in the HH report experiences of violence (including physical, emotional, sexual, gender-based violence & neglect) in the last 6 months.";
+                    worksheet.Range["P" + row].ColumnWidth = 20;
+
+                    //Stable
+                    worksheet.Range["Q" + row].Text = "9.Caregiver is able to access money (without selling productive assets) to pay for school fees & medical costs for children 0-17 years";
+                    worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                    //Schooled
+                    worksheet.Range["R" + row].Text = "10.All school-age children & adolescents in the HH regularly attended school & progressed during the last year (Before COVID 19, OR benefited from virtual learning & reading materials)";
+                    worksheet.Range["R" + row].ColumnWidth = 20;
+
+                    worksheet.Range["S" + row].Text = "Name of Assessor";
+                    worksheet.Range["S" + row].ColumnWidth = 20;
+
+                    worksheet.Range["T" + row].Text = "Assessor Title";
+                    worksheet.Range["T" + row].ColumnWidth = 20;
+
+                    worksheet.Range["U" + row].Text = "Assessor Telephone";
+                    worksheet.Range["U" + row].ColumnWidth = 20;
+
+                    worksheet.Range["V" + row].Text = "Reviewed By";
+                    worksheet.Range["V" + row].ColumnWidth = 20;
+
+                    worksheet.Range["W" + row].Text = "Reviewer Title";
+                    worksheet.Range["W" + row].ColumnWidth = 20;
+
+                    worksheet.Range["X" + row].Text = "Review Date";
+                    worksheet.Range["X" + row].ColumnWidth = 20;
+
+                    worksheet.Range["A" + row + ":X" + row].CellStyle = headerStyle;
+
+                    row++;
+                    foreach (var n in data)
+                    {
+                        worksheet.Range["A" + row].Text = n.HouseHoldCode;
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        worksheet.Range["B" + row].Text = n.DistrictDescription;
+                        worksheet.Range["B" + row].ColumnWidth = 20;
+
+                        worksheet.Range["C" + row].Text = n.SubcountyDescription;
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = n.ParishDescription;
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = n.VillageDescription;
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = n.HouseHoldMemberCode;
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = n.Surname + " " + n.Givenname;
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        if (n.AssessmentDate.HasValue)
+                        {
+                            worksheet.Range["H" + row].Text = n.AssessmentDate.Value.ToString("dd/MM/yyyy");
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["I" + row].Text = n.AllCHILDREN;
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = n.HIVONART;
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = n.HIVONARTAREVIRALLYSUPPRESSED;
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = n.ALLADOLESCENTS10_17YEARS;
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        worksheet.Range["M" + row].Text = n.ALLHEIAGED18PLUSMONTHS;
+                        worksheet.Range["M" + row].ColumnWidth = 20;
+
+                        worksheet.Range["N" + row].Text = n.CHILDRENBELOW5YEARS;
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = n.ADOLESCENTSUNDERCARE;
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        worksheet.Range["P" + row].Text = n.NOCHILDINHHREPORT;
+                        worksheet.Range["P" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Q" + row].Text = n.CAREGIVERABLETOACCESSMONEY;
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                        worksheet.Range["R" + row].Text = n.CHILDRENANDADOLESCENTSREGULAR;
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+
+                        worksheet.Range["S" + row].Text = n.AssessorName;
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+                        worksheet.Range["T" + row].Text = n.AssessorTitle;
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = n.AssessorTel;
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = n.ReviewerName;
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = n.ReviewerTitle;
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        if (n.ReviewDate.HasValue)
+                        {
+                            worksheet.Range["X" + row].Text = n.ReviewDate.Value.ToString("dd/MM/yyyy");
+                            worksheet.Range["X" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["A" + row + ":X" + row].CellStyle = Style;
+
+                        row++;
+                    }
+
+                    MemoryStream ms = new MemoryStream();
+                    // Save and close the document.
+                    workbook.SaveAs(ms);
+                    //Reset the memory stream position.
+                    ms.Position = 0;
+                    await JS.SaveAs("Graduation Check List.xlsx", ms.ToArray());
+                    ms.Dispose();
+                    workbook.Close();
+                    //excelEngine.Dispose();
+                    Response = "Success:- The report was successfully downloaded.";
+                }
+            }
+            else
+            {
+                Response = "No Record:- There were no records found for this search";
+            }
+        }
+
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await DownloadingSpinner.HideAsync();
+            Downloadreport = false;
+
+            //Response = "Report Downloaded Successfully";
+            //Downloadreport = false;
+            //await DownloadingSpinner.HideAsync();
+            //await Task.CompletedTask;
+            //StateHasChanged();
+        }
+    }
+
+}
+

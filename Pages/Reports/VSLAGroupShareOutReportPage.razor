@@ -1,0 +1,733 @@
+﻿@page "/VSLAGroupShareOutReportPage"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> VSLA ACTION AUDIT (SHARE OUT) TOOL REPORT</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <p>District</p>
+                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Sub-County</p>
+                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Parish</p>
+                    <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3" hidden>
+                    <p>Village</p>
+                    <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3" hidden>
+                    <p>Reporting Period</p>
+                    <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3" hidden>
+                    <p>Financial Year</p>
+                    <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Group</p>
+                    <SfDropDownList @bind-Value="@(InputModel.GroupId)" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Group Cycle</p>
+                    <SfDropDownList @bind-Value="@(InputModel.GroupCycleId)" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+                <div class="form-group col-md-12">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                </div>
+                @if (!string.IsNullOrEmpty(outComeResult))
+                {
+                    <div class="form-group col-md-12">
+                        @if (outComeResult.Contains("No Record"))
+                        {
+                            <p class="alert alert-danger" style="padding:10px;">@outComeResult</p>
+                        }
+                        else if (outComeResult.Contains("Warning"))
+                        {
+                            <p class="alert alert-warning" style="padding:10px;">@outComeResult</p>
+                        }
+                        else
+                        {
+                            <p class="alert alert-success" style="padding:10px;">@outComeResult</p>
+                        }
+                    </div>
+                }
+                <div class="form-group col-md-12">
+                    <SfSpinner @ref="ReportSpinner" Label="downloading the report please wait..." Size="70" Visible="false"></SfSpinner>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfSpinner ReportSpinner;
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    List<AGroups> GroupsData { get; set; }
+    List<AGroupCycle> GroupCycleData { get; set; }
+    bool isEnabled { get; set; } = false;
+    string outComeResult { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+                    FianacialYearData = new List<FianacialYear>();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    QuarterData = db.AQuarter.AsNoTracking().ToList();
+                    int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o => o.DateofIdentification.HasValue == true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                    InputModel = new();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+    public async Task SearchRecords()
+    {
+        try
+        {
+            await ReportSpinner.ShowAsync();
+            outComeResult = null;
+            string district = null;
+            string Subcounty = null;
+            string parish = null;
+            //string village = null;
+            if (InputModel.DistrictId != null)
+            {
+                district = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                Subcounty = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null)
+            {
+                parish = string.Join(",", InputModel.ParishId);
+            }
+            //if (InputModel.VillageId != null)
+            //{
+            //    village = string.Join(",", InputModel.VillageId);
+            //}
+
+            using (var db = new SPToCoreContext())
+            {
+                var data = await db.spVSLA_Group_ShareOutReportGetAllAsync(district, Subcounty, InputModel.GroupId, InputModel.GroupCycleId);
+                if (data.Count > 0)
+                {
+                    using (ExcelEngine excelEngine = new ExcelEngine())
+                    {
+                        IApplication application = excelEngine.Excel;
+                        application.DefaultVersion = ExcelVersion.Excel2013;
+                        IWorkbook workbook = application.Workbooks.Create(1);
+                        IWorksheet worksheet = workbook.Worksheets[0];
+                        worksheet.Name = "VSLA ACTION AUDIT SHARE OUT TOOL";
+
+                        #region Styles
+                        var headerStyle = workbook.Styles.Add("headerStyle");
+
+                        headerStyle.BeginUpdate();
+                        headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                        headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        headerStyle.Font.Bold = true;
+                        headerStyle.Font.FontName = "Arial";
+                        headerStyle.Font.Size = 8f;
+                        headerStyle.Font.Color = ExcelKnownColors.White;
+
+                        headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        headerStyle.Borders.Color = ExcelKnownColors.White;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                        headerStyle.WrapText = true;
+
+                        headerStyle.EndUpdate();
+
+                        var Style = workbook.Styles.Add("bodyStyle");
+
+                        Style.BeginUpdate();
+                        Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                        Style.Font.Bold = false;
+                        Style.Font.FontName = "Arial";
+                        Style.Font.Size = 8f;
+                        Style.Font.Color = ExcelKnownColors.Black;
+                        Style.WrapText = true;
+                        Style.Borders.Color = ExcelKnownColors.Black;
+                        Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        Style.EndUpdate();
+
+
+                        var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                        CategoryStyle.BeginUpdate();
+                        CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                        /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                        CategoryStyle.Font.Bold = true;
+                        CategoryStyle.Font.FontName = "Arial";
+                        CategoryStyle.Font.Size = 10f;
+                        CategoryStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryStyle.WrapText = true;
+                        CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.EndUpdate();
+
+                        var CategoryTotalStyle = workbook.Styles.Add("CategoryTotalStyle");
+
+                        CategoryTotalStyle.BeginUpdate();
+                        CategoryTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        CategoryTotalStyle.Color = Syncfusion.Drawing.Color.DarkBlue;
+                        CategoryTotalStyle.Font.Bold = true;
+                        CategoryTotalStyle.Font.FontName = "Arial";
+                        CategoryTotalStyle.Font.Size = 8f;
+                        CategoryTotalStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.WrapText = true;
+                        CategoryTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.EndUpdate();
+
+                        var DivisionStyle = workbook.Styles.Add("DivisionStyle");
+
+                        DivisionStyle.BeginUpdate();
+                        DivisionStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 0, 0); //RED
+                        DivisionStyle.Font.Bold = true;
+                        DivisionStyle.Font.FontName = "Arial";
+                        DivisionStyle.Font.Size = 8f;
+                        DivisionStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionStyle.WrapText = true;
+                        DivisionStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.EndUpdate();
+
+                        var DivisionTotalStyle = workbook.Styles.Add("DivisionTotalStyle");
+
+                        DivisionTotalStyle.BeginUpdate();
+                        DivisionTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        DivisionTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                        DivisionTotalStyle.Font.Bold = true;
+                        DivisionTotalStyle.Font.FontName = "Arial";
+                        DivisionTotalStyle.Font.Size = 8f;
+                        DivisionTotalStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.WrapText = true;
+                        DivisionTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.EndUpdate();
+
+
+                        var TopicStyle = workbook.Styles.Add("TopicStyle");
+
+                        TopicStyle.BeginUpdate();
+                        TopicStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88); //AUBERGINE
+                        TopicStyle.Font.Bold = true;
+                        TopicStyle.Font.FontName = "Arial";
+                        TopicStyle.Font.Size = 8f;
+                        TopicStyle.Font.Color = ExcelKnownColors.White;
+                        TopicStyle.WrapText = true;
+                        TopicStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.EndUpdate();
+
+                        var TopicTotalStyle = workbook.Styles.Add("TopicTotalStyle");
+
+                        TopicTotalStyle.BeginUpdate();
+                        TopicTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        TopicTotalStyle.Color = Syncfusion.Drawing.Color.DarkRed;
+                        TopicTotalStyle.Font.Bold = true;
+                        TopicTotalStyle.Font.FontName = "Arial";
+                        TopicTotalStyle.Font.Size = 8f;
+                        TopicTotalStyle.Font.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.WrapText = true;
+                        TopicTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.EndUpdate();
+                        #endregion
+
+                        int row = 1;
+                        worksheet.Range["A" + row].Text = "VSLA ACTION AUDIT (SHARE OUT) TOOL REPORT";
+                        worksheet.Range["A" + row + ":AA" + row].CellStyle = CategoryStyle;
+                        worksheet.Range["A" + row + ":AA" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["A" + row + ":AA" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["A" + row].RowHeight = 30;
+                        worksheet.Range["A" + row + ":AA" + row].Merge();
+                        row++;
+                        row++;
+
+                        #region Header row
+                        worksheet.Range["A" + row].Text = "District";
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        worksheet.Range["B" + row].Text = "Sub County";
+                        worksheet.Range["B" + row].ColumnWidth = 20;
+
+                        worksheet.Range["C" + row].Text = "Group code";
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = "Group name";
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = "Cycle";
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = "Cycle Saving start Date";
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = "Total Dividends paid this Cycle (UGX):";
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        worksheet.Range["H" + row].Text = "Old share Value";
+                        worksheet.Range["H" + row].ColumnWidth = 20;
+
+                        worksheet.Range["I" + row].Text = "Share out date";
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = "Write of this cycle";
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = "CBT name";
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = "Member ID";
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        worksheet.Range["M" + row].Text = "Member name";
+                        worksheet.Range["M" + row].ColumnWidth = 20;
+
+                        worksheet.Range["N" + row].Text = "Age ";
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = "Sex";
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        worksheet.Range["P" + row].Text = "Total number of shares bought";
+                        worksheet.Range["P" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Q" + row].Text = "Total saving";
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                        worksheet.Range["R" + row].Text = "Total cash available to be shared";
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+
+                        worksheet.Range["S" + row].Text = "New share Value";
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+                        worksheet.Range["T" + row].Text = "Calculated amount to be shared out";
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = "Actual amount shared";
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = "Chair person’s Name";
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = "Tel";
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        worksheet.Range["X" + row].Text = "Secretary’s Name";
+                        worksheet.Range["X" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Y" + row].Text = "Tel";
+                        worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Z" + row].Text = "Treasurer’s Name";
+                        worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AA" + row].Text = "Tel";
+                        worksheet.Range["AA" + row].ColumnWidth = 20;
+
+
+                        worksheet.Range["A" + row + ":AA" + row].CellStyle = headerStyle;
+                        row++;
+                        #endregion Header row
+                        foreach (var n in data)
+                        {
+                            worksheet.Range["A" + row].Text = n.DistrictDescription;
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = n.SubcountyDescription;
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = n.GroupCode;
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = n.GroupName;
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = n.GroupCycleDesc;
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            if (n.CycleSavingStartDate.HasValue)
+                            {
+                                worksheet.Range["F" + row].Text = n.CycleSavingStartDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["F" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.TotalDividentPaid.HasValue)
+                            {
+                                worksheet.Range["G" + row].Number = n.TotalDividentPaid.Value;
+                                worksheet.Range["G" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.OldShareValue.HasValue)
+                            {
+                                worksheet.Range["H" + row].Number = n.OldShareValue.Value;
+                                worksheet.Range["H" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.ShareOutDate.HasValue)
+                            {
+                                worksheet.Range["I" + row].Text = n.ShareOutDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["I" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["J" + row].Text = n.WriteOfThisCycle;
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            worksheet.Range["K" + row].Text = n.CBTName;
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = n.HouseHoldMemberCode;
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = n.FullName;
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            if (n.Age.HasValue)
+                            {
+                                worksheet.Range["N" + row].Number = n.Age.Value;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["O" + row].Text = n.GenderDescription;
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            if (n.Total_number_of_shares_bought.HasValue)
+                            {
+                                worksheet.Range["P" + row].Number = n.Total_number_of_shares_bought.Value;
+                                worksheet.Range["P" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.Total_Saving.HasValue)
+                            {
+                                worksheet.Range["Q" + row].Number = n.Total_Saving.Value;
+                                worksheet.Range["Q" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.Total_cash_available_to_be_shared.HasValue)
+                            {
+                                worksheet.Range["R" + row].Number = n.Total_cash_available_to_be_shared.Value;
+                                worksheet.Range["R" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.New_share_Value.HasValue)
+                            {
+                                worksheet.Range["S" + row].Number = n.New_share_Value.Value;
+                                worksheet.Range["S" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.Calculated_amount_to_be_shared_out.HasValue)
+                            {
+                                worksheet.Range["T" + row].Number = n.Calculated_amount_to_be_shared_out.Value;
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.Actual_amount_shared.HasValue)
+                            {
+                                worksheet.Range["U" + row].Number = n.Actual_amount_shared.Value;
+                                worksheet.Range["U" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["V" + row].Text = n.ChairPersonName;
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            worksheet.Range["W" + row].Text = n.ChairPersonTele;
+                            worksheet.Range["W" + row].ColumnWidth = 20;
+
+                            worksheet.Range["X" + row].Text =n.SecretaryName;
+                            worksheet.Range["X" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Y" + row].Text = n.SecretaryTele;
+                            worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Z" + row].Text = n.TreasurerName;
+                            worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AA" + row].Text = n.TreasurerTele;
+                            worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":AA" + row].CellStyle = Style;
+                            row++;
+                        }
+
+                        MemoryStream ms = new MemoryStream();
+                        // Save and close the document.
+                        workbook.SaveAs(ms);
+                        //Reset the memory stream position.
+                        ms.Position = 0;
+                        await JS.SaveAs("VSLA ACTION AUDIT (SHARE OUT) TOOL REPORT.xlsx", ms.ToArray());
+                        ms.Dispose();
+                        workbook.Close();
+                        //excelEngine.Dispose();
+                        outComeResult = "Success:- The report was successfully downloaded.";
+                    }
+                }
+                else
+                {
+                    outComeResult = "No Record:- There were no records found for this search";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await ReportSpinner.HideAsync();
+        }
+    }
+
+}
+

@@ -1,0 +1,610 @@
+﻿@page "/BeneficiaryIdentificationRegisterReport"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject MUCOBADIContext db;
+@inject SPToCoreContext spdb;
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>BENEFICIARY IDENTIFICATION REGISTER REPORT</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+<EditForm Model="@InputModel" OnValidSubmit="@OnSearchSubmit">
+    <DataAnnotationsValidator />
+    <div class="row" style="margin-bottom:10px;">
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.HouseHoldId" TValue="int?[]" TItem="BeneficiaryIdentificationRegister" AllowFiltering="true" Placeholder="HouseHold Id" Mode="@VisualMode.CheckBox" DataSource="@HouseHoldData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="House Hold" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" Text="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="District" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="District" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="ChangeDistrict"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" Enabled="@EnableSubcountyDropDown" AllowFiltering="true" Placeholder="Subcounty" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Subcounty" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" Enabled="@EnableParishDropDown" AllowFiltering="true" Placeholder="Parish" Mode="@VisualMode.CheckBox" DataSource="@ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Parish" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" Enabled="@EnableVillageDropDown" AllowFiltering="true" Placeholder="Village" Mode="@VisualMode.CheckBox" DataSource="@VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Village" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+         <div class="form-group col-md-3">
+                    <p>Reporting Period Start date</p>
+                    <SfDatePicker @bind-Value="@InputModel.StartDate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+                 <div class="form-group col-md-3">
+                    <p>Reporting Period End date</p>
+                    <SfDatePicker @bind-Value="@InputModel.EndDate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+        @if (Downloadreport == false)
+        {
+            <div class="col col-md-3">
+                <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+            </div>
+
+        }
+
+        @if (!string.IsNullOrEmpty(Response))
+        {
+            <div class="form-group col-md-12">
+                @if (Response.Contains("No Record"))
+                {
+                    <p class="alert alert-danger" style="padding:10px;">@Response</p>
+                }
+                else
+                {
+                    <p class="alert alert-success" style="padding:10px;">@Response</p>
+                }
+            </div>
+        }
+
+
+        <div class="form-group col-md-12">
+            <SfSpinner @ref="DownloadingSpinner" Label="Downloading Report Please Wait....." Size="50" Type="@SpinnerType.Bootstrap"></SfSpinner>
+        </div>
+
+    </div>
+    <ValidationSummary />
+</EditForm>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private BeneficiaryRegisterSearch InputModel = new BeneficiaryRegisterSearch();
+    private List<BeneficiaryIdentificationRegister> HouseHoldData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+    private List<ASubcounty> SubcountyData { get; set; }
+    private List<AParish> ParishData { get; set; }
+    private List<AVillage> VillageData { get; set; }
+    public bool EnableSubcountyDropDown = false;
+    public bool EnableParishDropDown = false;
+    public bool EnableVillageDropDown = false;
+    public Query DistricttQuery { get; set; } = null;
+    string Response { get; set; }
+    SfSpinner DownloadingSpinner;
+    bool Downloadreport { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                InputModel = new BeneficiaryRegisterSearch();
+                HouseHoldData = db.BeneficiaryIdentificationRegister.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new BeneficiaryRegisterSearch();
+    }
+
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableSubcountyDropDown = true;
+            SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableParishDropDown = true;
+            ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            this.EnableVillageDropDown = true;
+            VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    private async Task OnSearchSubmit()
+    {
+        Downloadreport = true;
+        await DownloadingSpinner.ShowAsync();
+
+        try
+        {
+            string HouseHoldId = null;
+            string DistrictId = null;
+            string SubcountyId = null;
+            string ParishId = null;
+            string VillageId = null;
+
+            if (InputModel.HouseHoldId != null && InputModel.HouseHoldId.Length > 0)
+            {
+                HouseHoldId = string.Join(",", InputModel.HouseHoldId);
+            }
+
+            if (InputModel.DistrictId != null && InputModel.DistrictId.Length > 0)
+            {
+                DistrictId = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null && InputModel.SubcountyId.Length > 0)
+            {
+                SubcountyId = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null && InputModel.ParishId.Length > 0)
+            {
+                ParishId = string.Join(",", InputModel.ParishId);
+            }
+            if (InputModel.VillageId != null && InputModel.VillageId.Length > 0)
+            {
+                VillageId = string.Join(",", InputModel.VillageId);
+            }
+
+            var data = await spdb.spViewBeneficiaryEnrolmentRegisterDetailsReportAsync(HouseHoldId, DistrictId, SubcountyId, ParishId, VillageId, InputModel.StartDate, InputModel.EndDate);
+
+            if (data.Count > 0)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+                    IApplication application = excelEngine.Excel;
+                    application.DefaultVersion = ExcelVersion.Excel2013;
+                    IWorkbook workbook = application.Workbooks.Create(1);
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    worksheet.Name = "Beneficiary Enrolment Register";
+
+                    #region Styles
+                    var headerStyle = workbook.Styles.Add("headerStyle");
+
+                    headerStyle.BeginUpdate();
+                    headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                    headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    headerStyle.Font.Bold = true;
+                    headerStyle.Font.FontName = "Arial";
+                    headerStyle.Font.Size = 8f;
+                    headerStyle.Font.Color = ExcelKnownColors.White;
+
+                    headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    headerStyle.Borders.Color = ExcelKnownColors.White;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                    headerStyle.WrapText = true;
+
+                    headerStyle.EndUpdate();
+
+                    var Style = workbook.Styles.Add("bodyStyle");
+
+                    Style.BeginUpdate();
+                    Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                    Style.Font.Bold = false;
+                    Style.Font.FontName = "Arial";
+                    Style.Font.Size = 8f;
+                    Style.Font.Color = ExcelKnownColors.Black;
+                    Style.WrapText = true;
+                    Style.Borders.Color = ExcelKnownColors.Black;
+                    Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    Style.EndUpdate();
+
+
+                    var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                    CategoryStyle.BeginUpdate();
+                    CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                    /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                    CategoryStyle.Font.Bold = true;
+                    CategoryStyle.Font.FontName = "Arial";
+                    CategoryStyle.Font.Size = 12f;
+                    CategoryStyle.Font.Color = ExcelKnownColors.White;
+                    CategoryStyle.WrapText = true;
+                    CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    CategoryStyle.EndUpdate();
+
+                    var HHHeadStyle = workbook.Styles.Add("HHHeadStyle");
+
+                    HHHeadStyle.BeginUpdate();
+                    HHHeadStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    HHHeadStyle.Color = Syncfusion.Drawing.Color.FromArgb(140, 152, 152); //ASBESTOS
+                    HHHeadStyle.Font.Bold = true;
+                    HHHeadStyle.Font.FontName = "Arial";
+                    HHHeadStyle.Font.Size = 12f;
+                    HHHeadStyle.Font.Color = ExcelKnownColors.White;
+                    HHHeadStyle.WrapText = true;
+                    HHHeadStyle.Borders.Color = ExcelKnownColors.White;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    HHHeadStyle.EndUpdate();
+
+                    var HHMembersStyle = workbook.Styles.Add("HHMembersStyle");
+
+                    HHMembersStyle.BeginUpdate();
+                    HHMembersStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    HHMembersStyle.Color = Syncfusion.Drawing.Color.FromArgb(237, 145, 33); // CARROT ORANGE
+                    HHMembersStyle.Font.Bold = true;
+                    HHMembersStyle.Font.FontName = "Arial";
+                    HHMembersStyle.Font.Size = 12f;
+                    HHMembersStyle.Font.Color = ExcelKnownColors.White;
+                    HHMembersStyle.WrapText = true;
+                    HHMembersStyle.Borders.Color = ExcelKnownColors.White;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                    HHMembersStyle.EndUpdate();
+
+                    #endregion
+
+                    int row = 1;
+                    worksheet.Range["A" + row].Text = "Beneficiary Identification Register Report";
+                    worksheet.Range["A" + row + ":AF" + row].CellStyle = CategoryStyle;
+                    worksheet.Range["A" + row + ":AF" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                    worksheet.Range["A" + row + ":AF" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["A" + row].RowHeight = 30;
+                    worksheet.Range["A" + row + ":AG" + row].Merge();
+                    row++;
+                    row++;
+
+                    worksheet.Range["A" + row].Text = "HouseHold Head";
+                    worksheet.Range["A" + row + ":K" + row].CellStyle = HHHeadStyle;
+                    worksheet.Range["A" + row + ":K" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["A" + row + ":K" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["A" + row].RowHeight = 20;
+                    worksheet.Range["A" + row + ":K" + row].Merge();
+
+                    worksheet.Range["L" + row].Text = "HouseHold Members";
+                    worksheet.Range["L" + row + ":AF" + row].CellStyle = HHMembersStyle;
+                    worksheet.Range["L" + row + ":AF" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                    worksheet.Range["L" + row + ":AF" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                    worksheet.Range["L" + row].RowHeight = 20;
+                    worksheet.Range["L" + row + ":AG" + row].Merge();
+
+                    row++;
+
+                    worksheet.Range["A" + row].Text = "HouseHold Code";
+                    worksheet.Range["A" + row].ColumnWidth = 20;
+
+                    worksheet.Range["B" + row].Text = "Date of Identification";
+                    worksheet.Range["B" + row].ColumnWidth = 20;
+
+                    worksheet.Range["C" + row].Text = "HH Head Name";
+                    worksheet.Range["C" + row].ColumnWidth = 20;
+
+                    worksheet.Range["D" + row].Text = "HH Head Gender";
+                    worksheet.Range["D" + row].ColumnWidth = 20;
+
+                    worksheet.Range["E" + row].Text = "District";
+                    worksheet.Range["E" + row].ColumnWidth = 20;
+
+                    worksheet.Range["F" + row].Text = "Subcounty";
+                    worksheet.Range["F" + row].ColumnWidth = 20;
+
+                    worksheet.Range["G" + row].Text = "Parish";
+                    worksheet.Range["G" + row].ColumnWidth = 20;
+
+                    worksheet.Range["H" + row].Text = "Village";
+                    worksheet.Range["H" + row].ColumnWidth = 20;
+
+                    worksheet.Range["I" + row].Text = "Facility";
+                    worksheet.Range["I" + row].ColumnWidth = 20;
+
+                    worksheet.Range["J" + row].Text = "Dispensing Model";
+                    worksheet.Range["J" + row].ColumnWidth = 20;
+
+                    worksheet.Range["K" + row].Text = "Source Document";
+                    worksheet.Range["K" + row].ColumnWidth = 20;
+
+                    worksheet.Range["L" + row].Text = "House Hold Member Code";
+                    worksheet.Range["L" + row].ColumnWidth = 20;
+
+                    worksheet.Range["M" + row].Text = "Enrollment Date";
+                    worksheet.Range["M" + row].ColumnWidth = 20;
+
+                    worksheet.Range["N" + row].Text = "House Hold Member Name";
+                    worksheet.Range["N" + row].ColumnWidth = 20;
+
+                    worksheet.Range["O" + row].Text = "House Hold Member Gender";
+                    worksheet.Range["O" + row].ColumnWidth = 20;
+
+                    worksheet.Range["P" + row].Text = "House Hold Member Age";
+                    worksheet.Range["P" + row].ColumnWidth = 20;
+
+                    worksheet.Range["Q" + row].Text = "HouseHold Member HIV Status";
+                    worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                    worksheet.Range["R" + row].Text = "House Hold Member Known Risk Factor";
+                    worksheet.Range["R" + row].ColumnWidth = 20;
+
+                    worksheet.Range["S" + row].Text = "House Hold Member Currently on ART";
+                    worksheet.Range["S" + row].ColumnWidth = 20;
+
+                    worksheet.Range["T" + row].Text = "Is Care Giver?";
+                    worksheet.Range["T" + row].ColumnWidth = 20;
+
+                    worksheet.Range["U" + row].Text = "Is Enrolled in School";
+                    worksheet.Range["U" + row].ColumnWidth = 20;
+
+                    worksheet.Range["V" + row].Text = "Is Attending School Regularly";
+                    worksheet.Range["V" + row].ColumnWidth = 20;
+
+                    worksheet.Range["W" + row].Text = "Education Level";
+                    worksheet.Range["W" + row].ColumnWidth = 20;
+
+                    worksheet.Range["X" + row].Text = "Name of School";
+                    worksheet.Range["X" + row].ColumnWidth = 20;
+
+                    worksheet.Range["Y" + row].Text = "Is Orphaned?";
+                    worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                    worksheet.Range["Z" + row].Text = "Is child <5 Malnurished";
+                    worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AA" + row].Text = "Does Child Have Birth Certificate?";
+                    worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AB" + row].Text = "Is Disabled?";
+                    worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AC" + row].Text = "Is Child Immunized?";
+                    worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AD" + row].Text = "House Hold Member Known Risk Factor";
+                    worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AE" + row].Text = "House Hold Member Currently on ART";
+                    worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AF" + row].Text = "House Hold Member Cohort";
+                    worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                    worksheet.Range["AG" + row].Text = "House Hold Member ART Number";
+                    worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                    worksheet.Range["A" + row + ":AG" + row].CellStyle = headerStyle;
+
+                    row++;
+                    foreach (var n in data)
+                    {
+                        worksheet.Range["A" + row].Text = n.HouseHoldCode;
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        if (n.DateofIdentification.HasValue)
+                        {
+                            worksheet.Range["B" + row].Text = n.DateofIdentification.Value.ToString("dd/MM/yyyy");
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["C" + row].Text = n.Surname + " " + n.GivenName;
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = n.GenderDescription;
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = n.DistrictDescription;
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = n.SubcountyDescription;
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = n.ParishDescription;
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        worksheet.Range["H" + row].Text = n.VillageDescription;
+                        worksheet.Range["H" + row].ColumnWidth = 20;
+
+                        worksheet.Range["I" + row].Text = n.FacilityName;
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = n.DispensingModelDescription;
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = n.SourceDocumentDescription;
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = n.HouseHoldMemberCode;
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        if (n.EnrollmentDate.HasValue)
+                        {
+                            worksheet.Range["M" + row].Text = n.EnrollmentDate.Value.ToString("dd/MM/yyyy");
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["N" + row].Text = n.HouseHoldMemberSurname + " " + n.HouseHoldMemberGivenname;
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = n.HouseHoldMemberGenderDescription;
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        if (n.HouseHoldMemberDoB.HasValue)
+                        {
+                            var age = DateTime.Now.Year - n.HouseHoldMemberDoB.Value.Year;
+                            worksheet.Range["P" + row].Number = age;
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["Q" + row].Text = n.HouseHoldMemberHIVStatusDescription;
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                        worksheet.Range["R" + row].Text = n.HouseHoldMemberKnownRiskFactorDescription;
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+
+                        worksheet.Range["S" + row].Text = n.HouseHoldMemberCurrentlyonARTDescription;
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+                        worksheet.Range["T" + row].Text = n.CareGiverDesc;
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = n.IsEnrolledInSchoolDescription;
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = n.IsAttendingSchoolRegularlyDescription;
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = n.EducationLevelDescription;
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        worksheet.Range["X" + row].Text = n.NameofSchool;
+                        worksheet.Range["X" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Y" + row].Text = n.IsOrphanedDescription;
+                        worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Z" + row].Text = n.IsChildUnder5MalnourishedDescription;
+                        worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AA" + row].Text = n.DoesChildHaveBirthCertificateDescription;
+                        worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AB" + row].Text = n.IsDisabledDescription;
+                        worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AC" + row].Text = n.IschildimmunisedDescription;
+                        worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AD" + row].Text = n.HouseHoldMemberKnownRiskFactorDescription;
+                        worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AE" + row].Text = n.HouseHoldMemberCurrentlyonARTDescription;
+                        worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                        if (n.HouseHoldMemberCohort.HasValue)
+                        {
+                            worksheet.Range["AF" + row].Text = n.HouseHoldMemberCohort.Value.ToString("dd/MM/yyyy");
+                            worksheet.Range["AF" + row].ColumnWidth = 20;
+                        }
+
+                        worksheet.Range["AG" + row].Text = n.ARTNumber;
+                        worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["A" + row + ":AG" + row].CellStyle = Style;
+
+                        row++;
+                    }
+
+                    MemoryStream ms = new MemoryStream();
+                    // Save and close the document.
+                    workbook.SaveAs(ms);
+                    //Reset the memory stream position.
+                    ms.Position = 0;
+                    await JS.SaveAs("Benificiary Identification Register Report.xlsx", ms.ToArray());
+                    ms.Dispose();
+                    workbook.Close();
+                    //excelEngine.Dispose();
+                    Response = "Success:- The report was successfully downloaded.";
+                }
+            }
+            else
+            {
+                Response = "No Record:- There were no records found for this search";
+            }
+        }
+
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await DownloadingSpinner.HideAsync();
+            Downloadreport = false;
+
+            //Response = "Report Downloaded Successfully";
+            //Downloadreport = false;
+            //await DownloadingSpinner.HideAsync();
+            //await Task.CompletedTask;
+            //StateHasChanged();
+        }
+    }
+
+}

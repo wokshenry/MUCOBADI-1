@@ -1,0 +1,496 @@
+﻿@page "/NewLinkageTrackingToolPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@inject MUCOBADIContext db;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> BENEFICIARY LINKAGE TRACKING TOOL</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+
+    </div>
+    <div class="col-md-12">
+        <SfGrid @ref="BeneficiaryLinkageTrackingToolGrid" TValue="BeneficiaryLinkageTrackingToolNew" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(BeneficiaryLinkageTrackingToolNewAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnBeneficiaryLinkageTrackingToolActionBegin" OnActionComplete="@OnBeneficiaryLinkageTrackingToolActionComplete" TValue="BeneficiaryLinkageTrackingToolNew"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="BeneficiaryLinkageTrackingToolContext">
+                    @{
+                        BeneficiaryLinkageTrackingToolReviewData = (BeneficiaryLinkageTrackingToolContext as BeneficiaryLinkageTrackingToolNew);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@BeneficiaryLinkageTrackingToolReviewData.LinkageTrackingToolId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4 style="text-align:center;">USAID ICARE BENEFICIARY LINKAGE TRACKING TOOL</h4>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of IP/CSO</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubcountyId)" Enabled="true" TItem="ASubcounty"
+                                    TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never"
+                                                Query="@(new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = BeneficiaryLinkageTrackingToolReviewData.DistrictId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Household </p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.HouseHoldId)" Enabled="true" TItem="BeneficiaryIdentificationRegister" TValue="int?" DataSource="@HouseholdData"
+                                                Placeholder="Please select" FloatLabelType="FloatLabelType.Never" Query="@(new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = BeneficiaryLinkageTrackingToolReviewData.SubcountyId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" Text="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Household Member</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData"
+                                                Placeholder="Please select" FloatLabelType="FloatLabelType.Never" 
+                                                Query="@(new Query().Where(new WhereFilter() { Field = "HouseHoldId", Operator = "equal", value = BeneficiaryLinkageTrackingToolReviewData.HouseHoldId, IgnoreCase = false, IgnoreAccent = false }))">
+                                                <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                        <ItemTemplate>
+                                                                             @((context as ViewHouseHoldMembers).HouseHoldMemberCode) | @((context as ViewHouseHoldMembers).FullName)
+                                                                        </ItemTemplate>
+                                                                        <ValueTemplate>
+                                                                            @((context as ViewHouseHoldMembers).HouseHoldMemberCode) | @((context as ViewHouseHoldMembers).FullName)
+                                                                        </ValueTemplate>
+                                                                    </DropDownListTemplates>
+                                        <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.FullName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.LinkageDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Name of Service Provider</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ServiceProviderId)" Enabled="true" TItem="AServiceProvider" TValue="int?" DataSource="@ServiceProviderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)" Text="@nameof(AServiceProvider.ServiceProviderDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Service category</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.LinkageServiceCategoryId)" Enabled="true" TItem="ALinkageServiceCategory" TValue="int?" DataSource="@LinkageServiceCategoryData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ALinkageServiceCategory.LinkageServiceCategoryId)" Text="@nameof(ALinkageServiceCategory.LinkageServiceCategoryDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                
+                                <div class="form-group col-md-4">
+                                    <p>Service Linked To</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ServiceLinkedToId)" Enabled="true" TItem="AServiceLinkedTo" TValue="int?"
+                                    DataSource="@ServiceLinkedToData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never"
+                                                Query="@(new Query().Where(new WhereFilter() { Field = "LinkageServiceCategoryId", Operator = "equal", value = BeneficiaryLinkageTrackingToolReviewData.LinkageServiceCategoryId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceLinkedTo.ServiceLinkedToId)" Text="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Service Received</p>
+                                    <SfDropDownList @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ServiceReceived)" Enabled="true" TItem="AServiceReceived" TValue="int?" DataSource="@ServiceRecievedData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceReceived.ServiceReceivedId)" Text="@nameof(AServiceReceived.ServiceReceivedDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+
+                                
+                                <div class="form-group col-md-4">
+                                    <p>Name & Contact of Person providing services</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.PersonProvidingService)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.TitlePersonProvidingService)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.DateProvidingService)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                <div class="form-group col-md-4">
+                                    <p>Submitted by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedTitle)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.SubmittedDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Reviewed by</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Title</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewTitle)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date Submitted</p>
+                                    <SfDatePicker @bind-Value="@(BeneficiaryLinkageTrackingToolReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveBeneficiaryLinkageTrackingToolBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelBeneficiaryLinkageTrackingToolBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.LinkageTrackingToolId) HeaderText="Linkage Tracking Tool Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.ImplementingPartnerId) HeaderText="Implementing Partner" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.LinkageDate) HeaderText="Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.HouseHoldId) HeaderText="Household Code" ForeignKeyField="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" ForeignKeyValue="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)" ForeignDataSource="@HouseholdData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.HouseHoldMemberId) HeaderText="Household member Code" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.HouseHoldMemberId) HeaderText="Household member Name" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.FullName)" ForeignDataSource="@HouseHoldMembersData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.ServiceProviderId) HeaderText="Service Provider" ForeignKeyField="@nameof(AServiceProvider.ServiceProviderId)" ForeignKeyValue="@nameof(AServiceProvider.ServiceProviderDesc)" ForeignDataSource="@ServiceProviderData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.LinkageServiceCategoryId) HeaderText="Service category" ForeignKeyField="@nameof(ALinkageServiceCategory.LinkageServiceCategoryId)" ForeignKeyValue="@nameof(ALinkageServiceCategory.LinkageServiceCategoryDesc)" ForeignDataSource="@LinkageServiceCategoryData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.ServiceLinkedToId) HeaderText="Service Linked To" ForeignKeyField="@nameof(AServiceLinkedTo.ServiceLinkedToId)" ForeignKeyValue="@nameof(AServiceLinkedTo.ServiceLinkedToDesc)" ForeignDataSource="@ServiceLinkedToData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.ServiceReceived) HeaderText="Service Received" ForeignKeyField="@nameof(AServiceReceived.ServiceReceivedId)" ForeignKeyValue="@nameof(AServiceReceived.ServiceReceivedDesc)" ForeignDataSource="@ServiceRecievedData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.PersonProvidingService) HeaderText="Name of Person providing services" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.SubmittedBy) HeaderText="Submitted By" Width="220"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryLinkageTrackingToolNew.ReviewedBy) HeaderText="Reviewed By" Width="220"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+
+    SfGrid<BeneficiaryLinkageTrackingToolNew> BeneficiaryLinkageTrackingToolGrid;
+    private BeneficiaryLinkageTrackingToolNew BeneficiaryLinkageTrackingToolReviewData { get; set; }
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<AServiceReceived> ServiceRecievedData { get; set; }
+    List<ALinkageServiceCategory> LinkageServiceCategoryData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AServiceLinkedTo> ServiceLinkedToData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+    List<BeneficiaryIdentificationRegister> HouseholdData { get; set; }
+
+    public Query MainQuery = new Query();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                GenderData = db.AGender.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                ServiceProviderData = db.AServiceProvider.AsNoTracking().ToList();
+                LinkageServiceCategoryData = db.ALinkageServiceCategory.AsNoTracking().ToList();
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                ServiceLinkedToData = db.AServiceLinkedTo.AsNoTracking().ToList();
+                ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                HouseholdData = db.BeneficiaryIdentificationRegister.AsNoTracking().ToList();
+                ServiceRecievedData = db.AServiceReceived.AsNoTracking().ToList();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private async Task SaveBeneficiaryLinkageTrackingToolBtnClick()
+    {
+        await BeneficiaryLinkageTrackingToolGrid.EndEditAsync();
+    }
+    private async Task CancelBeneficiaryLinkageTrackingToolBtnClick()
+    {
+        await BeneficiaryLinkageTrackingToolGrid.CloseEditAsync();
+    }
+
+    #region Graduation Checklist Header
+    public class BeneficiaryLinkageTrackingToolNewAdapter : DataAdaptor
+    {
+        private IToastService toastService;
+        private readonly MUCOBADIContext db;
+        //private UserManagement _userManagement;
+        public BeneficiaryLinkageTrackingToolNewAdapter(IToastService ts/*, UserManagement userManagement*/, MUCOBADIContext db)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+            this.db = db;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<BeneficiaryLinkageTrackingToolNew>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                data = await db.BeneficiaryLinkageTrackingToolNew/*.Where(o => o.HouseHoldId == HouseHoldId)*/.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<BeneficiaryLinkageTrackingToolNew>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryLinkageTrackingToolNew);
+                var exist = db.BeneficiaryLinkageTrackingToolNew.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId);
+                if (exist == null)
+                {
+                    int id = 1;
+                    var last = db.BeneficiaryLinkageTrackingToolNew.OrderBy(o => o.LinkageTrackingToolId).LastOrDefault();
+                    if (last != null)
+                    {
+                        id = (last.LinkageTrackingToolId + 1);
+                    }
+                    val.LinkageTrackingToolId = id;
+                    db.BeneficiaryLinkageTrackingToolNew.Add(val);
+                    db.SaveChanges();
+                    toastService.ShowSuccess("Record Saved Successfully", "Success");
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryLinkageTrackingToolNew);
+                var exist = db.BeneficiaryLinkageTrackingToolNew.FirstOrDefault(o => o.LinkageTrackingToolId == val.LinkageTrackingToolId);
+                if (exist != null)
+                {
+                    db.Entry(exist).CurrentValues.SetValues(val);
+                    db.Entry(exist).State = EntityState.Modified;
+                    await db.SaveChangesAsync();
+                    toastService.ShowSuccess("Record updated Successfully", "Success");
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnBeneficiaryLinkageTrackingToolActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<BeneficiaryLinkageTrackingToolNew> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.HouseHoldId == 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Implementing Partner", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.LinkageDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DistrictId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HouseHoldMemberId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the household member.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ServiceProviderId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Service Provider.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.LinkageServiceCategoryId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Service Category.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnBeneficiaryLinkageTrackingToolActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<BeneficiaryLinkageTrackingToolNew> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryLinkageTrackingToolGrid.PreventRender(false);
+        }
+    }
+    #endregion Graduation Checklist Header
+}

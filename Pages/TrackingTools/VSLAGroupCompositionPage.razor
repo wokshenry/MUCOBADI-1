@@ -1,0 +1,2164 @@
+﻿@page "/VSLAGroupCompositionPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject MUCOBADIContext db;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> VSLA+ GROUP COMPOSITION</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="VslaGroupCompositionGrid" TValue="VslaGroupComposition" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(VslaGroupCompositionAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnVslaGroupCompositionActionBegin" OnActionComplete="@OnVslaGroupCompositionActionComplete" TValue="VslaGroupComposition"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="VslaGroupCompositionContext">
+                    @{
+                        VslaGroupCompositionReviewData = (VslaGroupCompositionContext as VslaGroupComposition);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                <div class="form-row">
+                                                    <div class="form-group col-md-12" hidden>
+                                                        <SfNumericTextBox @bind-Value="@VslaGroupCompositionReviewData.GroupCompositionCode" Enabled="false"></SfNumericTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <h4 style="text-align:center;">VSLA+ GROUP/ASSOCIATION COMPOSITION</h4>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <p style="text-align:center;"><b>PROJECT: USAID/</b>Uganda Improving Care and Resilience for Children and Youth in East Central Uganda (ICARE)</p>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Group Name</p>
+                                                        <SfDropDownList @bind-Value="@(VslaGroupCompositionReviewData.GroupId)" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                        <SfButton CssClass="btn-primary btn-block" OnClick="@AddNewGroupbtnClick">Add New Group</SfButton>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>VSLA+ Code</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.GroupCode)" Enabled="true" Placeholder="Pleses enter the code" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Cycle</p>
+                                                        <SfDropDownList @bind-Value="@(VslaGroupCompositionReviewData.GroupCycleId)" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                        <SfButton CssClass="btn-primary btn-block" OnClick="@AddNewGroupCyclebtnClick">Add New Cycle</SfButton>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Meeting Date & Time</p>
+                                                        <SfDateTimePicker @bind-Value="@(VslaGroupCompositionReviewData.MeetingDate)" Format="dd/MM/yyyy hh:mm tt" Placeholder="Enter Date and time" FloatLabelType="FloatLabelType.Never"> </SfDateTimePicker>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>District</p>
+                                                        <SfDropDownList @bind-Value="@(VslaGroupCompositionReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                                            <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="ChangeDistrict"></DropDownListEvents>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Sub-County</p>
+                                                        <SfDropDownList @bind-Value="@(VslaGroupCompositionReviewData.SubcountyId)" Query="@DistricttQuery" Enabled="true" TItem="ASubcounty" TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                                            <DropDownListEvents TItem="ASubcounty" TValue="int?" ValueChange="ChangeSubcounty"></DropDownListEvents>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Parish</p>
+                                                        <SfDropDownList @bind-Value="@(VslaGroupCompositionReviewData.ParishId)" Query="@SubcounttyQuery" Enabled="true" TItem="AParish" TValue="int?" DataSource="@ParishData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Meeting Venue</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.MeetingVenue)" Enabled="true" Placeholder="Pleses enter the Venue" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    @if (VslaGroupCompositionReviewData.DistrictId != null && VslaGroupCompositionReviewData.SubcountyId != null && VslaGroupCompositionReviewData.GroupId != null)
+                                                    {
+                                                        <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                        <div class="form-group col-md-12">
+                                                            <h4>Direct Beneficiaries</h4>
+                                                        </div>
+                                                        <div class="form-group col-md-12">
+                                                            <SfGrid @ref="VslaGroupDirectMembersGrid" Query="@(new Query().AddParams("GroupCompositionCode",VslaGroupCompositionReviewData.GroupCompositionCode))" TValue="VslaGroupDirectMembers" AllowPaging="true" AllowFiltering="true"
+                                                                    GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                <SfDataManager AdaptorInstance="@typeof(VslaGroupCompositionDirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                                    <Template Context="VslaGroupDirectMemberContext">
+                                                                        @{
+                                                                            VslaGroupDirectMemberReviewData = (VslaGroupDirectMemberContext as VslaGroupDirectMembers);
+                                                                            <div class="form-row" style="padding:10px;">
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.GroupCompositionCode" Enabled="false"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.VslaGroupDirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12">
+                                                                                    <p>
+                                                                                        HH INDIVIDUAL CODE
+                                                                                    </p>
+                                                                                    <SfMaskedTextBox @ref="HouseholdMemberTextbox" Readonly="false" Mask=">LL-00-0000-00" ValueChange="HouseholdMemberTextboxChange"></SfMaskedTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12">
+                                                                                    <p>
+                                                                                        HH INDIVIDUAL CODE AND NAME
+                                                                                    </p>
+                                                                                    <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.HouseHoldMemberId)" Enabled="false" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                        <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                                            <ItemTemplate>
+                                                                                                <div style="margin-left:10px;">
+                                                                                                    <table>
+                                                                                                        <tr>
+                                                                                                            <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                                            <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                                        </tr>
+                                                                                                    </table>
+                                                                                                </div>
+                                                                                            </ItemTemplate>
+                                                                                            <ValueTemplate>
+                                                                                                @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                                                @*<div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                        <table>
+                                                            <tr>
+                                                                <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>*@
+                                                                                            </ValueTemplate>
+                                                                                        </DropDownListTemplates>
+                                                                                        <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                                        <DropDownListEvents TItem="ViewHouseHoldMembers" TValue="int" Created="@HouseHoldMembersCreatedHandler"></DropDownListEvents>
+                                                                                    </SfDropDownList>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12">
+                                                                                    <p>Phone Number</p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaGroupDirectMemberReviewData.PhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                            </div>
+                                                                        }
+                                                                    </Template>
+                                                                </GridEditSettings>
+                                                                @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                <GridEvents OnActionComplete="@TemplateActionComplete" OnActionBegin="@VslaGroupDirectMemberActionBegin" TValue="VslaGroupDirectMembers"></GridEvents>
+                                                                @*<GridEvents CellSaved="OnCellSaved" OnActionComplete="TemplateActionComplete" OnBatchSave="BatchSaveHandler" QueryCellInfo="QueryCellInfoHandler" TValue="CouncilofDecisionsCountry"></GridEvents>*@
+                                                                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                <GridColumns>
+                                                                    @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                    <GridColumn Field=@nameof(VslaGroupDirectMembers.VslaGroupDirectMemberId) Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupDirectMembers.HouseHoldMemberId) HeaderText="HouseHold Member Code" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupDirectMembers.HouseHoldMemberId) HeaderText="HouseHold Member Name" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.FullName)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupDirectMembers.HouseHoldMemberId) HeaderText="Gender" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.GenderDescription)" ForeignDataSource="@HouseHoldMembersData" Width="160"></GridForeignColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupDirectMembers.HouseHoldMemberId) HeaderText="Age" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.Age)" ForeignDataSource="@HouseHoldMembersData" Width="160"></GridForeignColumn>
+                                                                    <GridColumn Field=@nameof(VslaGroupDirectMembers.PhoneNumber) Visible="true" HeaderText="Telephone" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                </GridColumns>
+                                                            </SfGrid>
+                                                        </div>
+                                                        <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                        <div class="form-group col-md-12">
+                                                            <h4>Indirect Beneficiaries</h4>
+                                                        </div>
+                                                        <div>
+                                                            <p><b>Note:</b> All Indirect Beneficiaries should be given codes in this order.  Starting with the Indirect District Code (IBU), then Sub county code (01 for Budhaya), then VSLA+ group Code (starting V01), then HH Code (Starting with 1000 for every group) and Lastly the Individual Code (Starting with 01) e.g.<b>IBU-01-V01-1000-01</b>.  </p>
+                                                            <p>In instances where there are two (2) or more indirect beneficiaries from the same Household, the last individual code should be changed e.g. <b>IBU-01-V01-1000-01</b> for One HH member then,<b>IBU-01-V01-1000-02</b>  for the next member and so on.   </p>
+                                                        </div>
+                                                        <div class="form-group col-md-12">
+                                                            <SfGrid @ref="VslaGroupIndirectMemberGrid" Query="@(new Query().AddParams("GroupCompositionCode",VslaGroupCompositionReviewData.GroupCompositionCode))" TValue="VslaGroupIndirectMember" AllowPaging="true" AllowFiltering="true"
+                                                                    GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                <SfDataManager AdaptorInstance="@typeof(VslaGroupCompositionIndirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                                    <Template Context="VslaGroupIndirectMemberContext">
+                                                                        @{
+                                                                            VslaGroupIndirectMemberReviewData = (VslaGroupIndirectMemberContext as VslaGroupIndirectMember);
+                                                                            <div class="form-row" style="padding:10px;">
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox @bind-Value="@VslaGroupIndirectMemberReviewData.GroupCompositionCode" Enabled="false"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox @bind-Value="@VslaGroupIndirectMemberReviewData.VslaGroupIndirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>
+                                                                                        Indirect Member Code
+                                                                                    </p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaGroupIndirectMemberReviewData.IndirectMemberCode)" Enabled="true" Placeholder="Pleses enter the Member Code" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Name</p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaGroupIndirectMemberReviewData.MemberName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Phone Number</p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaGroupIndirectMemberReviewData.PhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Age</p>
+                                                                                    <SfNumericTextBox @bind-Value="@VslaGroupIndirectMemberReviewData.Age" OnChange="OnHeaderAgeChange" Enabled="true"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Sex</p>
+                                                                                    <SfDropDownList @bind-Value="@(VslaGroupIndirectMemberReviewData.GenderId)" Enabled="true" TItem="AGender" TValue="string" DataSource="@GenderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                        <DropDownListFieldSettings Value="@nameof(AGender.GenderId)" Text="@nameof(AGender.GenderDescription)"></DropDownListFieldSettings>
+                                                                                    </SfDropDownList>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Parish</p>
+                                                                                    <SfDropDownList @bind-Value="@(VslaGroupIndirectMemberReviewData.ParishId)" Enabled="true" TItem="AParish" TValue="int?" DataSource="@ParishData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                        <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                                                                    </SfDropDownList>
+                                                                                </div>
+                                                                                <div class="form-group col-md-4">
+                                                                                    <p>Village</p>
+                                                                                    <SfDropDownList @bind-Value="@(VslaGroupIndirectMemberReviewData.VillageId)" Enabled="true" TItem="AVillage" TValue="int?" DataSource="@VillageData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                        <DropDownListFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></DropDownListFieldSettings>
+                                                                                    </SfDropDownList>
+                                                                                </div>
+                                                                            </div>
+                                                                        }
+                                                                    </Template>
+                                                                </GridEditSettings>
+                                                                @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                <GridEvents OnActionComplete="@VslaGroupIndirectMemberActionComplete" OnActionBegin="@VslaGroupIndirectMemberActionBegin" TValue="VslaGroupIndirectMember"></GridEvents>
+                                                                <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                <GridColumns>
+                                                                    @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                    <GridColumn Field=@nameof(VslaGroupIndirectMember.VslaGroupIndirectMemberId) Visible="false" HeaderText="VslaGroupIndirectMemberId" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                    <GridColumn Field=@nameof(VslaGroupIndirectMember.IndirectMemberCode) HeaderText="Member Code" Width="200"></GridColumn>
+                                                                    <GridColumn Field=@nameof(VslaGroupIndirectMember.MemberName) HeaderText="Member Name" Width="200"></GridColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupIndirectMember.GenderId) HeaderText="Gender" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" ForeignDataSource="@GenderData" Width="160"></GridForeignColumn>
+                                                                    <GridColumn Field=@nameof(VslaGroupIndirectMember.Age) HeaderText="Age" Width="160"></GridColumn>
+                                                                    <GridColumn Field=@nameof(VslaGroupIndirectMember.PhoneNumber) Visible="true" HeaderText="Telephone" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupIndirectMember.ParishId) HeaderText="Parish" ForeignKeyField="@nameof(AParish.ParishId)" ForeignKeyValue="@nameof(AParish.ParishDescription)" ForeignDataSource="@ParishData" Width="160"></GridForeignColumn>
+                                                                    <GridForeignColumn Field=@nameof(VslaGroupIndirectMember.VillageId) HeaderText="Village" ForeignKeyField="@nameof(AVillage.VillageId)" ForeignKeyValue="@nameof(AVillage.VillageDescription)" ForeignDataSource="@VillageData" Width="160"></GridForeignColumn>
+                                                                </GridColumns>
+                                                            </SfGrid>
+                                                        </div>
+                                                    }
+                                                        
+                                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                    <div class="form-group col-md-12">
+                                                        <h4>VSLA+ GROUP EXECUTIVE COMMITTEE COMPOSITION </h4>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <SfGrid @ref="VslaGroupCommitteeGrid" TValue="VslaGroupCommittee" Query="@(new Query().AddParams("GroupCompositionCode",VslaGroupCompositionReviewData.GroupCompositionCode))" AllowPaging="true" AllowFiltering="true"
+                                                                GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="true" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                                            <SfDataManager AdaptorInstance="@typeof(VslaGroupCompositionCommiteeAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Dialog">
+                                                                <Template Context="VslaGroupCommitteeContext">
+                                                                    @{
+                                                                        var VslaGroupCommitteeReviewData = (VslaGroupCommitteeContext as VslaGroupCommittee);
+                                                                        <div class="form-row" style="padding:10px;">
+                                                                            <div class="form-group col-md-12" hidden>
+                                                                                <SfNumericTextBox @bind-Value="@VslaGroupCommitteeReviewData.GroupCompositionCode" Enabled="false"></SfNumericTextBox>
+                                                                            </div>
+                                                                            <div class="form-group col-md-12" hidden>
+                                                                                <SfNumericTextBox @bind-Value="@VslaGroupCommitteeReviewData.VslagroupCommitteeId" Enabled="false"></SfNumericTextBox>
+                                                                            </div>
+                                                                            <div class="form-group col-md-4">
+                                                                                <p>Name</p>
+                                                                                <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCommitteeReviewData.MemberName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                            </div>
+                                                                            <div class="form-group col-md-4">
+                                                                                <p>Phone Number</p>
+                                                                                <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCommitteeReviewData.PhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                            </div>
+                                                                            <div class="form-group col-md-4">
+                                                                                <p>Age</p>
+                                                                                <SfNumericTextBox @bind-Value="@VslaGroupCommitteeReviewData.Age" Enabled="true"></SfNumericTextBox>
+                                                                            </div>
+                                                                            <div class="form-group col-md-4">
+                                                                                <p>Sex</p>
+                                                                                <SfDropDownList @bind-Value="@(VslaGroupCommitteeReviewData.GenderId)" Enabled="true" TItem="AGender" TValue="string" DataSource="@GenderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                    <DropDownListFieldSettings Value="@nameof(AGender.GenderId)" Text="@nameof(AGender.GenderDescription)"></DropDownListFieldSettings>
+                                                                                </SfDropDownList>
+                                                                            </div>
+                                                                            <div class="form-group col-md-4">
+                                                                                <p>Position</p>
+                                                                                <SfDropDownList @bind-Value="@(VslaGroupCommitteeReviewData.GroupPositionId)" Enabled="true" TItem="AGroupPosition" TValue="int?" DataSource="@GroupPositionData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                    <DropDownListFieldSettings Value="@nameof(AGroupPosition.GroupPositionId)" Text="@nameof(AGroupPosition.GroupPositionDesc)"></DropDownListFieldSettings>
+                                                                                </SfDropDownList>
+                                                                            </div>
+                                                                        </div>
+                                                                    }
+                                                                </Template>
+                                                            </GridEditSettings>
+                                                            @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                            <GridEvents OnActionComplete="@VslaGroupCommitteeActionComplete" OnActionBegin="@VslaGroupCommitteeActionBegin" TValue="VslaGroupCommittee"></GridEvents>
+                                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                            <GridColumns>
+                                                                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                <GridColumn Field=@nameof(VslaGroupCommittee.VslagroupCommitteeId) Visible="false" HeaderText="VslagroupCommitteeId" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                <GridColumn Field=@nameof(VslaGroupCommittee.MemberName) HeaderText="Member Name" Width="200"></GridColumn>
+                                                                <GridForeignColumn Field=@nameof(VslaGroupCommittee.GenderId) HeaderText="Gender" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" ForeignDataSource="@GenderData" Width="160"></GridForeignColumn>
+                                                                <GridColumn Field=@nameof(VslaGroupCommittee.Age) HeaderText="Age" Width="160"></GridColumn>
+                                                                <GridColumn Field=@nameof(VslaGroupCommittee.PhoneNumber) Visible="true" HeaderText="Telephone" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                <GridForeignColumn Field=@nameof(VslaGroupCommittee.GroupPositionId) HeaderText="Position" ForeignKeyField="@nameof(AGroupPosition.GroupPositionId)" ForeignKeyValue="@nameof(AGroupPosition.GroupPositionDesc)" ForeignDataSource="@GroupPositionData" Width="160"></GridForeignColumn>
+                                                            </GridColumns>
+                                                        </SfGrid>
+                                                    </div>
+                                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                    <div class="form-group col-md-6">
+                                                        <p>Officer in Charge (CBT): </p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.OfficerIncharge)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-6">
+                                                        <p>CBT Code</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.Cbtcode)" Enabled="true" Placeholder="Pleses enter the Code" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Checked by</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.CheckedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Position</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.CheckerPosition)" Enabled="true" Placeholder="Pleses enter the Position" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Date</p>
+                                                        <SfDatePicker @bind-Value="@(VslaGroupCompositionReviewData.DateChecked)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Verified by</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.VerifiedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Position</p>
+                                                        <SfTextBox Multiline="false" @bind-Value="@(VslaGroupCompositionReviewData.VerifierPosition)" Enabled="true" Placeholder="Pleses enter the Position" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Date</p>
+                                                        <SfDatePicker @bind-Value="@(VslaGroupCompositionReviewData.DateofVerification)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <SfDialog @ref="@GroupDialog" Height="auto" Width="80%" AllowDragging="true" Target=".mainbody" ShowCloseIcon="true" IsModal="true" Visible="false">
+                                                            <DialogTemplates>
+                                                                <Header>
+                                                                    <div id="template" title="New Group" class="e-icon-settings">New Group</div>
+                                                                </Header>
+                                                                <Content>
+                                                                    <div style="padding:10px">
+                                                                        <EditForm Model="@NewGroupModel">
+                                                                            <div class="form-row">
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox ID="GroupId" @bind-Value="@(NewGroupModel.GroupId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12">
+                                                                                    <p>Group Name</p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(NewGroupModel.GroupName)" Enabled="true" Placeholder="Enter Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                            </div>
+                                                                        </EditForm>
+                                                                    </div>
+                                                                </Content>
+                                                                <FooterTemplate>
+                                                                    @*<DialogButton Content="Defer Application" IsPrimary="true" OnClick="@ComfirmationYes" />*@
+                                                                    <BSButton Class="btn-secondary" @onclick="@SaveNewGroupbtnClick">Add Group</BSButton>
+                                                                </FooterTemplate>
+                                                            </DialogTemplates>
+                                                        </SfDialog>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <SfDialog @ref="@GroupCycleDialog" Height="auto" Width="80%" AllowDragging="true" Target=".mainbody" ShowCloseIcon="true" IsModal="true" Visible="false">
+                                                            <DialogTemplates>
+                                                                <Header>
+                                                                    <div id="template" title="New Group Cycle" class="e-icon-settings">New Group Cycle</div>
+                                                                </Header>
+                                                                <Content>
+                                                                    <div style="padding:10px">
+                                                                        <EditForm Model="@NewGroupCycleModel">
+                                                                            <div class="form-row">
+                                                                                <div class="form-group col-md-12" hidden>
+                                                                                    <SfNumericTextBox ID="GroupId" @bind-Value="@(NewGroupCycleModel.GroupCycleId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                                                </div>
+                                                                                <div class="form-group col-md-12">
+                                                                                    <p>Group Cycle</p>
+                                                                                    <SfTextBox Multiline="false" @bind-Value="@(NewGroupCycleModel.GroupCycleDesc)" Enabled="true" Placeholder="Enter Cycle Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                </div>
+                                                                            </div>
+                                                                        </EditForm>
+                                                                    </div>
+                                                                </Content>
+                                                                <FooterTemplate>
+                                                                    @*<DialogButton Content="Defer Application" IsPrimary="true" OnClick="@ComfirmationYes" />*@
+                                                                    <BSButton Class="btn-secondary" @onclick="@SaveNewGroupCyclebtnClick">Add Group</BSButton>
+                                                                </FooterTemplate>
+                                                            </DialogTemplates>
+                                                        </SfDialog>
+                                                    </div>
+                                                </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveVslaGroupCompositionBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelVslaGroupCompositionBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="140" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Width="120">
+                    <Template Context="CompositionContext">
+                        @{
+                            var data = (CompositionContext as VslaGroupComposition);
+                            if(data != null)
+                            {
+                                <button class="btn btn-primary" type="button" @onclick=@(()=>MoveToNextCycleClick(data))>Move To next Cycle</button>
+                            }
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field=@nameof(VslaGroupComposition.GroupCompositionCode) HeaderText="Group Composition Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(VslaGroupComposition.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(VslaGroupComposition.ParishId) HeaderText="Parish" ForeignKeyField="@nameof(AParish.ParishId)" ForeignKeyValue="@nameof(AParish.ParishDescription)" ForeignDataSource="@ParishData" Width="200"></GridForeignColumn>
+                <GridColumn Field=@nameof(VslaGroupComposition.MeetingDate) HeaderText="Meeting Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(VslaGroupComposition.GroupId) HeaderText="Group Name" ForeignKeyField="@nameof(AGroups.GroupId)" ForeignKeyValue="@nameof(AGroups.GroupName)" ForeignDataSource="@GroupsData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(VslaGroupComposition.GroupCode) HeaderText="VSLA+ Code" Width="220"></GridColumn>
+                <GridForeignColumn Field=@nameof(VslaGroupComposition.GroupCycleId) HeaderText=" Cycle" ForeignKeyField="@nameof(AGroupCycle.GroupCycleId)" ForeignKeyValue="@nameof(AGroupCycle.GroupCycleDesc)" ForeignDataSource="@GroupCycleData" Width="220"></GridForeignColumn>
+                <GridColumn Field=@nameof(VslaGroupComposition.MeetingVenue) HeaderText="Meeting Venue" Width="220"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+    <div class="form-group col-md-12">
+        <SfDialog @ref="@NextCycleDialog" Height="auto" Width="80%" AllowDragging="true" Target=".mainbody" ShowCloseIcon="true" IsModal="true" Visible="false">
+            <DialogTemplates>
+                <Header>
+                    <div id="template" title="New Group Cycle" class="e-icon-settings">Move To Another Cycle</div>
+                </Header>
+                <Content>
+                    <div style="padding:10px">
+                        <EditForm Model="@NextCycleModel">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@(NextCycleModel.GroupCompositionCode)" Enabled="false" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <p>Cycle</p>
+                                    <SfDropDownList @bind-Value="@(NextCycleModel.GroupCycleId)" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                          <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                </Content>
+                <FooterTemplate>
+                    <BSButton Class="btn-secondary" @onclick="@SaveNextCyclebtnClick">Move Group</BSButton>
+                    <BSButton Class="btn-dark" @onclick="@(async()=> await NextCycleDialog.HideAsync())">Cancel</BSButton>
+                </FooterTemplate>
+            </DialogTemplates>
+        </SfDialog>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+    CycleModel NextCycleModel { get; set; } = new CycleModel();
+    SfDialog GroupDialog;
+    SfDialog GroupCycleDialog;
+    SfDialog NextCycleDialog;
+    SfMaskedTextBox HouseholdMemberTextbox;
+    AGroups NewGroupModel { get; set; } = new AGroups();
+    AGroupCycle NewGroupCycleModel { get; set; } = new AGroupCycle();
+    SfGrid<VslaGroupComposition> VslaGroupCompositionGrid;
+    private VslaGroupComposition VslaGroupCompositionReviewData { get; set; }
+    VslaGroupIndirectMember VslaGroupIndirectMemberReviewData { get; set; }
+
+    SfGrid<VslaGroupDirectMembers> VslaGroupDirectMembersGrid;
+    private VslaGroupDirectMembers VslaGroupDirectMemberReviewData;
+    List<VslaGroupDirectMembers> VslaGroupDirectMemberDatasource = new();
+
+    SfGrid<VslaGroupIndirectMember> VslaGroupIndirectMemberGrid;
+    List<VslaGroupIndirectMember> VslaGroupIndirectMemberDatasource = new();
+    SfGrid<VslaGroupCommittee> VslaGroupCommitteeGrid;
+    List<VslaGroupCommittee> VslaGroupCommitteeDatasource = new();
+    List<AGroups> GroupsData { get; set; }
+    List<AGroupCycle> GroupCycleData { get; set; }
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<AGroupPosition> GroupPositionData { get; set; }
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+    public Query DistricttQuery { get; set; } = null;
+    public Query SubcounttyQuery { get; set; } = null;
+
+    private void MoveToNextCycleClick(VslaGroupComposition data)
+    {
+        try
+        {
+            NextCycleModel = new CycleModel();
+            NextCycleModel.GroupCompositionCode = data.GroupCompositionCode;
+            if(NextCycleDialog != null)
+            {
+                NextCycleDialog.ShowAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private async Task SaveNextCyclebtnClick()
+    {
+        try
+        {
+            if(NextCycleModel.GroupCycleId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "Please select the cycle to push to.", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+            else
+            {
+                var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == NextCycleModel.GroupCompositionCode);
+                if (exist != null)
+                {
+                    VslaGroupComposition m = new VslaGroupComposition();
+                    m.GroupCompositionCode = exist.GroupCompositionCode;
+                    m.GroupCode = exist.GroupCode;
+                    m.GroupId = exist.GroupId;
+                    m.GroupCycleId = NextCycleModel.GroupCycleId;
+                    m.MeetingDate = exist.MeetingDate;
+                    m.SubcountyId = exist.SubcountyId;
+                    m.ParishId = exist.ParishId;
+                    m.MeetingVenue = exist.MeetingVenue;
+                    m.MeetingTime = exist.MeetingTime;
+                    m.OfficerIncharge = exist.OfficerIncharge;
+                    m.Cbtcode = exist.Cbtcode;
+                    m.CheckedBy = exist.CheckedBy;
+                    m.CheckerPosition = exist.CheckerPosition;
+                    m.DateChecked = exist.DateChecked;
+                    m.VerifiedBy = exist.VerifiedBy;
+                    m.VerifierPosition = exist.VerifierPosition;
+                    m.DateofVerification = exist.DateofVerification;
+                    m.GroupTypeId = exist.GroupTypeId;
+                    m.DistrictId = exist.DistrictId;
+
+                    int id =1;
+                    var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).ToList().LastOrDefault();
+                    if(last != null)
+                    {
+                        id = (1+ last.GroupCompositionCode);
+                    }
+                    m.GroupCompositionCode = id;
+                    db.VslaGroupComposition.Add(m);
+                    await db.SaveChangesAsync();
+
+                    var directMembers = db.VslaGroupDirectMembers.Where(o=> o.GroupCompositionCode==NextCycleModel.GroupCompositionCode).ToList();
+                    if(directMembers != null && directMembers.Count > 0)
+                    {
+                        foreach (var item in directMembers)
+                        {
+                            VslaGroupDirectMembers x = new VslaGroupDirectMembers();
+                            //x.VslaGroupDirectMemberId = item.VslaGroupDirectMemberId;
+                            x.GroupCompositionCode = m.GroupCompositionCode;
+                            x.HouseHoldMemberId = item.HouseHoldMemberId;
+                            x.PhoneNumber = item.PhoneNumber;
+
+                            int _id = 1;
+                            var _last = db.VslaGroupDirectMembers.OrderBy(o => o.VslaGroupDirectMemberId).ToList().LastOrDefault();
+                            if (_last != null)
+                            {
+                                _id = (1 + _last.VslaGroupDirectMemberId);
+                            }
+                            x.VslaGroupDirectMemberId = _id;
+                            db.VslaGroupDirectMembers.Add(x);
+                            db.SaveChanges();
+                        }
+                    }
+                    var indirectMembers = db.VslaGroupIndirectMember.Where(o=> o.GroupCompositionCode==NextCycleModel.GroupCompositionCode).ToList();
+                    if(indirectMembers != null && indirectMembers.Count > 0)
+                    {
+                        foreach (var item in indirectMembers)
+                        {
+                            VslaGroupIndirectMember x = new VslaGroupIndirectMember();
+                            x.GroupCompositionCode = m.GroupCompositionCode;
+                            //x.VslaGroupIndirectMemberId = item.VslaGroupIndirectMemberId;
+                            x.IndirectMemberCode = item.IndirectMemberCode;
+                            x.MemberName = item.MemberName;
+                            x.GenderId = item.GenderId;
+                            x.Age = item.Age;
+                            x.ParishId = item.ParishId;
+                            x.VillageId = item.VillageId;
+                            x.PhoneNumber = item.PhoneNumber;
+                            x.DoB = item.DoB;
+
+
+                            int _id = 1;
+                            var _last = db.VslaGroupIndirectMember.OrderBy(o => o.VslaGroupIndirectMemberId).ToList().LastOrDefault();
+                            if (_last != null)
+                            {
+                                _id = (1 + _last.VslaGroupIndirectMemberId);
+                            }
+                            x.VslaGroupIndirectMemberId = _id;
+                            db.VslaGroupIndirectMember.Add(x);
+                            db.SaveChanges();
+                        }
+                    }
+                    var Commitee = db.VslaGroupCommittee.Where(o => o.GroupCompositionCode == NextCycleModel.GroupCompositionCode).ToList();
+                    if (Commitee != null && Commitee.Count > 0)
+                    {
+                        foreach (var item in Commitee)
+                        {
+                            VslaGroupCommittee x = new VslaGroupCommittee();
+                            x.GroupCompositionCode = m.GroupCompositionCode;
+                            //x.VslagroupCommitteeId = item.VslagroupCommitteeId;
+                            x.MemberName = item.MemberName;
+                            x.GenderId = item.GenderId;
+                            x.Age = item.Age;
+                            x.GroupPositionId = item.GroupPositionId;
+                            x.PhoneNumber = item.PhoneNumber;
+
+
+                            int _id = 1;
+                            var _last = db.VslaGroupCommittee.OrderBy(o => o.VslagroupCommitteeId).ToList().LastOrDefault();
+                            if (_last != null)
+                            {
+                                _id = (1 + _last.VslagroupCommitteeId);
+                            }
+                            x.VslagroupCommitteeId = _id;
+                            db.VslaGroupCommittee.Add(x);
+                            db.SaveChanges();
+                        }
+                    }
+                    if(VslaGroupCompositionGrid != null)
+                    {
+                        await VslaGroupCompositionGrid.Refresh();
+                    }
+                    if (NextCycleDialog != null)
+                    {
+                        await NextCycleDialog.HideAsync();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void OnHeaderAgeChange()
+    {
+        if (VslaGroupIndirectMemberReviewData.Age.HasValue)
+        {
+            VslaGroupIndirectMemberReviewData.DoB = new DateTime((DateTime.Now.Year - VslaGroupIndirectMemberReviewData.Age.Value), 1, 1);
+        }
+    }
+
+    private async Task SaveVslaGroupCompositionBtnClick()
+    {
+        await VslaGroupDirectMembersGrid.EndEditAsync();
+        await VslaGroupCompositionGrid.EndEditAsync();
+    }
+    private async Task CancelVslaGroupCompositionBtnClick()
+    {
+        await VslaGroupDirectMembersGrid.EndEditAsync();
+        await VslaGroupCompositionGrid.CloseEditAsync();
+    }
+    private async Task SaveNewGroupbtnClick()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(NewGroupModel.GroupName))
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.AGroups.FirstOrDefault(o => o.GroupName.ToLower() == NewGroupModel.GroupName.ToLower());
+                    if(exist != null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "Ths group name already exists", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                    }
+                    else
+                    {
+                        int id = 1;
+                        var last = db.AGroups.OrderBy(o => o.GroupId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.GroupId + 1);
+                        }
+                        NewGroupModel.GroupId = id;
+                        db.AGroups.Add(NewGroupModel);
+                        db.SaveChanges();
+                        NewGroupModel = new AGroups();
+                        GroupsData = db.AGroups.AsNoTracking().ToList();
+                        await GroupDialog.HideAsync();
+                        VslaGroupCompositionReviewData.GroupId = id;
+                    }
+                }
+            }
+            else
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "Please enter a group name", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private async Task AddNewGroupbtnClick()
+    {
+        try
+        {
+            NewGroupModel = new AGroups();
+            await GroupDialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private async Task SaveNewGroupCyclebtnClick()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(NewGroupCycleModel.GroupCycleDesc))
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.AGroupCycle.FirstOrDefault(o => o.GroupCycleDesc.ToLower() == NewGroupCycleModel.GroupCycleDesc.ToLower());
+                    if (exist != null)
+                    {
+                        await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "Ths group Cycle already exists", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                    }
+                    else
+                    {
+                        int id = 1;
+                        var last = db.AGroupCycle.OrderBy(o => o.GroupCycleId).AsNoTracking().ToList().LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.GroupCycleId + 1);
+                        }
+                        NewGroupCycleModel.GroupCycleId = id;
+                        db.AGroupCycle.Add(NewGroupCycleModel);
+                        db.SaveChanges();
+                        NewGroupCycleModel = new AGroupCycle();
+                        GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+                        await GroupCycleDialog.HideAsync();
+                        VslaGroupCompositionReviewData.GroupCycleId = id;
+                    }
+                }
+            }
+            else
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "Please enter a group Cycle", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private async Task AddNewGroupCyclebtnClick()
+    {
+        try
+        {
+            NewGroupCycleModel = new AGroupCycle();
+            await GroupCycleDialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    GenderData = db.AGender.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+                    GroupPositionData = db.AGroupPosition.AsNoTracking().ToList();
+                    //HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                    if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        try
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                //HouseHoldMembersData = db.ViewHouseHoldMembers.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        base.OnAfterRender(firstRender);
+    }
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+            if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+        try
+        {
+            using(var db = new MUCOBADIContext())
+            {
+                HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.DistrictId ==  args.Value).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void ChangeSubcounty(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ASubcounty> args)
+    {
+        this.SubcounttyQuery = new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+    }
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    public void HouseholdMemberTextboxChange(Syncfusion.Blazor.Inputs.MaskChangeEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(args.MaskedValue))
+        {
+            var member = HouseHoldMembersData.FirstOrDefault(o => o.HouseHoldMemberCode == args.MaskedValue);
+            if(member != null)
+            {
+                VslaGroupDirectMemberReviewData.HouseHoldMemberId = member.HouseHoldMemberId;
+            }
+        }
+    }
+    private void HouseHoldMembersCreatedHandler(Object args)
+    {
+        var member = HouseHoldMembersData.FirstOrDefault(o => o.HouseHoldMemberId == VslaGroupDirectMemberReviewData.HouseHoldMemberId);
+        if (member != null)
+        {
+            HouseholdMemberTextbox.Value = member.HouseHoldMemberCode;
+        }
+    }
+
+    #region Group Composition Header
+    public class VslaGroupCompositionAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public VslaGroupCompositionAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<VslaGroupComposition>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+
+                string[] _district = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _district = DistrictId.Split(',');
+                }
+                string[] _SubcountyId = new string[] { };
+                if (!string.IsNullOrEmpty(SubcountyId))
+                {
+                    _SubcountyId = SubcountyId.Split(',');
+                }
+                string[] _ParishId = new string[] { };
+                if (!string.IsNullOrEmpty(ParishId))
+                {
+                    _ParishId = ParishId.Split(',');
+                }
+                string[] _VillageId = new string[] { };
+                if (!string.IsNullOrEmpty(VillageId))
+                {
+                    _VillageId = VillageId.Split(',');
+                }
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.VslaGroupComposition.Where(o =>(_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true)) &&
+                (_ParishId.Length == 0 || (o.ParishId != null && _ParishId.Any(a => a == o.ParishId.ToString()) == true)) && o.GroupTypeId == 1).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<VslaGroupComposition>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupComposition);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == val.GroupCompositionCode);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.GroupCompositionCode + 1);
+                        }
+                        val.GroupCompositionCode = id;
+                        db.VslaGroupComposition.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupComposition);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == val.GroupCompositionCode);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnVslaGroupCompositionActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<VslaGroupComposition> args)
+    {
+        try
+        {
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            //{
+            //    this.SubcounttyQuery = new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = args.RowData.SubcountyId, IgnoreCase = false, IgnoreAccent = false });
+            //    this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.RowData.DistrictId, IgnoreCase = false, IgnoreAccent = false });
+            //    using (var db = new SPToCoreContext())
+            //    {
+            //        VslaGroupDirectMemberDatasource = await db.VslaGroupDirectMembers.Where(o=> o.GroupCompositionCode==args.RowData.GroupCompositionCode).ToListAsync();
+            //        VslaGroupIndirectMemberDatasource = await db.VslaGroupIndirectMember.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+            //        VslaGroupCommitteeDatasource = await db.VslaGroupCommittee.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+            //    }
+            //}
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            //{
+            //    using (var db = new SPToCoreContext())
+            //    {
+            //        VslaGroupDirectMemberDatasource = await db.VslaGroupDirectMembers.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+            //        VslaGroupIndirectMemberDatasource = await db.VslaGroupIndirectMember.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+            //        VslaGroupCommitteeDatasource = await db.VslaGroupCommittee.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+            //    }
+            //}
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.GroupId== null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the group name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.GroupCode))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the VSLA+ Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.GroupCycleId==null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Cycle", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.MeetingDate== null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Meeting date and Time.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (args.Data.ParishId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Parish.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else if (String.IsNullOrEmpty(args.Data.MeetingVenue))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Meeting Venue.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.OfficerIncharge))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Officer in Charge (CBT): ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.Cbtcode))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the CBT Code.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CheckedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Person that Checked this record ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CheckerPosition))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Position of the Person that Checked this record .", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (args.Data.DateChecked == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date when this record was checked.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else if (String.IsNullOrEmpty(args.Data.VerifiedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the Person that Verified this record ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.VerifierPosition))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Position of the Person that Verified this record .", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (args.Data.DateofVerification == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date when this record was Verified.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.GroupCompositionCode + 1);
+                            }
+                            args.Data.GroupCompositionCode = id;
+                            args.Data.GroupTypeId = 1;
+                            db.VslaGroupComposition.Add(args.Data);
+                            db.SaveChanges();
+                        }
+                        foreach (var n in VslaGroupDirectMemberDatasource)
+                        {
+                            var _exist = db.VslaGroupDirectMembers.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode && o.HouseHoldMemberId == n.HouseHoldMemberId);
+                            if (_exist == null)
+                            {
+                                VslaGroupDirectMembers m = new();
+                                m.GroupCompositionCode = args.Data.GroupCompositionCode;
+                                m.HouseHoldMemberId = n.HouseHoldMemberId;
+                                m.PhoneNumber = n.PhoneNumber;
+                                int id = 1;
+                                var last = db.VslaGroupDirectMembers.OrderBy(o => o.VslaGroupDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslaGroupDirectMemberId + 1);
+                                }
+                                m.VslaGroupDirectMemberId = id;
+                                db.VslaGroupDirectMembers.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.PhoneNumber = n.PhoneNumber;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                        foreach (var n in VslaGroupIndirectMemberDatasource)
+                        {
+                            var _exist = db.VslaGroupIndirectMember.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode && o.VslaGroupIndirectMemberId == n.VslaGroupIndirectMemberId);
+                            if (_exist == null)
+                            {
+                                VslaGroupIndirectMember m = new();
+                                m.GroupCompositionCode = args.Data.GroupCompositionCode;
+                                m.IndirectMemberCode = n.IndirectMemberCode;
+                                m.MemberName = n.MemberName;
+                                m.Age = n.Age;
+                                m.DoB = n.DoB;
+                                m.GenderId = n.GenderId;
+                                m.ParishId = n.ParishId;
+                                m.VillageId = n.VillageId;
+                                m.PhoneNumber = n.PhoneNumber;
+                                int id = 1;
+                                var last = db.VslaGroupIndirectMember.OrderBy(o => o.VslaGroupIndirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslaGroupIndirectMemberId + 1);
+                                }
+                                m.VslaGroupIndirectMemberId = id;
+                                db.VslaGroupIndirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberName = n.MemberName;
+                                _exist.Age = n.Age;
+                                _exist.DoB = n.DoB;
+                                _exist.GenderId = n.GenderId;
+                                _exist.ParishId = n.ParishId;
+                                _exist.VillageId = n.VillageId;
+                                _exist.PhoneNumber = n.PhoneNumber;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                        foreach (var n in VslaGroupCommitteeDatasource)
+                        {
+                            var _exist = db.VslaGroupCommittee.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode && o.MemberName == n.MemberName);
+                            if (_exist == null)
+                            {
+                                VslaGroupCommittee m = new();
+                                m.GroupCompositionCode = args.Data.GroupCompositionCode;
+                                m.GroupPositionId = n.GroupPositionId;
+                                m.MemberName = n.MemberName;
+                                m.Age = n.Age;
+                                m.GenderId = n.GenderId;
+                                m.PhoneNumber = n.PhoneNumber;
+                                int id = 1;
+                                var last = db.VslaGroupCommittee.OrderBy(o => o.VslagroupCommitteeId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslagroupCommitteeId + 1);
+                                }
+                                m.VslagroupCommitteeId = id;
+                                db.VslaGroupCommittee.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberName = n.MemberName;
+                                _exist.Age = n.Age;
+                                _exist.GenderId = n.GenderId;
+                                _exist.GroupPositionId = n.GroupPositionId;
+                                _exist.PhoneNumber = n.PhoneNumber;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public  async Task OnVslaGroupCompositionActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<VslaGroupComposition> args)
+    {
+        try
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                VslaGroupCompositionGrid.PreventRender(false);
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+                {
+                    this.SubcounttyQuery = new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = args.RowData.SubcountyId, IgnoreCase = false, IgnoreAccent = false });
+                    this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.RowData.DistrictId, IgnoreCase = false, IgnoreAccent = false });
+                    using(var db = new MUCOBADIContext())
+                    {
+                        HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.DistrictId == args.RowData.DistrictId).ToList();
+                    }
+                    //using (var db = new SPToCoreContext())
+                    //{
+                    //    VslaGroupDirectMemberDatasource = await db.VslaGroupDirectMembers.Where(o=> o.GroupCompositionCode==args.RowData.GroupCompositionCode).ToListAsync();
+                    //    VslaGroupIndirectMemberDatasource = await db.VslaGroupIndirectMember.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+                    //    VslaGroupCommitteeDatasource = await db.VslaGroupCommittee.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+                    //}
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+                {
+                    using (var db = new SPToCoreContext())
+                    {
+                         HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.DistrictId == args.RowData.DistrictId).ToList();
+                        //VslaGroupDirectMemberDatasource = await db.VslaGroupDirectMembers.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+                        //VslaGroupIndirectMemberDatasource = await db.VslaGroupIndirectMember.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+                        //VslaGroupCommitteeDatasource = await db.VslaGroupCommittee.Where(o => o.GroupCompositionCode == args.RowData.GroupCompositionCode).ToListAsync();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+
+    }
+
+    public async Task CellSelectHandler(CellSelectEventArgs<VslaGroupDirectMembers> args)
+    {
+        //get selected cell index
+        var CellIndexes = await VslaGroupDirectMembersGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await VslaGroupDirectMembersGrid.GetColumnFieldNames();
+        //await VslaGroupDirectMembersGrid.ClearSelectionAsync();
+        // edit the selected cell using the cell index and column name
+        await VslaGroupDirectMembersGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public void TemplateActionComplete(ActionEventArgs<VslaGroupDirectMembers> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaGroupDirectMembersGrid.PreventRender(false);
+        }
+
+    }
+    public void VslaGroupIndirectMemberActionComplete(ActionEventArgs<VslaGroupIndirectMember> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaGroupIndirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public void VslaGroupCommitteeActionComplete(ActionEventArgs<VslaGroupCommittee> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaGroupCommitteeGrid.PreventRender(false);
+        }
+
+    }
+    public async Task VslaGroupDirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<VslaGroupDirectMembers> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.HouseHoldMemberId==0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Household member", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            //else if (String.IsNullOrEmpty(args.Data.PhoneNumber))
+            //{
+            //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone number", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+            else
+            {
+                if (VslaGroupCompositionReviewData.GroupCompositionCode==0)
+                {
+                    using(var db = new MUCOBADIContext()){
+                        var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.GroupCompositionCode + 1);
+                            }
+                            VslaGroupCompositionReviewData.GroupCompositionCode = id;
+                            VslaGroupCompositionReviewData.GroupTypeId = 1;
+                            db.VslaGroupComposition.Add(VslaGroupCompositionReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+                else
+                {
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+            }
+        }
+    }
+    public async Task VslaGroupIndirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<VslaGroupIndirectMember> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (String.IsNullOrEmpty(args.Data.IndirectMemberCode))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (String.IsNullOrEmpty(args.Data.MemberName))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Member Name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Age == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Age", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.GenderId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Sex", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+             else
+            {
+                if (VslaGroupCompositionReviewData.GroupCompositionCode==0)
+                {
+                    using(var db = new MUCOBADIContext()){
+                        var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.GroupCompositionCode + 1);
+                            }
+                            VslaGroupCompositionReviewData.GroupCompositionCode = id;
+                            VslaGroupCompositionReviewData.GroupTypeId = 1;
+                            db.VslaGroupComposition.Add(VslaGroupCompositionReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+                else
+                {
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+            }
+            //else if (args.Data.ParishId == null)
+            //{
+            //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Parish", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+            //else if (args.Data.VillageId == null)
+            //{
+            //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Village", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+            //else if (String.IsNullOrEmpty(args.Data.PhoneNumber))
+            //{
+            //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone number", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+        }
+    }
+    public async Task VslaGroupCommitteeActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<VslaGroupCommittee> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (String.IsNullOrEmpty(args.Data.MemberName))
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Member name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Age==null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Age", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.GenderId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Sex", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.GroupPositionId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Position", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+             else
+            {
+                if (VslaGroupCompositionReviewData.GroupCompositionCode==0)
+                {
+                    using(var db = new MUCOBADIContext()){
+                        var exist = db.VslaGroupComposition.FirstOrDefault(o => o.GroupCompositionCode == args.Data.GroupCompositionCode);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaGroupComposition.OrderBy(o => o.GroupCompositionCode).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.GroupCompositionCode + 1);
+                            }
+                            VslaGroupCompositionReviewData.GroupCompositionCode = id;
+                            VslaGroupCompositionReviewData.GroupTypeId = 1;
+                            db.VslaGroupComposition.Add(VslaGroupCompositionReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+                else
+                {
+                    args.Data.GroupCompositionCode = VslaGroupCompositionReviewData.GroupCompositionCode;
+                }
+            }
+            //else if (String.IsNullOrEmpty(args.Data.PhoneNumber))
+            //{
+            //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone number", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //    args.Cancel = true;
+            //}
+        }
+    }
+    #endregion Group Composition Header
+    #region Direct Member
+    public class VslaGroupCompositionDirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public VslaGroupCompositionDirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<VslaGroupDirectMembers>();
+            try
+            {
+                int GroupCompositionCode = 0;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                }
+
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.VslaGroupDirectMembers.Where(o => o.GroupCompositionCode == GroupCompositionCode).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<VslaGroupDirectMembers>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupDirectMembers);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupDirectMembers.FirstOrDefault(o => o.VslaGroupDirectMemberId == val.VslaGroupDirectMemberId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaGroupDirectMembers.OrderBy(o => o.VslaGroupDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslaGroupDirectMemberId + 1);
+                        }
+                        val.VslaGroupDirectMemberId = id;
+                        db.VslaGroupDirectMembers.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupDirectMembers);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupDirectMembers.FirstOrDefault(o => o.VslaGroupDirectMemberId == val.VslaGroupDirectMemberId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    #endregion Direct Member
+     #region Indirect Member
+    public class VslaGroupCompositionIndirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public VslaGroupCompositionIndirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<VslaGroupIndirectMember>();
+            try
+            {
+                int GroupCompositionCode = 0;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                }
+
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.VslaGroupIndirectMember.Where(o => o.GroupCompositionCode == GroupCompositionCode).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<VslaGroupIndirectMember>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupIndirectMember);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupIndirectMember.FirstOrDefault(o => o.VslaGroupIndirectMemberId == val.VslaGroupIndirectMemberId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaGroupIndirectMember.OrderBy(o => o.VslaGroupIndirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslaGroupIndirectMemberId + 1);
+                        }
+                        val.VslaGroupIndirectMemberId = id;
+                        db.VslaGroupIndirectMember.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupIndirectMember);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupIndirectMember.FirstOrDefault(o => o.VslaGroupIndirectMemberId == val.VslaGroupIndirectMemberId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    #endregion Indirect Member
+    #region Group Commitee
+    public class VslaGroupCompositionCommiteeAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public VslaGroupCompositionCommiteeAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<VslaGroupCommittee>();
+            try
+            {
+                int GroupCompositionCode = 0;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                }
+
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.VslaGroupCommittee.Where(o => o.GroupCompositionCode == GroupCompositionCode).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<VslaGroupCommittee>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupCommittee);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupCommittee.FirstOrDefault(o => o.VslagroupCommitteeId == val.VslagroupCommitteeId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaGroupCommittee.OrderBy(o => o.VslagroupCommitteeId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslagroupCommitteeId + 1);
+                        }
+                        val.VslagroupCommitteeId = id;
+                        db.VslaGroupCommittee.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as VslaGroupCommittee);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaGroupCommittee.FirstOrDefault(o => o.VslagroupCommitteeId == val.VslagroupCommitteeId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    #endregion Group Commitee
+}

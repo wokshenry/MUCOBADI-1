@@ -1,0 +1,2050 @@
+﻿@page "/ReferralUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+    h3 {
+        color: red;
+        text-align: center;
+        font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> REFERRALS UPLOAD  </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<br />
+
+<SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+    <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+</SfUploader>
+<div class="form-group col-md-12">
+    <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+</div>
+
+<div class="form-group col-md-12">
+    @if (!string.IsNullOrEmpty(MessageResponse))
+    {
+        if (MessageResponse.Contains("error") || MessageResponse.Contains("Failure"))
+        {
+            <p class="badge-danger" style="padding:10px">
+                @MessageResponse
+            </p>
+        }
+        else if (MessageResponse.Contains("success"))
+        {
+            <p class="badge-success" style="padding:10px">
+                @MessageResponse
+            </p>
+        }
+    }
+</div>
+<div class="form-group col-md-12">
+    @if (!string.IsNullOrEmpty(rownumber))
+    {
+        <p style="color:#28a745;">Uploading row @rownumber of @usedRows Please wait ........ </p>
+    }
+   
+</div>
+
+<div class="form-group col-md-12">
+    @if (!string.IsNullOrEmpty(MessageResponse) && (MessageResponse.Contains("success")))
+    {
+        
+    }
+</div>
+
+
+@code {
+
+    public void Refresh()
+    {
+        ReferralFormGrid.Refresh();
+    }
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    string _MessageResponse { get; set; }
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private List<HouseHoldMembers> HouseHoldMemberData { get; set; }
+    private SfGrid<ReferralForm> ReferralFormGrid;
+
+    string MessageResponse
+    {
+        get { return _MessageResponse; }
+        set
+        {
+            if (value != null && value != _MessageResponse)
+            {
+                _MessageResponse = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber
+    {
+        get { return _rownumber; }
+        set
+        {
+            if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            }
+        }
+    }
+    string columnnnumber
+    {
+        get { return _columnnnumber; }
+        set
+        {
+            if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            }
+        }
+    }
+    string usedRows { get; set; }
+
+    #region OnChange
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            MessageResponse = null;
+            await UploadingSpinner.ShowAsync();
+            foreach (var file in args.Files)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+
+                    //Instantiate the Excel application object
+                    IApplication application = excelEngine.Excel;
+
+                    file.Stream.Position = 0;
+                    //Set the default application version
+                    application.DefaultVersion = ExcelVersion.Xlsx;
+                    IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                    //Get the first worksheet in the workbook into IWorksheet
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    if (worksheet.Range["A1"].Value.Contains("Serial") && worksheet.Range["B1"].Value.Contains("Name of the agency")
+                    && worksheet.Range["C1"].Value.Contains("Location") && worksheet.Range["D1"].Value.Contains("Agency Phone Number"))
+
+
+                    {
+                        ReferralForm ReferralFormUploadata = new ReferralForm();
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var householdmember = db.HouseHoldMembers.ToList();
+                            var casenaturereported = db.ACaseNatureReported.ToList();
+                            var referralservices = db.AReferralServices.ToList();
+                            var district = db.ADistrict.ToList();
+                            var subcounty = db.ASubcounty.ToList();
+                            var village = db.AVillage.ToList();
+                            var Gender = db.AGender.ToList();
+                            var relation = db.ARelationship.ToList();
+                            var refForm = db.ReferralForm.ToList();
+                            var beneficiaryDatasource = db.BeneficiaryIdentificationRegister.ToList();
+                            int houseMemId = 0;
+                            //var ReferralServices = db.AReferralServices.ToList();
+                            for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+                                ReferralFormUploadata = new ReferralForm();
+                                if (worksheet.IsRowVisible(row))
+                                {
+                                    rownumber = row.ToString();
+                                    await Task.Delay(10);
+                                    for (int column = 1; column <= worksheet.UsedRange.LastColumn; column++)
+                                    {
+                                        switch (column)
+                                        {
+                                            case 1:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.ToString().Trim().Replace("'", "");
+                                                    ReferralFormUploadata.SerialNo = ReferralId;
+
+                                                }
+                                                break;
+                                            case 2:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferringAgencyName = ReferralId;
+                                                }
+                                                break;
+                                            case 3:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferringAgencyLocation = ReferralId;
+                                                }
+                                                break;
+                                            case 4:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferringAgencyPhoneNumber = ReferralId;
+                                                }
+                                                break;
+                                            case 5:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string _email = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (_email != null)
+                                                        ReferralFormUploadata.ReferringAgencyEmail = _email;
+                                                }
+                                                break;
+                                            case 6:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string Householdmember = worksheet.Range[row, column].Value.Trim();
+
+                                                    var _Householdmember = householdmember.FirstOrDefault(o => o.HouseHoldMemberCode == Householdmember);
+                                                    //var _benefit = beneficiaryDatasource.FirstOrDefault(o => o.HouseHoldCode == Householdmember);
+                                                    if (_Householdmember != null)
+
+                                                    {
+                                                        houseMemId = Convert.ToInt32(_Householdmember.HouseHoldId);
+                                                        ReferralFormUploadata.HouseHoldMemberId = _Householdmember.HouseHoldMemberId;
+                                                    }
+
+                                                }
+                                                break;
+
+                                            case 7:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string NameofChild = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    //var _NameofChild = householdmember.FirstOrDefault(o => o.Givenname.ToString().Replace(" ", "") == NameofChild);
+                                                    //if (_NameofChild != null)
+
+                                                    //ReferralFormUploadata.HouseHoldMemberId = _NameofChild.HouseHoldMemberId;
+
+                                                }
+                                                break;
+
+                                            case 8:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //HouseHoldMembers rHouseHoldMember = new HouseHoldMembers();
+                                                    //string age = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    //rHouseHoldMember.Age = Convert.ToInt32(age.Trim());
+
+                                                    //string age = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    //  var _age = householdmember.FirstOrDefault(o => o.Age.ToString().Replace(" ", "") == age);
+                                                    //if (_NameofChild != null)
+                                                    //{
+                                                    //    ReferralFormUploadata.HouseHoldMemberId = _NameofChild.HouseHoldMemberId;
+                                                    //}
+                                                    //else
+                                                    //{
+                                                    //  HouseHoldMembers rHouseHoldMember = new HouseHoldMembers();
+                                                    //  rHouseHoldMember.Age = Convert.ToInt32(age);
+
+                                                    //  int id = 1;
+                                                    //  var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                    //  if (last != null)
+                                                    //  {
+                                                    //    id = (last.HouseHoldMemberId + 1);
+                                                    //}
+
+                                                    //rHouseHoldMember.HouseHoldMemberId = id;
+
+                                                    //db.HouseHoldMembers.Add(rHouseHoldMember);
+                                                    //db.SaveChanges();
+
+                                                    //householdmember = db.HouseHoldMembers.ToList();
+                                                    //ReferralFormUploadata.HouseHoldMemberId = rHouseHoldMember.HouseHoldMemberId;
+                                                    //}
+                                                }
+                                                break;
+
+                                            case 9:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    //string Sex = worksheet.Range[row, column].Value.ToString();
+                                                    //var _sex = Gender.FirstOrDefault(o => o.GenderId.ToLower().Replace(" ", "") == Sex);
+
+                                                    //if (!string.IsNullOrEmpty(Sex))
+                                                    //{
+                                                    //    HouseHoldMembers rHouseHoldMember = new HouseHoldMembers();
+
+                                                    //    rHouseHoldMember.GenderId = Sex.Trim();
+
+                                                    //}
+                                                }
+                                                break;
+
+                                            case 10:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string NIN = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.HivStatus = ReferralId;
+                                                }
+                                                break;
+
+                                            case 11:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.nat = ReferralId;
+                                                }
+                                                break;
+
+                                            case 12:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.res = ReferralId;
+                                                }
+                                                break;
+
+                                            case 13:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ReportingPeriod = ReferralId;
+                                                }
+                                                break;
+                                            //inquire cant find parish in table
+                                            case 14:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Agency = ReferralId;
+                                                }
+                                                break;
+
+                                            case 15:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string NatureofCaseReported = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    if (NatureofCaseReported.Contains("Poor Education & Development support"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",1";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "1";
+                                                        }
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Poor Family Health"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",2";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "2";
+                                                        }
+
+                                                    }
+
+                                                    else if (NatureofCaseReported.Contains("Inadequate &Protection"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",3";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "3";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Unknown HIV Status"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",4";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "4";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Poor ART Adherence"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",5";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "5";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Assault"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",6";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "6";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Denial of Basic Needs"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",7";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "7";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Economic Insecurity"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",8";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "8";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Malnutrition & Food insecurity"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",9";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "9";
+                                                        }
+
+                                                    }
+                                                    else if (NatureofCaseReported.Contains("Viralload Testing"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.CaseNatureReportedId))
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId += ",10";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.CaseNatureReportedId = "10";
+                                                        }
+
+                                                    }
+
+                                                }
+                                                break;
+
+                                            case 16:
+
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value) || (worksheet.Range[row, column].Value != ""))
+                                                {
+
+
+                                                    string dateofOccurancyDate = worksheet.Range[row, column].DateTime.ToLongDateString();
+                                                    DateTime _date = DateTime.Now;
+
+                                                    if (!string.IsNullOrEmpty(dateofOccurancyDate))
+                                                    {
+                                                        if (!dateofOccurancyDate.Contains("January 1, 0001"))
+                                                        {
+                                                            _date = Convert.ToDateTime(dateofOccurancyDate);
+
+                                                            ReferralFormUploadata.DateofOccurancy = _date;
+                                                        }
+
+                                                    }
+
+                                                }
+                                                break;
+                                            case 17:
+
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.OtherRisk = ReferralId;
+                                                }
+                                                break;
+
+                                            case 18:
+
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string YN = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (YN.Contains("Yes"))
+                                                    {
+                                                        ReferralFormUploadata.HasCaseBeenReportedToUgandaChildHelpline = 1;
+                                                    }
+                                                    else if (YN.Contains("No"))
+                                                    {
+                                                        ReferralFormUploadata.HasCaseBeenReportedToUgandaChildHelpline = 2;
+                                                    }
+                                                    else if (YN.Contains("N/A"))
+                                                    {
+                                                        ReferralFormUploadata.HasCaseBeenReportedToUgandaChildHelpline = 3;
+                                                    }
+
+                                                }
+                                                break;
+
+                                            case 19:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.NameOfPersonAccompanyingTheChild = ReferralId;
+                                                }
+                                                break;
+                                            case 20:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.PhoneNumberOfPersonAccompanyingTheChild = ReferralId;
+                                                }
+                                                break;
+                                            case 21:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.EmailOfPersonAccompanyingTheChild = ReferralId;
+                                                }
+                                                break;
+                                            case 22:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    //string relationshipToChild = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    //var _relationshipToChild = relation.FirstOrDefault(o => o.RelationshipName.ToString().Replace(" ", "") == relationshipToChild);
+                                                    //if (_relationshipToChild != null)
+
+                                                    //    ReferralFormUploadata.RelationshipToChild = _relationshipToChild.RelationshipId;
+                                                    string relationshipToChild = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    if (relationshipToChild.Contains("Father"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 1;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Mother"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 2;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Aunt"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 3;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Mother"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 4;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Grand Parent"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 5;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Other"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 6;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Sibling"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 7;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Biological Child"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 8;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Self"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 9;
+                                                    }
+                                                    else if (relationshipToChild.Contains("Non-relative"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 10;
+                                                    }
+                                                    else if (relationshipToChild.Contains("N/A"))
+                                                    {
+                                                        ReferralFormUploadata.RelationshipToChild = 11;
+                                                    }
+
+                                                }
+                                                break;
+                                            //Name of Caregiver
+                                            case 23:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.NameOfPersonAccompanyingTheChild = ReferralId;
+                                                }
+                                                break;
+
+                                            case 24:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata. = ReferralId;
+                                                }
+                                                break;
+                                            //Phone No. of Caregiver
+                                            case 25:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ServicePointPersonPrividingFeedbackPhoneNumber = ReferralId;
+                                                }
+                                                break;
+                                            case 26:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.dis = ReferralId;
+                                                }
+                                                break;
+                                            case 27:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response7 = ReferralId;
+                                                }
+                                                break;
+                                            case 28:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response8 = ReferralId;
+                                                }
+                                                break;
+                                            case 29:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response9 = ReferralId;
+                                                }
+                                                break;
+                                            case 30://AD
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ServicesProvidedBeforeReferal = ReferralId;
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Cash transfer"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",1";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "1";
+                                                        }
+                                                    }
+                                                    else if (onart.Contains("Emergency cash"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",2";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "2";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Access to Saving"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",3";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "3";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to own"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",4";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "4";
+                                                        }
+
+                                                    }
+                                                    // else if (onart.Contains("Received IGA training and Boost"))
+                                                    else if (onart.Contains("Received IGA training and Boost"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",5";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "5";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Received Business"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",6";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "6";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Apprenticeship"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",7";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "7";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided Startup"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",8";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "8";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Received Soft skill"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",9";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "9";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to ES Service"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",9";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "9";
+                                                        }
+
+                                                    }
+                                                }
+                                                break;
+                                            case 31:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReasonForReferral = ReferralId;
+                                                }
+                                                break;
+                                            case 32:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.DocumentsSupportingReferralEnclosed = ReferralId;
+                                                }
+                                                break;
+
+                                            case 33:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata. = ReferralId;
+                                                }
+                                                break;
+
+                                            case 34:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ConsentName = ReferralId;
+                                                }
+                                                break;
+                                            case 35:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ReferredToAgencyName = ReferralId;
+                                                }
+                                                break;
+                                            case 36:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferredToAgencyContactPersonName = ReferralId;
+                                                }
+                                                break;
+                                            case 37:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferredToAgencyPhoneNumber = ReferralId;
+                                                }
+                                                break;
+
+                                            case 38:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferredToAgencyEmail = ReferralId;
+                                                }
+                                                break;
+
+                                            case 39:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.CaseWorkerReferringChildName = ReferralId;
+                                                }
+                                                break;
+
+                                            case 40:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.CaseWorkerReferringChildTitle = ReferralId;
+                                                }
+                                                break;
+
+                                            case 41:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.CaseWorkerReferringChildPhoneNumber = ReferralId;
+                                                }
+                                                break;
+
+                                            case 42:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.CaseWorkerReferringChildEmail = ReferralId;
+                                                }
+                                                break;
+
+                                            case 43:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    DateTime caseWorkerReferringChildDate = worksheet.Range[row, column].DateTime;
+                                                    DateTime _date = DateTime.Now;
+                                                    ReferralFormUploadata.CaseWorkerReferringChildDate = caseWorkerReferringChildDate;
+                                                }
+                                                break;
+
+                                            //Name of person to whom services were provided
+                                            case 44:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.na = ReferralId;
+                                                }
+                                                break;
+                                            //NIN/Unique identifier not in table
+                                            case 45:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response25 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 46:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.CaseNumber = ReferralId;
+                                                }
+                                                break;
+
+                                            case 47:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    DateTime servicePointArrivalDate = worksheet.Range[row, column].DateTime;
+                                                    DateTime _date = DateTime.Now;
+                                                    ReferralFormUploadata.ServicePointArrivalDate = servicePointArrivalDate;
+                                                }
+                                                break;
+
+                                            case 48:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferredToAgencyName = ReferralId;
+                                                }
+                                                break;
+
+                                            case 49:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ReferredToAgencyContactPersonName = ReferralId;
+                                                }
+                                                break;
+
+                                            //Service(s) provided by the referral  agency
+                                            case 50:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+
+                                                    //string servicesProvidedBeforeReferal = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+
+                                                    ////var _servicesProvidedBeforeReferal = ReferralServices.FirstOrDefault(o => o.ReferralServiceDesc.ToString().Replace(" ", "") == servicesProvidedBeforeReferal);
+                                                    //foreach (var item in referralservices)
+                                                    //{
+                                                    //    var _servicesProvidedBeforeReferal = refForm.Where(o => o.ServicesProvidedBeforeReferal != null && o.ServicesProvidedBeforeReferal.Split(',').Any(a => a == item.ReferralServiceId.ToString())).ToList();
+                                                    //    if (servicesProvidedBeforeReferal != null)
+
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal = Convert.ToString(_servicesProvidedBeforeReferal);
+                                                    //}
+
+
+                                                }
+                                                break;
+                                            //Additional services required /any other critical information or documnent enclosed
+                                            case 51:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ServicePointAdditionalServicesRequired = ReferralId;
+                                                }
+                                                break;
+
+                                            case 52:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ServicePointPersonPrividingFeedbackName = ReferralId;
+                                                }
+                                                break;
+
+                                            case 53:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ServicePointPersonPrividingFeedbackTitle = ReferralId;
+                                                }
+                                                break;
+
+                                            case 54:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ServicePointPersonPrividingFeedbackPhoneNumber = ReferralId;
+                                                }
+                                                break;
+
+                                            case 55:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    ReferralFormUploadata.ServicePointPersonPrividingFeedbackEmail = ReferralId;
+                                                }
+                                                break;
+
+                                            case 56:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    DateTime servicePointPersonPrividingFeedbackDate = worksheet.Range[row, column].DateTime;
+                                                    DateTime _date = DateTime.Now;
+                                                    ReferralFormUploadata.ServicePointPersonPrividingFeedbackDate = servicePointPersonPrividingFeedbackDate;
+                                                }
+                                                break;
+
+                                            case 57:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.SerialNo = ReferralId;
+                                                }
+                                                break;
+
+                                            case 58:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response38 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 59:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response39 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 60:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ReferredToAgencyName = ReferralId;
+                                                }
+                                                break;
+
+                                            case 61:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.loca = ReferralId;
+                                                }
+                                                break;
+
+                                            case 62:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response42 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 63:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata. = ReferralId;
+                                                }
+                                                break;
+
+                                            case 64:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response44 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 65:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response45 = ReferralId;
+                                                }
+                                                break;
+
+                                            case 66:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string servicesProvidedBeforeReferal = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //string mainoutput = null;
+                                                    //if (servicesProvidedBeforeReferal.Contains(","))
+                                                    //{
+                                                    //    var b = servicesProvidedBeforeReferal.Split(",");
+                                                    //    foreach (var n in b)
+                                                    //    {
+                                                    //        if (!string.IsNullOrEmpty(n))
+                                                    //        {
+                                                    //            var x = referralservices.FirstOrDefault(o => o.ReferralServiceDesc.Contains(n.Trim()));
+                                                    //            if (x != null)
+                                                    //            {
+                                                    //                if (string.IsNullOrEmpty(mainoutput))
+                                                    //                {
+                                                    //                    mainoutput = x.ReferralServiceId.ToString();
+                                                    //                }
+                                                    //                else
+                                                    //                {
+                                                    //                    mainoutput += "," + x.ReferralServiceId.ToString();
+                                                    //                }
+                                                    //            }
+                                                    //        }
+                                                    //    }
+                                                    //}
+                                                    //else
+                                                    //{
+                                                    //    var x = referralservices.FirstOrDefault(o => o.ReferralServiceDesc.Contains(servicesProvidedBeforeReferal.Trim()));
+                                                    //    if (x != null)
+                                                    //    {
+                                                    //        if (string.IsNullOrEmpty(mainoutput))
+                                                    //        {
+                                                    //            mainoutput = x.ReferralServiceId.ToString();
+                                                    //        }
+                                                    //        else
+                                                    //        {
+                                                    //            mainoutput += "," + x.ReferralServiceId.ToString();
+                                                    //        }
+                                                    //    }
+                                                    //}
+                                                    //ReferralFormUploadata.ServicesProvidedBeforeReferal = mainoutput;
+
+                                                }
+                                                break;
+
+                                            case 67:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ReasonForReferral = ReferralId;
+                                                }
+                                                break;
+
+                                            case 68:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata. = ReferralId;
+                                                }
+                                                break;
+
+                                            case 69:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ServicesProvidedBeforeReferal = ReferralId;
+
+
+                                                }
+                                                break;
+
+                                            case 70:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string AdditionalServices = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.ServicePointAdditionalServicesRequired = AdditionalServices;
+
+
+                                                }
+                                                break;
+
+                                            case 71:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Cash transfer"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",1";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "1";
+                                                        }
+                                                    }
+                                                    else if (onart.Contains("Emergency cash"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",2";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "2";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Access to Saving"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",3";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "3";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to own"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",4";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "4";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("1e.Received"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",5";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "5";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Received Business"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",6";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "6";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Apprenticeship"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",7";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "7";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided Startup"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",8";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "8";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Received Soft skill"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",9";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "9";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to ES Service"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",9";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "9";
+                                                        }
+
+                                                    }
+                                                }
+                                                break;
+
+                                            case 72:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+                                                    //string ReferralId = worksheet.Range[row, column].Value.Trim().Replace("'", "");
+                                                    //ReferralFormUploadata.Response52 = ReferralId;
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Supported to enroll"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",11";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "11";
+                                                        }
+                                                    }
+                                                    else if (onart.Contains("Monitored for"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",12";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "12";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided school"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",13";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "13";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided school meals"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",14";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "14";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided with school"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",15";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "15";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided scholastic"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",16";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "16";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided vocational education"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",17";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "17";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Caregiver received ECD training"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",18";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "18";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to other E&D services"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",19";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "19";
+                                                        }
+
+                                                    }
+
+                                                }
+                                                break;
+                                            case 73:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Provided Counselling and Guidance"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",20";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "20";
+                                                        }
+                                                    }
+                                                    else if (onart.Contains("Supported to access basic needs"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",21";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "21";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access to recreation activities"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",22";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "22";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided palliative care for HIV positive"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",23";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "23";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided Post-violence trauma-informed counselling"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",24";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "24";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided with Clothing and Beddings"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",25";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "25";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to access other PSS services"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",26";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "26";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Legal support for GBV victims"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",27";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "27";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided Positive Parenting training"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",28";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "28";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to register birth"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",29";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "29";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Participated in community sensitization on CP"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",30";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "30";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to withdraw from child labor"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",31";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "31";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to handle child neglect and abusive"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",32";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "32";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported Child re-integration with Family"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",33";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "33";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided SBCC on violence prevention and reporting"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",34";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "34";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to access other Protection services"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",35";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "35";
+                                                        }
+
+                                                    }
+                                                }
+                                                break;
+                                            case 74:
+                                                if (!string.IsNullOrEmpty(worksheet.Range[row, column].Value.Trim()) && (worksheet.Range[row, column].Value.Trim() != ""))
+                                                {
+
+                                                    string onart = worksheet.Range[row, column].Value.ToString();
+                                                    if (onart.Contains("Assisted to access safe water"))
+                                                    {
+
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",36";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "36";
+                                                        }
+                                                    }
+                                                    else if (onart.Contains("Provided with stable shelter"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",37";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "37";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access a pit latrine"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",38";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "38";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to maintain a standard Hand washing facility"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",39";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "39";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided with/Supported to access ITNs"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",40";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "40";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided SBCC on WASH"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",41";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "41";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access immunization"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",42";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "42";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access antenatal"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",43";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "43";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access youth friendly services"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",44";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "44";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Provided SBCC on Malaria Prevention"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",45";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "45";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access Intermittent Preventive"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",46";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "46";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("HH supported to access IRS for Malaria Prevention"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",47";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "47";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Supported to access Family Planning services"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",48";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "48";
+                                                        }
+
+                                                    }
+                                                    else if (onart.Contains("Referred to access other HWSS"))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal += ",49";
+                                                        }
+                                                        else
+                                                        {
+                                                            ReferralFormUploadata.ServicesProvidedBeforeReferal = "49";
+                                                        }
+
+                                                    }
+                                                    //else if (onart.Contains("Nutrition Education and Counselling"))
+                                                    //{
+                                                    //    if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal += ",50";
+                                                    //    }
+                                                    //    else
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal = "50";
+                                                    //    }
+
+                                                    //}
+                                                    //else if (onart.Contains("Food Relief/Supplement Assistance"))
+                                                    //{
+                                                    //    if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal += ",51";
+                                                    //    }
+                                                    //    else
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal = "51";
+                                                    //    }
+
+                                                    //}
+                                                    //else if (onart.Contains("Received GAP training"))
+                                                    //{
+                                                    //    if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal += ",52";
+                                                    //    }
+                                                    //    else
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal = "52";
+                                                    //    }
+
+                                                    //}
+                                                    //else if (onart.Contains("Received Farming Inputs"))
+                                                    //{
+                                                    //    if (!string.IsNullOrEmpty(ReferralFormUploadata.ServicesProvidedBeforeReferal))
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal += ",53";
+                                                    //    }
+                                                    //    else
+                                                    //    {
+                                                    //        ReferralFormUploadata.ServicesProvidedBeforeReferal = "53";
+                                                    //    }
+
+                                                    //}
+                                                }
+                                                break;
+
+                                        }
+                                    }
+
+                                    ReferralForm _table = db.ReferralForm.FirstOrDefault(o => o.HouseHoldId == houseMemId && o.HouseHoldMemberId == ReferralFormUploadata.HouseHoldMemberId);
+
+                                    // ReferralForm _table = db.ReferralForm.FirstOrDefault(o => o.HouseHoldMemberId == ReferralFormUploadata.HouseHoldMemberId);
+                                    //
+                                    if (_table != null)
+                                    {
+                                        try
+                                        {
+                                            ReferralFormUploadata.ReferralFormId = _table.ReferralFormId;
+                                            ReferralFormUploadata.HouseHoldId = houseMemId;
+                                            // ReferralFormUploadata.LastUploadDate = DateTime.Now;
+                                            db.Entry(_table).CurrentValues.SetValues(ReferralFormUploadata);
+
+                                            db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                            //  db.ReferralForm.Add(ReferralFormUploadata);
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+
+                                    }
+                                    else
+                                    {
+
+                                        int id = 1;
+                                        var last = db.ReferralForm.OrderBy(o => o.ReferralFormId).ToList().LastOrDefault();
+                                        if (last != null)
+                                        {
+                                            id = (last.ReferralFormId + 1);
+                                        }
+                                        ReferralFormUploadata.ReferralFormId = id;
+                                        ReferralFormUploadata.HouseHoldId = houseMemId;
+                                        try
+                                        {
+                                            if (ReferralFormUploadata.HouseHoldMemberId!=null && ReferralFormUploadata.HouseHoldMemberId!=0)
+                                                db.ReferralForm.Add(ReferralFormUploadata);
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+
+
+
+
+                                }
+
+                            }
+                        }
+                    }
+
+                    else
+                    {
+                        if (string.IsNullOrEmpty(MessageResponse))
+                        {
+                            MessageResponse = "Failure: You are uploading a wrong file. Please refresh the page to upload the right file again";
+                        }
+                    }
+                    file.Stream.Close();
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageResponse = "error: " + ex.Message.ToString();
+        }
+        finally
+        {
+            if (string.IsNullOrEmpty(MessageResponse))
+            {
+                MessageResponse = "Success: All the records were uploaded successfully. Please refresh the page to upload again";
+            }
+            await UploadingSpinner.HideAsync();
+            await Task.CompletedTask;
+            //UploadGrid.Refresh();
+            StateHasChanged();
+        }
+
+
+    }
+
+
+    #endregion OnChange
+
+    #region OnIntitializedAsync Region
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    //FacilityData = db.AFacility.ToList();
+                    //DrugRegimenData = db.ADrugRegimen.ToList();
+                    //VillageData = db.AVillage.ToList();
+                    //ParishData = db.AParish.ToList();
+                    //SubcountyData = db.ASubcounty.ToList();
+                    //DistrictData = db.ADistrict.ToList();
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    #endregion OnIntitializedAsync Region
+
+    #region ReferralUploadAdapter Region
+    public class ReferralUploadAdapter : DataAdaptor
+    {
+        public ReferralUploadAdapter()
+        {
+
+        }
+        public IToastService toastService;
+        public ReferralUploadAdapter(IToastService ts)
+        {
+            toastService = ts;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+
+        {
+            var data = new List<ReferralForm>();
+
+            try
+            {
+
+                using (var dbContext = new MUCOBADIContext())
+                {
+
+                    data = await dbContext.ReferralForm.ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object>
+                aggregates = new Dictionary<string, object>
+                    ();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ReferralForm>
+                        (GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+    }
+
+    #endregion ReferralUploadAdapter Region
+
+}

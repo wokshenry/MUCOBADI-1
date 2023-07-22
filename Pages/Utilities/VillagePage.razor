@@ -1,0 +1,639 @@
+﻿@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Villages</strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+@{
+    var Div = (new string[] { "RegionDescription", "DistrictDescription", "SubcountyDescription", "ParishDescription" });
+}
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="true">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>Region</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.RegionId" TValue="int?[]" TItem="ARegion" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@RegionData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Region" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ARegion.RegionId)" Text="@nameof(ARegion.RegionDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ARegion" ValueChange="OnRegionChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Subcounty</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" Enabled="@isSubcountyEnabled" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Subcounty" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" Enabled="@isParishEnabled" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" Enabled="@isVillageEnabled" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>                                            
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+
+    <div class="form-group col-md-12">
+        <SfGrid @ref="VillageGrid" TValue="ViewAVillage"    Query="@MainQuery"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="true" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridGroupSettings Columns="@Div" ShowDropArea="false">
+                <CaptionTemplate>
+                    @{
+                        var dvn = (context as CaptionTemplateContext);
+                        string _field = string.Empty;
+                        if (dvn.Field.Contains("Region"))
+                        {
+                            _field = "Region";
+                        }
+                        else if (dvn.Field.Contains("District"))
+                        {
+                            _field = "District";
+                        }
+                        else if (dvn.Field.Contains("Subcounty"))
+                        {
+                            _field = "Subcounty";
+                        }
+                        else if (dvn.Field.Contains("Parish"))
+                        {
+                            _field = "Parish";
+                        }
+                        <div><p class="pp"><strong>@_field: @dvn.Key @*: @dvn.Count Decisions*@</strong></p></div>
+                    }
+                </CaptionTemplate>
+            </GridGroupSettings>
+            <SfDataManager AdaptorInstance="@typeof(VillageAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionBegin="OnVillageActionBegin" TValue="ViewAVillage"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <HeaderTemplate>
+                    @{
+                        var text = GetVillageHeader((context as ViewAVillage));
+                        <div class="headerbandimg" /><span>@text</span>
+                    }
+                </HeaderTemplate>
+                <Template Context="VillageContext">
+                    @{
+                        var VillageData = (VillageContext as ViewAVillage);
+                        <div style="padding:15px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox ID="VillageId" @bind-Value="@(VillageData.VillageId)" Enabled="false" Placeholder="Village Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfDropDownList ID="DistrictId" @bind-Value="@(VillageData.DistrictId)" TItem="ADistrict" AllowFiltering="true" TValue="int" DataSource="@DistrictData" Placeholder="District" FloatLabelType="FloatLabelType.Always">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ADistrict" TValue="int" ValueChange="ChangeDistrict"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfDropDownList ID="SubcountyId" @bind-Value="@(VillageData.SubcountyId)" TItem="ASubcounty" Enabled="@EnableSubcountyDropDown" AllowFiltering="true" TValue="int" DataSource="@SubcountyData" Placeholder="Subcounty" FloatLabelType="FloatLabelType.Always" Query="@DistricttQuery">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ASubcounty" TValue="int" ValueChange="ChangeSubcounty"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfDropDownList ID="ParishId" @bind-Value="@(VillageData.ParishId)" TItem="AParish" Enabled="@EnableParishDropDown" AllowFiltering="true" TValue="int?" DataSource="@ParishData" Placeholder="Parish" FloatLabelType="FloatLabelType.Always" Query="@SubcounttyQuery">
+                                        <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="AParish" TValue="int?" ValueChange="ChangeParish"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfTextBox Multiline="false" ID="VillageDescription" @bind-Value="@(VillageData.VillageDescription)" Enabled="@ParishTextBox" Placeholder="Village" FloatLabelType="FloatLabelType.Always"></SfTextBox>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.VillageId) HeaderText="Village Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.VillageDescription) HeaderText="Village"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.RegionDescription) HeaderText="Region"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.DistrictDescription) HeaderText="District"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.SubcountyDescription) HeaderText="Subcounty"></GridColumn>
+                <GridColumn Field=@nameof(ViewAVillage.ParishDescription) HeaderText="Parish"></GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private UtilitiesSearchPanel InputModel = new();
+
+    private SfGrid<ViewAVillage> VillageGrid;
+    private List<ADistrict> DistrictData { get; set; }
+    private List<ASubcounty> SubcountyData { get; set; }
+    private List<AParish> ParishData { get; set; }
+    private List<ARegion> RegionData { get; set; }
+    private List<AVillage> VillageData { get; set; }
+
+    public string ButtonText { get; set; }
+    public bool ParishTextBox = false;
+    public bool SubcountyCodeTextBox = false;
+    public bool EnableSubcountyDropDown = false;
+    public bool EnableParishDropDown = false;
+    public Query DistricttQuery { get; set; } = null;
+    public Query SubcounttyQuery { get; set; } = null;
+    public Query MainQuery = new Query();
+    bool isEnabled { get; set; } = false;
+    bool isSubcountyEnabled { get; set; } = false;
+    bool isParishEnabled { get; set; } = false;
+    bool isVillageEnabled { get; set; } = false;
+
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, ADistrict> args)
+    {
+        this.EnableSubcountyDropDown = true;
+        this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+    }
+
+    public void ChangeSubcounty(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, ASubcounty> args)
+    {
+        this.EnableParishDropDown = true;
+        this.SubcounttyQuery = new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = args.Value, IgnoreCase = false, IgnoreAccent = false });
+    }
+
+    public void ChangeParish(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AParish> args)
+    {
+        this.ParishTextBox = true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+            RegionData = _context.ARegion.ToList();
+            DistrictData = _context.ADistrict.ToList();
+            SubcountyData = _context.ASubcounty.ToList();
+            ParishData = _context.AParish.ToList();
+            VillageData = _context.AVillage.ToList();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.RegionId != null)
+            {
+                MainQuery.AddParams("RegionId", string.Join(",", InputModel.RegionId));
+            }
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+    }
+
+    public void OnRegionChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                DistrictData = db.ADistrict.Where(o => args.Value.Any(a => a == o.RegionId) == true).ToList();
+                isEnabled = true;
+            }
+        }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).ToList();
+                isSubcountyEnabled = true;
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).ToList();
+                isParishEnabled = true;
+            }
+        }
+    }
+
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).ToList();
+                isVillageEnabled = true;
+            }
+        }
+    }
+
+
+    #region VillageRegion
+    public class VillageAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public VillageAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<ViewAVillage>();
+
+            try
+            {
+                string RegionId = null;
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+
+                    if (val.FirstOrDefault(o => o.Key == "RegionId").Value != null)
+                    {
+                        RegionId = val.FirstOrDefault(o => o.Key == "RegionId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    string[] _RegionId = new string[] { };
+                    if (!string.IsNullOrEmpty(RegionId))
+                    {
+                        _RegionId = RegionId.Split(',');
+                    }
+                    string[] _district = new string[] { };
+                    if (!string.IsNullOrEmpty(DistrictId))
+                    {
+                        _district = DistrictId.Split(',');
+                    }
+
+                    string[] _SubcountyId = new string[] { };
+                    if (!string.IsNullOrEmpty(SubcountyId))
+                    {
+                        _SubcountyId = SubcountyId.Split(',');
+                    }
+
+                    string[] _ParishId = new string[] { };
+                    if (!string.IsNullOrEmpty(ParishId))
+                    {
+                        _ParishId = ParishId.Split(',');
+                    }
+
+                    string[] _VillageId = new string[] { };
+                    if (!string.IsNullOrEmpty(VillageId))
+                    {
+                        _VillageId = VillageId.Split(',');
+                    }
+
+                    data = await dbContext.ViewAVillage.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+        (_RegionId.Length == 0 || (o.RegionId != null && _RegionId.Any(a => a == o.RegionId.ToString()) == true)) && (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true))
+        && (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true)) && (_ParishId.Length == 0 || (o.ParishId != null && _ParishId.Any(a => a == o.ParishId.ToString()) == true))
+         && (_VillageId.Length == 0 || (o.VillageId != null && _VillageId.Any(a => a == o.VillageId.ToString()) == true))).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<ViewAVillage>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        public override async Task<Object> InsertAsync(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as ViewAVillage);
+                    AVillage vill = new AVillage();
+                    var exists = dbContext.ViewAVillage.FirstOrDefault(o => o.VillageId == val.VillageId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.ViewAVillage.OrderBy(o => o.VillageId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VillageId + 1);
+                        }
+
+                        vill.VillageId = id;
+                        vill.ParishId = val.ParishId;
+                        vill.VillageDescription = val.VillageDescription;
+
+                        dbContext.AVillage.Add(vill);
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    string result = "Record Saved Successfully";
+                    toastService.ShowInfo(result);
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.AVillage.FirstOrDefault(o => o.VillageId == data);
+                    if (exists != null)
+                    {
+                        dbContext.AVillage.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as ViewAVillage);
+                    AVillage vill = new AVillage();
+                    var exists = dbContext.AVillage.FirstOrDefault(o => o.VillageId == val.VillageId);
+                    if (exists != null)
+                    {
+                        vill.ParishId = val.ParishId;
+                        vill.VillageDescription = val.VillageDescription;
+
+                        dbContext.Entry(exists).CurrentValues.SetValues(val);
+                        dbContext.Entry(exists).State = EntityState.Modified;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    string result = "Record Updated Successfully";
+                    toastService.ShowInfo(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+    public void OnVillageActionBegin(ActionEventArgs<ViewAVillage> args)
+    {
+        var data = args.Data;
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            this.EnableSubcountyDropDown = true;
+            this.ParishTextBox = true;
+            this.EnableParishDropDown = true;
+            this.DistricttQuery = new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = args.RowData.DistrictId, IgnoreCase = false, IgnoreAccent = false });
+            this.SubcounttyQuery = new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = args.RowData.SubcountyId, IgnoreCase = false, IgnoreAccent = false });
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.ParishId == null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please choose a Parish before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else if (string.IsNullOrEmpty(args.Data.VillageDescription))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please fill in the Village before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.ViewAVillage.FirstOrDefault(o => (o.VillageDescription.ToLower() == args.Data.VillageDescription.ToLower()) && (o.VillageId == args.Data.VillageId));
+                    if (exists != null && exists.VillageId != args.Data.VillageId)
+                    {
+                        ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "This Village already exists in the database and will not be saved.", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetVillageHeader(ViewAVillage Value)
+    {
+        if (Value.VillageId == 0)
+        {
+            ButtonText = "Insert";
+            return "Add a new Village";
+        }
+        else
+        {
+            ButtonText = "Save Changes";
+            return "Edit Details for " + Value.VillageDescription;
+        }
+    }
+
+    #endregion VillageRegion
+}

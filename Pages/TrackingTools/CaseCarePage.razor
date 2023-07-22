@@ -1,0 +1,1857 @@
+﻿@page "/CaseCarePage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> CASE PLANNING TOOL (OVCMIS FORM 012A)</li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="BeneficiaryRegisterGrid" TValue="spBeneficiaryIdentificationRegisterGetAllResult" Query="@MainQuery"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            @*Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})"*@
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager AdaptorInstance="@typeof(CaseCareBeneficiaryRegisterAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionComplete="BeneficiaryRegisterActionComplete" TValue="spBeneficiaryIdentificationRegisterGetAllResult"></GridEvents>
+            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="RegisterContext">
+                    @{
+                        BeneficiaryRegisterData = (RegisterContext as spBeneficiaryIdentificationRegisterGetAllResult);
+                        <div style="padding:3px;">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <p><b>@BeneficiaryRegisterData.DistrictDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <p><b>@BeneficiaryRegisterData.SubcountyDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <p><b>@BeneficiaryRegisterData.ParishDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <p><b>@BeneficiaryRegisterData.VillageDescription</b></p>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Household Code</p>
+                                    <p><b>@BeneficiaryRegisterData.HouseHoldCode</b></p>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <SfGrid @ref="CaseCareGrid" TValue="CaseCare" Query="@(new Query().AddParams("HouseHoldId",BeneficiaryRegisterData.HouseHoldId))"
+                                            Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                        <SfDataManager AdaptorInstance="@typeof(CaseCareHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                        <GridEvents OnActionBegin="OnCaseCareActionBegin" OnActionComplete="@OnCaseCareActionComplete" TValue="CaseCare"></GridEvents>
+                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                            <Template Context="CaseCareContext">
+                                                @{
+                                                    CaseCareReviewData = (CaseCareContext as CaseCare);
+                                                    <div style="padding:15px;">
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.HouseHoldId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12" hidden>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.CaseCareId)" Enabled="false" Placeholder="OutPut Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Name of the implementing partner</p>
+                                                                <SfDropDownList @bind-Value="@(CaseCareReviewData.ImplementingPartnerId)" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Name of OVC service provider</p>
+                                                                <SfDropDownList @bind-Value="@(CaseCareReviewData.ServiceProviderId)" Enabled="true" TItem="AServiceProvider" TValue="int?" DataSource="@ServiceProviderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)" Text="@nameof(AServiceProvider.ServiceProviderDesc)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p>
+                                                                    Number of people aged 18 years and above currently living in household
+                                                                </p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Male</p>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.NoMale18Above)" Enabled="true" Placeholder="" Format="N0" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Female</p>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.NoFemale18Above)" Enabled="true" Placeholder="" Format="N0" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <p>
+                                                                    Total number of children below 18 years of age currently living in household
+                                                                </p>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Male</p>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.NoMale18Below)" Enabled="true" Placeholder="" Format="N0" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Female</p>
+                                                                <SfNumericTextBox @bind-Value="@(CaseCareReviewData.NoFemale18Below)" Enabled="true" Placeholder="" Format="N0" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    Name And Unique Identifier of HH head or primary caregiver.
+                                                                </p>
+                                                                <SfDropDownList @bind-Value="@(CaseCareReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                    <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                        <ItemTemplate>
+                                                                            <div style="margin-left:10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>
+                                                                        </ItemTemplate>
+                                                                        <ValueTemplate>
+                                                                            @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                            @*<div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                                                <table>
+                                                                                    <tr>
+                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </div>*@
+                                                                        </ValueTemplate>
+                                                                    </DropDownListTemplates>
+                                                                    <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                </SfDropDownList>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>
+                                                                    phone number of HH head or primary caregiver.
+                                                                </p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(CaseCareReviewData.HouseHoldPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Name of person administering</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(CaseCareReviewData.AdministeringPersonName)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Title of person administering</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(CaseCareReviewData.AdministeringPersonTitle)" Enabled="true" Placeholder="Pleses enter the Title" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Date of administration</p>
+                                                                <SfDatePicker @bind-Value="@(CaseCareReviewData.AdministeringDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Phone Number of person administering</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(CaseCareReviewData.AdministeringPersonPhoneNumber)" Enabled="true" Placeholder="Pleses enter the Phone Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            @if (CaseCareReviewData.ImplementingPartnerId != null && CaseCareReviewData.ServiceProviderId != null && CaseCareReviewData.HouseHoldMemberId != 0 && !string.IsNullOrEmpty(CaseCareReviewData.AdministeringPersonName) && CaseCareReviewData.AdministeringDate != null)
+                                                            {
+                                                                <div class="form-group col-md-12">
+                                                                    <SfGrid @ref="CaseCareDetailGrid" DataSource="@CaseCareDetailData" TValue="CaseCareDetail"
+                                                                            Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                                            AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                                                        <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                                                        <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                                                        <GridEvents OnActionBegin="OnCaseCareDetailActionBegin" OnActionComplete="@OnCaseCareDetailActionComplete" TValue="CaseCareDetail"></GridEvents>
+                                                                        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                                            <Template Context="CaseCareDetailContext">
+                                                                                @{
+                                                                                    CaseCareDetailReviewData = (CaseCareDetailContext as CaseCareDetail);
+                                                                                    <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                                                        <div class="form-row">
+                                                                                            <div class="form-group col-md-12" hidden>
+                                                                                                <SfNumericTextBox @bind-Value="@CaseCareDetailReviewData.CaseCareDetailsId" Enabled="false"></SfNumericTextBox>
+                                                                                            </div>
+                                                                                            <div class="form-group col-md-12" hidden>
+                                                                                                <SfNumericTextBox @bind-Value="@CaseCareDetailReviewData.CaseCareId" Enabled="false"></SfNumericTextBox>
+                                                                                            </div>
+                                                                                            <div class="form-group col-md-6">
+                                                                                                <p>Case Plan for</p>
+                                                                                                <SfDropDownList @bind-Value="@(CaseCareDetailReviewData.CasePlanId)" Enabled="true" TItem="ACasePlan" TValue="int" DataSource="@CasePlanData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                    <DropDownListFieldSettings Value="@nameof(ACasePlan.CasePlanId)" Text="@nameof(ACasePlan.CasePlanDesc)"></DropDownListFieldSettings>
+                                                                                                </SfDropDownList>
+                                                                                            </div>
+                                                                                            <div class="form-group col-md-6">
+                                                                                                <p>NIN/Unique identifier</p>
+                                                                                                <SfDropDownList @bind-Value="@(CaseCareDetailReviewData.HouseHoldMemberId)" Enabled="true" TItem="ViewHouseHoldMembers" TValue="int" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                    <DropDownListTemplates TItem="ViewHouseHoldMembers">
+                                                                                                        <ItemTemplate>
+                                                                                                            <div style="margin-left:10px;">
+                                                                                                                <table>
+                                                                                                                    <tr>
+                                                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                                                    </tr>
+                                                                                                                </table>
+                                                                                                            </div>
+                                                                                                        </ItemTemplate>
+                                                                                                        <ValueTemplate>
+                                                                                                            @((context as ViewHouseHoldMembers).HouseHoldMemberCode) @((context as ViewHouseHoldMembers).FullName)
+                                                                                                            @*<div class="dropdown-width" style="width: 100%; height: 100%; margin-left: 10px;">
+                                                                                                                <table>
+                                                                                                                    <tr>
+                                                                                                                        <td><p>@((context as ViewHouseHoldMembers).HouseHoldMemberCode)</p></td>
+                                                                                                                        <td><p style="margin-left:10px;">@((context as ViewHouseHoldMembers).Surname) @((context as ViewHouseHoldMembers).Givenname)</p></td>
+                                                                                                                    </tr>
+                                                                                                                </table>
+                                                                                                            </div>*@
+                                                                                                        </ValueTemplate>
+                                                                                                    </DropDownListTemplates>
+                                                                                                    <DropDownListFieldSettings Value="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" Text="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)"></DropDownListFieldSettings>
+                                                                                                </SfDropDownList>
+                                                                                            </div>
+                                                                                            @*<div class="form-group col-md-3">
+                                                                                                    <p>Date of birth</p>
+                                                                                                    @if (@CaseCareDetailReviewData.DoB.HasValue)
+                                                                                                    {
+                                                                                                        <p><b>@CaseCareDetailReviewData.DoB.Value.ToString("dd/MM/yyyy")</b></p>
+                                                                                                    }
+                                                                                                </div>
+                                                                                                <div class="form-group col-md-3">
+                                                                                                    <p>Age</p>
+                                                                                                    <p><b>@CaseCareDetailReviewData.Age</b></p>
+                                                                                                </div>
+                                                                                                <div class="form-group col-md-3">
+                                                                                                    <p>Gender</p>
+                                                                                                    <p><b>@CaseCareDetailReviewData.GenderDescription</b></p>
+                                                                                                </div>*@
+                                                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                                                            <div class="form-group col-md-12">
+                                                                                                <SfGrid @ref="CaseCareDetailPlanGrid" DataSource="@CaseCareDetailPlanData" TValue="CaseCareDetailPlan"
+                                                                                                        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                                                                        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                                                                                    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                                                                                    <GridEvents OnActionBegin="OnCaseCareDetailPlanActionBegin" OnActionComplete="@OnCaseCareDetailPlanActionComplete" TValue="CaseCareDetailPlan"></GridEvents>
+                                                                                                    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                                                                        <Template Context="CaseCareDetailPlanContext">
+                                                                                                            @{
+                                                                                                                CaseCareDetailPlanReviewData = (CaseCareDetailPlanContext as CaseCareDetailPlan);
+                                                                                                                <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                                                                                    <div class="form-row">
+                                                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                                                            <SfNumericTextBox @bind-Value="@CaseCareDetailPlanReviewData.CaseCareDetailsId" Enabled="false"></SfNumericTextBox>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                                                            <SfNumericTextBox @bind-Value="@CaseCareDetailPlanReviewData.CaseCareDetailPlanId" Enabled="false"></SfNumericTextBox>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>Priority Area</p>
+                                                                                                                            <SfDropDownList @bind-Value="@(CaseCareDetailPlanReviewData.PriorityAreaId)" Enabled="true" TItem="APriorityArea" TValue="int" DataSource="@PriorityAreaData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                                                <DropDownListFieldSettings Value="@nameof(APriorityArea.PriorityAreaId)" Text="@nameof(APriorityArea.PriorityAreaDesc)"></DropDownListFieldSettings>
+                                                                                                                                <DropDownListEvents TItem="APriorityArea" TValue="int" ValueChange="OnPriorityAreaChange"></DropDownListEvents>
+                                                                                                                            </SfDropDownList>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>Goal</p>
+                                                                                                                            <SfTextBox Multiline="true" @bind-Value="@(CaseCareDetailPlanReviewData.CasePlanGoal)" Enabled="true" Placeholder="Pleses enter the Goal" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                Priority Action Code
+                                                                                                                            </p>
+                                                                                                                            <SfMultiSelect @ref="PriorityAreaCodeObj" TValue="int[]" TItem="APriorityAreaCodes" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@mPriorityAreaCodeData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Search here---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                                                <MultiSelectFieldSettings Value="@nameof(APriorityAreaCodes.PriorityAreaCodeId)" Text="@nameof(APriorityAreaCodes.PriorityAreaCodeDesc)"></MultiSelectFieldSettings>
+                                                                                                                                <MultiSelectEvents TValue="int[]" TItem="APriorityAreaCodes" ValueChange="OnPriorityAreaCodeChange" DataBound="OnPriorityAreaCodeBound"></MultiSelectEvents>
+                                                                                                                            </SfMultiSelect>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                For referral
+                                                                                                                            </p>
+                                                                                                                            <SfMultiSelect @ref="ReferralPriorityAreaCodeObj" TValue="int[]" TItem="APriorityAreaCodes" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@mPriorityAreaCodeData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Search here---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                                                                                <MultiSelectFieldSettings Value="@nameof(APriorityAreaCodes.PriorityAreaCodeId)" Text="@nameof(APriorityAreaCodes.PriorityAreaCodeDesc)"></MultiSelectFieldSettings>
+                                                                                                                                <MultiSelectEvents TValue="int[]" TItem="APriorityAreaCodes" ValueChange="OnReferralPriorityAreaCodeChange" DataBound="OnReferralPriorityAreaCodeBound"></MultiSelectEvents>
+                                                                                                                            </SfMultiSelect>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                Planned date for completion of Action
+                                                                                                                            </p>
+                                                                                                                            <SfDatePicker @bind-Value="@(CaseCareDetailPlanReviewData.ActionCompletionPlannedDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                Actual completion date
+                                                                                                                            </p>
+                                                                                                                            <SfDatePicker @bind-Value="@(CaseCareDetailPlanReviewData.ActionCompletionActualDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                Responsible person
+                                                                                                                            </p>
+                                                                                                                            <SfTextBox Multiline="false" @bind-Value="@(CaseCareDetailPlanReviewData.ResponsiblePerson)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                                                        </div>
+                                                                                                                        <div class="form-group col-md-6">
+                                                                                                                            <p>
+                                                                                                                                Completion Status
+                                                                                                                            </p>
+                                                                                                                            <SfDropDownList @bind-Value="@(CaseCareDetailPlanReviewData.CasePlanStausId)" Enabled="true" TItem="ACasePlanStaus" TValue="int?" DataSource="@CasePlanStausData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                                                                                <DropDownListFieldSettings Value="@nameof(ACasePlanStaus.CasePlanStausId)" Text="@nameof(ACasePlanStaus.CasePlanStausDesc)"></DropDownListFieldSettings>
+                                                                                                                            </SfDropDownList>
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            }
+                                                                                                        </Template>
+                                                                                                        <FooterTemplate>
+                                                                                                            <SfButton CssClass="e-btn e-success" OnClick="SaveCaseCareDetailPlanBtnClick"> Save Form</SfButton>
+                                                                                                            <SfButton CssClass="e-btn e-danger" OnClick="CancelCaseCareDetailPlanBtnClick"> Cancel</SfButton>
+                                                                                                        </FooterTemplate>
+                                                                                                    </GridEditSettings>
+                                                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                                                    <GridColumns>
+                                                                                                        @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                                                        <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                                                            <GridCommandColumns>
+                                                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                                                            </GridCommandColumns>
+                                                                                                        </GridColumn>
+                                                                                                        <GridColumn Field=@nameof(CaseCareDetailPlan.CaseCareDetailsId) HeaderText="Case Care Details Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                                                                        <GridForeignColumn Field=@nameof(CaseCareDetailPlan.PriorityAreaId) HeaderText="Priority Area" ForeignKeyField="@nameof(APriorityArea.PriorityAreaId)" ForeignKeyValue="@nameof(APriorityArea.PriorityAreaDesc)" ForeignDataSource="@PriorityAreaData" Width="200"></GridForeignColumn>
+                                                                                                        <GridColumn Field=@nameof(CaseCareDetailPlan.CasePlanGoal) Visible="true" HeaderText="Goal" Width="200"></GridColumn>
+                                                                                                        <GridColumn HeaderText="Priority Area Code" Width="250">
+                                                                                                            <Template>
+                                                                                                                @{
+                                                                                                                    var data = (context as CaseCareDetailPlan);
+                                                                                                                    if (!string.IsNullOrEmpty(data.PriorityAreaCodeId))
+                                                                                                                    {
+                                                                                                                        string result = string.Empty;
+                                                                                                                        var a = data.PriorityAreaCodeId.Split(",");
+                                                                                                                        int count = 1;
+                                                                                                                        foreach (var n in a)
+                                                                                                                        {
+                                                                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                                                                            var x = PriorityAreaCodeData.FirstOrDefault(o => o.PriorityAreaCodeId == b);
+                                                                                                                            if (x != null)
+                                                                                                                            {
+                                                                                                                                if (count != a.Length)
+                                                                                                                                {
+                                                                                                                                    result += x.PriorityAreaCodeDesc + ", ";
+                                                                                                                                }
+                                                                                                                                else
+                                                                                                                                {
+                                                                                                                                    result += x.PriorityAreaCodeDesc;
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                            count++;
+                                                                                                                        }
+                                                                                                                        <p>@result</p>
+                                                                                                                    }
+                                                                                                                    else
+                                                                                                                    {
+                                                                                                                        <p></p>
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            </Template>
+                                                                                                        </GridColumn>
+                                                                                                        <GridColumn HeaderText="For Referral" Width="250">
+                                                                                                            <Template>
+                                                                                                                @{
+                                                                                                                    var data = (context as CaseCareDetailPlan);
+                                                                                                                    if (!string.IsNullOrEmpty(data.RefferalPriorityAreaCodeId))
+                                                                                                                    {
+                                                                                                                        string result = string.Empty;
+                                                                                                                        var a = data.RefferalPriorityAreaCodeId.Split(",");
+                                                                                                                        int count = 1;
+                                                                                                                        foreach (var n in a)
+                                                                                                                        {
+                                                                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                                                                            var x = PriorityAreaCodeData.FirstOrDefault(o => o.PriorityAreaCodeId == b);
+                                                                                                                            if (x != null)
+                                                                                                                            {
+                                                                                                                                if (count != a.Length)
+                                                                                                                                {
+                                                                                                                                    result += x.PriorityAreaCodeDesc + ", ";
+                                                                                                                                }
+                                                                                                                                else
+                                                                                                                                {
+                                                                                                                                    result += x.PriorityAreaCodeDesc;
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                            count++;
+                                                                                                                        }
+                                                                                                                        <p>@result</p>
+                                                                                                                    }
+                                                                                                                    else
+                                                                                                                    {
+                                                                                                                        <p></p>
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            </Template>
+                                                                                                        </GridColumn>
+                                                                                                        <GridColumn Field=@nameof(CaseCareDetailPlan.ActionCompletionPlannedDate) HeaderText="Planned date for completion of Action" Format="dd/MM/yyyy" Width="200"></GridColumn>
+                                                                                                        <GridColumn Field=@nameof(CaseCareDetailPlan.ActionCompletionActualDate) HeaderText="Actual completion date" Format="dd/MM/yyyy" Width="200"></GridColumn>
+                                                                                                        <GridColumn Field=@nameof(CaseCareDetailPlan.ResponsiblePerson) HeaderText="Responsible person" Width="180"></GridColumn>
+                                                                                                        <GridForeignColumn Field=@nameof(CaseCareDetailPlan.CasePlanStausId) HeaderText="Completion Status" ForeignKeyField="@nameof(ACasePlanStaus.CasePlanStausId)" ForeignKeyValue="@nameof(ACasePlanStaus.CasePlanStausDesc)" ForeignDataSource="@CasePlanStausData" Width="200"></GridForeignColumn>
+                                                                                                    </GridColumns>
+                                                                                                </SfGrid>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                }
+                                                                            </Template>
+                                                                            <FooterTemplate>
+                                                                                <SfButton CssClass="e-btn e-success" OnClick="SaveCaseCareDetailBtnClick"> Save Form</SfButton>
+                                                                                <SfButton CssClass="e-btn e-danger" OnClick="CancelCaseCareDetailBtnClick"> Cancel</SfButton>
+                                                                            </FooterTemplate>
+                                                                        </GridEditSettings>
+                                                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                        <GridColumns>
+                                                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                            <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                                <GridCommandColumns>
+                                                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                                </GridCommandColumns>
+                                                                            </GridColumn>
+                                                                            <GridColumn Field=@nameof(CaseCareDetail.CaseCareDetailsId) HeaderText="Case Care Details Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                                            <GridForeignColumn Field=@nameof(CaseCareDetail.HouseHoldMemberId) HeaderText="HouseHold Member Code" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                                            <GridForeignColumn Field=@nameof(CaseCareDetail.HouseHoldMemberId) HeaderText="HouseHold Member Name" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.FullName)" ForeignDataSource="@HouseHoldMembersData" Width="200"></GridForeignColumn>
+                                                                            <GridForeignColumn Field=@nameof(CaseCareDetail.HouseHoldMemberId) HeaderText="Gender" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.GenderDescription)" ForeignDataSource="@HouseHoldMembersData" Width="160"></GridForeignColumn>
+                                                                            <GridForeignColumn Field=@nameof(CaseCareDetail.HouseHoldMemberId) HeaderText="Age" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.Age)" ForeignDataSource="@HouseHoldMembersData" Width="160"></GridForeignColumn>
+                                                                            <GridForeignColumn Field=@nameof(CaseCareDetail.CasePlanId) HeaderText="Case Plan For" ForeignKeyField="@nameof(ACasePlan.CasePlanId)" ForeignKeyValue="@nameof(ACasePlan.CasePlanDesc)" ForeignDataSource="@CasePlanData" Width="200"></GridForeignColumn>
+                                                                        </GridColumns>
+                                                                    </SfGrid>
+                                                                </div>
+                                                            }
+
+                                                            <div class="form-group col-md-12">
+                                                                <p>REFERRALS: List all services to be provided by the institution</p>
+                                                                <SfMultiSelect @ref="InstitutionServiceProvidedObj" TValue="int[]" TItem="APriorityAreaCodes" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@PriorityAreaCodeData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="--- Please select---" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                                                    <MultiSelectFieldSettings Value="@nameof(APriorityAreaCodes.PriorityAreaCodeId)" Text="@nameof(APriorityAreaCodes.PriorityAreaCodeDesc)" GroupBy="@nameof(APriorityAreaCodes.PriorityAreaId)"></MultiSelectFieldSettings>
+                                                                    <MultiSelectEvents TValue="int[]" TItem="APriorityAreaCodes" ValueChange="OnInstitutionServiceProvidedChange" DataBound="OnInstitutionServiceProvidedBound"></MultiSelectEvents>
+                                                                </SfMultiSelect>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                @*Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})"*@
+                                                                <SfGrid @ref="CaseCareSummaryGrid" TValue="spCaseCareSummaryGetAllResult" Query="@(new Query().AddParams("CaseCareId",CaseCareReviewData.CaseCareId))"
+                                                                        AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                                        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                                                    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                                                    <SfDataManager AdaptorInstance="@typeof(CaseCareSummaryAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                    <GridEvents OnActionBegin="OnCaseCareSummaryActionBegin" OnActionComplete="@OnCaseCareSummaryActionComplete" TValue="spCaseCareSummaryGetAllResult"></GridEvents>
+                                                                    <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                                                                        <Template Context="CaseCareSummaryContext">
+                                                                            @{
+                                                                                CaseCareSummaryReviewData = (CaseCareSummaryContext as spCaseCareSummaryGetAllResult);
+                                                                                <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                                                                                    <div class="form-row">
+                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                            <SfNumericTextBox @bind-Value="@CaseCareSummaryReviewData.CaseCareSummaryId" Enabled="false"></SfNumericTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12" hidden>
+                                                                                            <SfNumericTextBox @bind-Value="@CaseCareSummaryReviewData.Case_Care_Id" Enabled="false"></SfNumericTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>NIN/Unique Identifier</p>
+                                                                                            <p>@CaseCareSummaryReviewData.HouseHoldMemberCode</p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Name of Caregiver, Child or Adolescent referred</p>
+                                                                                            <p>@CaseCareSummaryReviewData.FullName</p>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-12">
+                                                                                            <p>Service required</p>
+                                                                                            @if (!string.IsNullOrEmpty(CaseCareSummaryReviewData.RefferalServiceReceivedId))
+                                                                                            {
+                                                                                                string result = string.Empty;
+                                                                                                var a = CaseCareSummaryReviewData.RefferalServiceReceivedId.Split(",");
+                                                                                                int count = 1;
+                                                                                                foreach (var n in a)
+                                                                                                {
+                                                                                                    int b = Convert.ToInt32(n.Trim());
+                                                                                                    var x = PriorityAreaCodeData.FirstOrDefault(o => o.PriorityAreaCodeId == b);
+                                                                                                    if (x != null)
+                                                                                                    {
+                                                                                                        if (count != a.Length)
+                                                                                                        {
+                                                                                                            result += x.PriorityAreaCodeDesc + ", ";
+                                                                                                        }
+                                                                                                        else
+                                                                                                        {
+                                                                                                            result += x.PriorityAreaCodeDesc;
+                                                                                                        }
+                                                                                                    }
+                                                                                                    count++;
+                                                                                                }
+                                                                                                <p>@result</p>
+                                                                                            }
+                                                                                            else
+                                                                                            {
+                                                                                                <p></p>
+                                                                                            }
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Organization / Institution to be contacted</p>
+                                                                                            <SfTextBox Multiline="false" @bind-Value="@(CaseCareSummaryReviewData.OrganisationName)" Enabled="true" Placeholder="Pleses enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                        </div>
+                                                                                        <div class="form-group col-md-6">
+                                                                                            <p>Agency contact details</p>
+                                                                                            <SfTextBox Multiline="false" @bind-Value="@(CaseCareSummaryReviewData.AgencyContact)" Enabled="true" Placeholder="Pleses enter the Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                        <FooterTemplate>
+                                                                            <SfButton CssClass="e-btn e-success" OnClick="SaveCaseCareSummaryBtnClick"> Save Form</SfButton>
+                                                                            <SfButton CssClass="e-btn e-danger" OnClick="CancelCaseCareSummaryBtnClick"> Cancel</SfButton>
+                                                                        </FooterTemplate>
+                                                                    </GridEditSettings>
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                                                        <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>
+                                                                        <GridColumn Field=@nameof(spCaseCareSummaryGetAllResult.CaseCareSummaryId) HeaderText="Case Care Details Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCaseCareSummaryGetAllResult.HouseHoldMemberCode) Visible="true" HeaderText="Member Code" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCaseCareSummaryGetAllResult.FullName) Visible="true" HeaderText="Name of Caregiver, Child or Adolescent referred" Width="200"></GridColumn>
+                                                                        <GridColumn HeaderText="Service required" Width="250">
+                                                                            <Template>
+                                                                                @{
+                                                                                    var data = (context as spCaseCareSummaryGetAllResult);
+                                                                                    if (!string.IsNullOrEmpty(data.RefferalServiceReceivedId))
+                                                                                    {
+                                                                                        string result = string.Empty;
+                                                                                        var a = data.RefferalServiceReceivedId.Split(",");
+                                                                                        int count = 1;
+                                                                                        foreach (var n in a)
+                                                                                        {
+                                                                                            int b = Convert.ToInt32(n.Trim());
+                                                                                            var x = PriorityAreaCodeData.FirstOrDefault(o => o.PriorityAreaCodeId == b);
+                                                                                            if (x != null)
+                                                                                            {
+                                                                                                if (count != a.Length)
+                                                                                                {
+                                                                                                    result += x.PriorityAreaCodeDesc + ", ";
+                                                                                                }
+                                                                                                else
+                                                                                                {
+                                                                                                    result += x.PriorityAreaCodeDesc;
+                                                                                                }
+                                                                                            }
+                                                                                            count++;
+                                                                                        }
+                                                                                        <p>@result</p>
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <p></p>
+                                                                                    }
+                                                                                }
+                                                                            </Template>
+                                                                        </GridColumn>
+                                                                        <GridColumn Field=@nameof(spCaseCareSummaryGetAllResult.OrganisationName) HeaderText="Organization / Institution to be contacted" Width="180"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spCaseCareSummaryGetAllResult.AgencyContact) HeaderText="Agency contact details" Width="180"></GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>CONSENTED/ASSENTED BY</p>
+                                                                <SfTextBox Multiline="false" @bind-Value="@(CaseCareReviewData.AssessedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <p>Date</p>
+                                                                <SfDatePicker @bind-Value="@(CaseCareReviewData.AssessedDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </Template>
+                                        </GridEditSettings>
+                                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                        <GridPageSettings PageSize="20"></GridPageSettings>
+                                        <GridColumns>
+                                            @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                                            <GridColumn HeaderText="Manage Records" Width="140">
+                                                <GridCommandColumns>
+                                                    <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                </GridCommandColumns>
+                                            </GridColumn>
+                                            <GridColumn Field=@nameof(CaseCare.CaseCareId) HeaderText="School Attendency Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                            <GridForeignColumn Field=@nameof(CaseCare.ImplementingPartnerId) HeaderText="Implementing Partner" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="200"></GridForeignColumn>
+                                            <GridForeignColumn Field=@nameof(CaseCare.ServiceProviderId) HeaderText="OVC service provider" ForeignKeyField="@nameof(AServiceProvider.ServiceProviderId)" ForeignKeyValue="@nameof(AServiceProvider.ServiceProviderDesc)" ForeignDataSource="@ServiceProviderData" Width="200"></GridForeignColumn>
+                                            <GridColumn Field=@nameof(CaseCare.AdministeringDate) HeaderText="Date of Administration" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                            @*<GridForeignColumn Field=@nameof(CaseCare.TermId) HeaderText="Term" ForeignKeyField="@nameof(ATerm.TermId)" ForeignKeyValue="@nameof(ATerm.TermDesc)" ForeignDataSource="@TermData" Width="150"></GridForeignColumn>*@
+                                            <GridColumn Field=@nameof(CaseCare.AdministeringPersonName) HeaderText="Name of person administering" Width="220"></GridColumn>
+                                            <GridColumn Field=@nameof(CaseCare.AdministeringPersonPhoneNumber) HeaderText="Phone Number of person administering" Width="220"></GridColumn>
+                                            <GridColumn Field=@nameof(CaseCare.AssessedBy) HeaderText="CONSENTED/ASSENTED BY" Width="220"></GridColumn>
+                                            <GridColumn Field=@nameof(CaseCare.AssessedDate) HeaderText="Date of Assessment" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                                        </GridColumns>
+                                    </SfGrid>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveRegisterBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelRegisterBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldId) HeaderText="HIV TB Tracking Form Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.HouseHoldCode) HeaderText="HouseHold Code" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.DistrictDescription) HeaderText="District" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.SubcountyDescription) Visible="true" HeaderText="Sub county" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.ParishDescription) HeaderText="Parish" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Village" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                @*<GridColumn Field=@nameof(spBeneficiaryIdentificationRegisterGetAllResult.VillageDescription) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="view" })" Title="view"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+    Random random = new Random();
+    SfGrid<spBeneficiaryIdentificationRegisterGetAllResult> BeneficiaryRegisterGrid;
+    private spBeneficiaryIdentificationRegisterGetAllResult BeneficiaryRegisterData { get; set; }
+
+    SfGrid<CaseCare> CaseCareGrid;
+    SfGrid<CaseCareDetail> CaseCareDetailGrid;
+    SfGrid<CaseCareDetailPlan> CaseCareDetailPlanGrid;
+    SfGrid<spCaseCareSummaryGetAllResult> CaseCareSummaryGrid;
+    private CaseCare CaseCareReviewData { get; set; }
+    private List<CaseCareDetail> CaseCareDetailData { get; set; } = new List<CaseCareDetail>();
+    private List<CaseCareDetailPlan> CaseCareDetailPlanData { get; set; } = new List<CaseCareDetailPlan>();
+    CaseCareDetail CaseCareDetailReviewData { get; set; }
+    CaseCareDetailPlan CaseCareDetailPlanReviewData { get; set; }
+    spCaseCareSummaryGetAllResult CaseCareSummaryReviewData { get; set; }
+    SfMultiSelect<int[], APriorityAreaCodes> PriorityAreaCodeObj;
+    SfMultiSelect<int[], APriorityAreaCodes> ReferralPriorityAreaCodeObj;
+
+    SfMultiSelect<int[], APriorityAreaCodes> ServiceProvidedObj;
+    SfMultiSelect<int[], APriorityAreaCodes> InstitutionServiceProvidedObj;
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<AServiceReceived> ServiceReceivedData { get; set; }
+    List<ACasePlan> CasePlanData { get; set; }
+    List<ACandidentClassCompleted> CandidentClassCompletedData { get; set; }
+    List<APriorityArea> PriorityAreaData { get; set; }
+    List<APriorityAreaCodes> PriorityAreaCodeData { get; set; }
+    List<APriorityAreaCodes> mPriorityAreaCodeData { get; set; }
+    List<ACasePlanStaus> CasePlanStausData { get; set; }
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    private void SaveRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.EndEdit();
+    }
+    private void CancelRegisterBtnClick()
+    {
+        BeneficiaryRegisterGrid.CloseEdit();
+    }
+    private async Task SaveCaseCareDetailBtnClick()
+    {
+        await CaseCareDetailGrid.EndEditAsync();
+    }
+    private async Task CancelCaseCareDetailBtnClick()
+    {
+        await CaseCareDetailGrid.CloseEditAsync();
+    }
+    private async Task SaveCaseCareDetailPlanBtnClick()
+    {
+        await CaseCareDetailPlanGrid.EndEditAsync();
+    }
+    private async Task CancelCaseCareDetailPlanBtnClick()
+    {
+        await CaseCareDetailPlanGrid.CloseEditAsync();
+    }
+    private async Task SaveCaseCareSummaryBtnClick()
+    {
+        await CaseCareSummaryGrid.EndEditAsync();
+    }
+    private async Task CancelCaseCareSummaryBtnClick()
+    {
+        await CaseCareSummaryGrid.CloseEditAsync();
+    }
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+
+                    YesNoData = db.AYesNo.AsNoTracking().ToList();
+                    //HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                    ServiceProviderData = db.AServiceProvider.AsNoTracking().ToList();
+                    ServiceReceivedData = db.AServiceReceived.AsNoTracking().ToList();
+                    CasePlanData = db.ACasePlan.AsNoTracking().ToList();
+                    CandidentClassCompletedData = db.ACandidentClassCompleted.AsNoTracking().ToList();
+                    PriorityAreaData = db.APriorityArea.AsNoTracking().ToList();
+                    CasePlanStausData = db.ACasePlanStaus.AsNoTracking().ToList();
+                    PriorityAreaCodeData = db.APriorityAreaCodes.AsNoTracking().ToList();
+
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                   if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+           if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    #region Beneficiary Register
+    public class CaseCareBeneficiaryRegisterAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CaseCareBeneficiaryRegisterAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spBeneficiaryIdentificationRegisterGetAllResult>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spBeneficiaryIdentificationRegisterGetAllAsync(DistrictId, SubcountyId, ParishId, VillageId, null, null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spBeneficiaryIdentificationRegisterGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public void BeneficiaryRegisterActionComplete(ActionEventArgs<spBeneficiaryIdentificationRegisterGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            BeneficiaryRegisterGrid.PreventRender(false);
+            ChildQuery = new Query().AddParams("HouseHoldId", args.Data.HouseHoldId);
+            using (var db = new MUCOBADIContext())
+            {
+                HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.HouseHoldId == args.Data.HouseHoldId).AsNoTracking().ToList();
+            }
+        }
+    }
+    #endregion Beneficiary Register
+
+    #region HIV EXPOSED INFANTS
+    public class CaseCareHeaderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CaseCareHeaderAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<CaseCare>();
+            try
+            {
+                int? HouseHoldId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "HouseHoldId").Value != null)
+                    {
+                        HouseHoldId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "HouseHoldId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.CaseCare.Where(o => o.HouseHoldId == HouseHoldId).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<CaseCare>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as CaseCare);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CaseCare.FirstOrDefault(o => o.CaseCareId == val.CaseCareId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.CaseCare.OrderBy(o => o.CaseCareId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CaseCareId + 1);
+                        }
+                        val.CaseCareId = id;
+                        db.CaseCare.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as CaseCare);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CaseCare.FirstOrDefault(o => o.CaseCareId == val.CaseCareId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnCaseCareActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCare> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new SPToCoreContext())
+                {
+                    CaseCareDetailData = await db.CaseCareDetail.Where(o=> o.CaseCareId == args.RowData.CaseCareId).ToListAsync();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.HouseHoldId = BeneficiaryRegisterData.HouseHoldId;
+                using (var db = new SPToCoreContext())
+                {
+                    //CaseCareDetailData = await db.spCaseCareDetailGetAllAsync(args.RowData.HouseHoldId.ToString(), args.RowData.SchoolAttendencyHeaderId);
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the implementing partner", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ServiceProviderId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the OVC service provider", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.NoMale18Above == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Number of Male aged 18 years and above currently living in household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.NoFemale18Above == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Number of Female aged 18 years and above currently living in household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.NoMale18Below == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Number of Male children below 18 years of age currently living in household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.NoFemale18Below == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Number of Female children below 18 years of age currently living in household", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HouseHoldMemberId == 0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Name And Unique Identifier of HH head or primary caregiver", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.HouseHoldPhoneNumber))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Phone number of HH head or primary caregiver", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.AdministeringPersonName))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Name of person administering", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.AdministeringPersonTitle))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Title of person administering", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.AdministeringPersonPhoneNumber))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Phone number of person administering", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.AdministeringDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Select the Date of administration", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.InstitutionPriorityAreaCodeId))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please List all services to be provided by the institution", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.AssessedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of the person that CONSENTED/ASSENTED BY", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.AssessedDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the date this record was CONSENTED/ASSENTED.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnCaseCareActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCare> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CaseCareGrid.PreventRender(false);
+        }
+    }
+    private void OnInstitutionServiceProvidedBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(CaseCareReviewData.InstitutionPriorityAreaCodeId))
+        {
+            var a = CaseCareReviewData.InstitutionPriorityAreaCodeId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            InstitutionServiceProvidedObj.Value = c.ToArray();
+        }
+    }
+    private void OnInstitutionServiceProvidedChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            CaseCareReviewData.InstitutionPriorityAreaCodeId = string.Join(",", args.Value);
+        }
+        else
+        {
+            CaseCareReviewData.InstitutionPriorityAreaCodeId = null;
+        }
+    }
+    #endregion HIV EXPOSED INFANTS
+    public void OnCaseCareDetailActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCareDetail> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    CaseCareDetailPlanData = db.CaseCareDetailPlan.Where(o => o.CaseCareDetailsId == args.RowData.CaseCareDetailsId).AsNoTracking().ToList();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                args.RowData.CaseCareDetailsId = random.Next(1000000, 5000000);
+                CaseCareDetailPlanData = new List<CaseCareDetailPlan>();
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.CasePlanId == 0)
+                {
+                    ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Case Plan for", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.HouseHoldMemberId == 0)
+                {
+                    ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Unique identifier", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+                    using(var db = new MUCOBADIContext())
+                    {
+                        var exist = db.CaseCare.FirstOrDefault(o => o.CaseCareId == CaseCareReviewData.CaseCareId);
+                        if(exist== null)
+                        {
+                            int id = 1;
+                            var last = db.CaseCare.OrderBy(o => o.CaseCareId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CaseCareId + 1);
+                            }
+                            CaseCareReviewData.CaseCareId = id;
+                            db.CaseCare.Add(CaseCareReviewData);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            db.Entry(exist).CurrentValues.SetValues(CaseCareReviewData);
+                            db.Entry(exist).State = EntityState.Modified;
+                            db.SaveChanges();
+                        }
+                        var _exist = db.CaseCareDetail.FirstOrDefault(o => o.CaseCareDetailsId == CaseCareDetailReviewData.CaseCareDetailsId);
+                        if(_exist == null)
+                        {
+                            int id = 1;
+                            var last = db.CaseCareDetail.OrderBy(o => o.CaseCareDetailsId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.CaseCareDetailsId + 1);
+                            }
+                            CaseCareDetailReviewData.CaseCareDetailsId = id;
+                            CaseCareDetailReviewData.CaseCareId = CaseCareReviewData.CaseCareId;
+                            db.CaseCareDetail.Add(CaseCareDetailReviewData);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            db.Entry(_exist).CurrentValues.SetValues(CaseCareReviewData);
+                            db.Entry(_exist).State = EntityState.Modified;
+                            db.SaveChanges();
+                        }
+                        foreach(var n in CaseCareDetailPlanData)
+                        {
+                            var mexist = db.CaseCareDetailPlan.FirstOrDefault(o => o.CaseCareDetailPlanId == n.CaseCareDetailPlanId);
+                            if (mexist == null)
+                            {
+                                int id = 1;
+                                var last = db.CaseCareDetailPlan.OrderBy(o => o.CaseCareDetailPlanId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.CaseCareDetailPlanId + 1);
+                                }
+                                n.CaseCareDetailsId = CaseCareDetailReviewData.CaseCareDetailsId;
+                                n.CaseCareDetailPlanId = id;
+                                db.CaseCareDetailPlan.Add(n);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                db.Entry(mexist).CurrentValues.SetValues(n);
+                                db.Entry(mexist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                        CaseCareSummaryGrid.Refresh();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnCaseCareDetailActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCareDetail> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CaseCareDetailGrid.PreventRender(false);
+        }
+    }
+    public void OnCaseCareDetailPlanActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCareDetailPlan> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                mPriorityAreaCodeData = db.APriorityAreaCodes.Where(o => o.PriorityAreaId == args.RowData.PriorityAreaId).AsNoTracking().ToList();
+            }
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            args.RowData.CaseCareDetailPlanId = random.Next(1000000, 5000000);
+            args.RowData.CaseCareDetailsId = CaseCareDetailReviewData.CaseCareDetailsId;
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        //if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        //{
+        //    if (string.IsNullOrEmpty(args.Data.ClassatEnrolment))
+        //    {
+        //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Class at enrolment", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+        //        args.Cancel = true;
+        //    }
+        //    else if (string.IsNullOrEmpty(args.Data.SchoolName))
+        //    {
+        //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Name of School", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+        //        args.Cancel = true;
+        //    }
+        //    else if (string.IsNullOrEmpty(args.Data.CurrentClass))
+        //    {
+        //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Current class", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+        //        args.Cancel = true;
+        //    }
+        //    else if (args.Data.AttendencyId == null)
+        //    {
+        //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Attendance", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+        //        args.Cancel = true;
+        //    }
+        //}
+    }
+    public void OnCaseCareDetailPlanActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<CaseCareDetailPlan> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CaseCareDetailPlanGrid.PreventRender(false);
+        }
+    }
+    private void OnPriorityAreaCodeChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            CaseCareDetailPlanReviewData.PriorityAreaCodeId = string.Join(",", args.Value);
+        }
+        else
+        {
+            CaseCareDetailPlanReviewData.PriorityAreaCodeId = null;
+        }
+    }
+    private void OnPriorityAreaCodeBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(CaseCareDetailPlanReviewData.PriorityAreaCodeId))
+        {
+            var a = CaseCareDetailPlanReviewData.PriorityAreaCodeId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            PriorityAreaCodeObj.Value = c.ToArray();
+        }
+    }
+    private void OnReferralPriorityAreaCodeChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            CaseCareDetailPlanReviewData.RefferalPriorityAreaCodeId = string.Join(",", args.Value);
+        }
+        else
+        {
+            CaseCareDetailPlanReviewData.RefferalPriorityAreaCodeId = null;
+        }
+    }
+    private void OnReferralPriorityAreaCodeBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(CaseCareDetailPlanReviewData.RefferalPriorityAreaCodeId))
+        {
+            var a = CaseCareDetailPlanReviewData.RefferalPriorityAreaCodeId.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            ReferralPriorityAreaCodeObj.Value = c.ToArray();
+        }
+    }
+    private void OnPriorityAreaChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, APriorityArea> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                using(var db = new MUCOBADIContext())
+                {
+                    mPriorityAreaCodeData = db.APriorityAreaCodes.Where(o => o.PriorityAreaId == args.Value).AsNoTracking().ToList();
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally { StateHasChanged(); }
+    }
+    #region Case Care Summary
+    public class CaseCareSummaryAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public CaseCareSummaryAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spCaseCareSummaryGetAllResult>();
+            try
+            {
+                int? CaseCareId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "CaseCareId").Value != null)
+                    {
+                        CaseCareId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "CaseCareId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spCaseCareSummaryGetAllAsync(CaseCareId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spCaseCareSummaryGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spCaseCareSummaryGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CaseCareSummary.FirstOrDefault(o => o.CaseCareSummaryId == val.CaseCareSummaryId);
+                    if (exist == null)
+                    {
+                        CaseCareSummary m = new();
+                        int id = 1;
+                        var last = db.CaseCareSummary.OrderBy(o => o.CaseCareSummaryId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CaseCareSummaryId + 1);
+                        }
+                        m.CaseCareSummaryId = id;
+                        m.CaseCareId = val.Case_Care_Id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        m.RefferalServiceReceivedId = val.RefferalServiceReceivedId;
+                        m.OrganisationName = val.OrganisationName;
+                        m.AgencyContact = val.AgencyContact;
+                        db.CaseCareSummary.Add(m);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spCaseCareSummaryGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.CaseCareSummary.FirstOrDefault(o => o.CaseCareSummaryId == val.CaseCareSummaryId);
+                    if (exist != null)
+                    {
+                        exist.RefferalServiceReceivedId = val.RefferalServiceReceivedId;
+                        exist.OrganisationName = val.OrganisationName;
+                        exist.AgencyContact = val.AgencyContact;
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                    else
+                    {
+                        CaseCareSummary m = new();
+                        int id = 1;
+                        var last = db.CaseCareSummary.OrderBy(o => o.CaseCareSummaryId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.CaseCareSummaryId + 1);
+                        }
+                        m.CaseCareSummaryId = id;
+                        m.CaseCareId = val.Case_Care_Id;
+                        m.HouseHoldMemberId = val.HouseHoldMemberId;
+                        m.RefferalServiceReceivedId = val.RefferalServiceReceivedId;
+                        m.OrganisationName = val.OrganisationName;
+                        m.AgencyContact = val.AgencyContact;
+                        db.CaseCareSummary.Add(m);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public void OnCaseCareSummaryActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spCaseCareSummaryGetAllResult> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            //{
+            //    if (args.Data.CasePlanId == 0)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Case Plan for", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else if (args.Data.HouseHoldMemberId == 0)
+            //    {
+            //        ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Unique identifier", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+            //        args.Cancel = true;
+            //    }
+            //    else
+            //    {
+            //        using (var db = new MUCOBADIContext())
+            //        {
+            //            var exist = db.CaseCare.FirstOrDefault(o => o.CaseCareId == CaseCareReviewData.CaseCareId);
+            //            if (exist == null)
+            //            {
+            //                int id = 1;
+            //                var last = db.CaseCare.OrderBy(o => o.CaseCareId).LastOrDefault();
+            //                if (last != null)
+            //                {
+            //                    id = (last.CaseCareId + 1);
+            //                }
+            //                CaseCareReviewData.CaseCareId = id;
+            //                db.CaseCare.Add(CaseCareReviewData);
+            //                db.SaveChanges();
+            //            }
+            //            else
+            //            {
+            //                db.Entry(exist).CurrentValues.SetValues(CaseCareReviewData);
+            //                db.Entry(exist).State = EntityState.Modified;
+            //                db.SaveChanges();
+            //            }
+            //            var _exist = db.CaseCareDetail.FirstOrDefault(o => o.CaseCareDetailsId == CaseCareDetailReviewData.CaseCareDetailsId);
+            //            if (_exist == null)
+            //            {
+            //                int id = 1;
+            //                var last = db.CaseCareDetail.OrderBy(o => o.CaseCareDetailsId).LastOrDefault();
+            //                if (last != null)
+            //                {
+            //                    id = (last.CaseCareDetailsId + 1);
+            //                }
+            //                CaseCareDetailReviewData.CaseCareDetailsId = id;
+            //                CaseCareDetailReviewData.CaseCareId = CaseCareReviewData.CaseCareId;
+            //                db.CaseCareDetail.Add(CaseCareDetailReviewData);
+            //                db.SaveChanges();
+            //            }
+            //            else
+            //            {
+            //                db.Entry(_exist).CurrentValues.SetValues(CaseCareReviewData);
+            //                db.Entry(_exist).State = EntityState.Modified;
+            //                db.SaveChanges();
+            //            }
+            //            foreach (var n in CaseCareDetailPlanData)
+            //            {
+            //                var mexist = db.CaseCareDetailPlan.FirstOrDefault(o => o.CaseCareDetailPlanId == n.CaseCareDetailPlanId);
+            //                if (mexist == null)
+            //                {
+            //                    int id = 1;
+            //                    var last = db.CaseCareDetailPlan.OrderBy(o => o.CaseCareDetailPlanId).LastOrDefault();
+            //                    if (last != null)
+            //                    {
+            //                        id = (last.CaseCareDetailPlanId + 1);
+            //                    }
+            //                    n.CaseCareDetailsId = CaseCareDetailReviewData.CaseCareDetailsId;
+            //                    n.CaseCareDetailPlanId = id;
+            //                    db.CaseCareDetailPlan.Add(n);
+            //                    db.SaveChanges();
+            //                }
+            //                else
+            //                {
+            //                    db.Entry(mexist).CurrentValues.SetValues(n);
+            //                    db.Entry(mexist).State = EntityState.Modified;
+            //                    db.SaveChanges();
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnCaseCareSummaryActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<spCaseCareSummaryGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            CaseCareSummaryGrid.PreventRender(false);
+        }
+    }
+    #endregion Case Care Summary
+}

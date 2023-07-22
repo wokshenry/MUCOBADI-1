@@ -1,0 +1,189 @@
+﻿@using MUCOBADI.Models;
+@*<h3>GraduationBenchMarkDetailPage</h3>*@
+
+<SfGrid @ref=@GraduationBenchMarkDetailGrid DataSource="@DataSource" TValue="GraduationBenchMarkDetail" AllowPaging="true" AllowFiltering="true"
+        GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="false" FrozenColumns="5">
+    <GridPageSettings PageSize="20"></GridPageSettings>
+    <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Batch">
+
+    </GridEditSettings>
+    @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Cell" CellSelectionMode="CellSelectionMode.Box"></GridSelectionSettings>
+    <GridEvents CellSaved="OnCellSaved" CellSelected="CellSelectHandler" TValue="GraduationBenchMarkDetail"></GridEvents>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+    <GridColumns>
+        @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+        <GridColumn Field=@nameof(GraduationBenchMarkDetail.GraduationBenchMarkDetailId) AllowEditing="false" Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+        <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.HouseHoldMemberId) AllowEditing="false" Visible="true" HeaderText="Member Code" TextAlign="TextAlign.Left" Width="150" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.HouseHoldMemberCode)" ForeignDataSource="@HouseHoldMembersData"> </GridForeignColumn>
+        <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.HouseHoldMemberId) AllowEditing="false" Visible="true" HeaderText="Member Name" TextAlign="TextAlign.Left" Width="150" ForeignKeyField="@nameof(ViewHouseHoldMembers.HouseHoldMemberId)" ForeignKeyValue="@nameof(ViewHouseHoldMembers.FullName)" ForeignDataSource="@HouseHoldMembersData"> </GridForeignColumn>
+        <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.IsHouseholdMemberActiveYesNo) HeaderText="Member status (Active)" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+        <GridColumn Field=@nameof(GraduationBenchMarkDetail.ReasonForInactiveHouseholdMember) AllowEditing="true" Visible="true" HeaderText="If NO(In Active),why:1" TextAlign="TextAlign.Left" Width="220"> </GridColumn>
+        <GridColumn HeaderText="1.Known HIV Status (or test Not required)">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.MemberHivStatusDocumentYesNoId) HeaderText="1.1 Has each child in the household been documented as “HIV status positive,” “HIV status negative,” or “test not required based on risk,” according to an HIV risk assessment?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.PrimaryCareGiverHiveStatusDocumentedYesNoId) HeaderText="1.2. Has each primary caregiver in the household been documented as “HIV status positive,” “HIV status negative,” or “test not required based on risk,” according to an HIV risk assessment?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="2.Virally suppressed">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.DocumentedAsVirallySuppressedYesNoId) HeaderText="Option a: Viral load testing results documented: 2.1 Have all HIV positives in HH eligible for viral load been documented as virally suppressed (<1,000 copies/mL) for the past 12 months?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.RegularyAttendingArtAppointmentYesNoId) HeaderText="Option b: Viral load testing results not documented:2.2 In the past 12 months, have the beneficiaries been regularly attending ART appointments and picking up ART pills on schedule" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.BeneficiariesbeentakingantiretroviraltherapypillsasprescribedYesNoId) HeaderText="2.3. In the past 12 months, have the beneficiaries been taking antiretroviral therapy (ART) pills as prescribed" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="3.Knowledgeable about HIV prevention">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.AdolescentidentifiedatleasttwoHivrisksYesNoId) HeaderText="3.1 Has the adolescent identified at least two HIV risks? (Ask how one might become infected with HIV, See Job aid for responses)" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.AdolescentidentifiedatleastoneHivpreventionstrategyYesNoId) HeaderText="3.2 Has the adolescent identified at least one HIV prevention strategy? (Ask how one can protect himself/ herself from becoming infected with HIV, See job aid for responses)" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="4. Not undernourished">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.ChildMuacmorethan125cmYesNoId) HeaderText="4.1. Is the child’s MUAC more than 12.5 cm?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.ChildfreeofanysignsofbipedaledemaYesNoId) HeaderText="4.2. Is the child free of any signs of bipedal edema?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="6. No Violence">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.RepeatedphysicalabuseYesNoId) HeaderText="In the past 6 months (since: ), has any child, adolescent, youth or caregiver in your household had the following happen to him/her, within the household? 6.1 Repeated physical abuse (Beaten, kicked to causing injury/ harm)" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.SexuallyabusedYesNoId) HeaderText="In the past 6 months (since: ), has any child, adolescent, youth or caregiver in your household had the following happen to him/her, within the household?  6.2 Sexually abused (touched sexually or forced sex against your will)" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="7. Child Headed Household">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.HouseholdMembersbeenunderthecareofastableadultcaregiverYesNoId) HeaderText="7. During the past 12 months, have all children and adolescents in the household been under the care of a stable adult caregiver? “Stable caregiver is an adult who has cared for and lived in the same HH as the children for at least 12 months”" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+        <GridColumn HeaderText="8. Children in School">
+            <GridColumns>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.AreenrolledinschoolYesNoId) HeaderText="All children and adolescents in the household aged 6-17 8.1  Are enrolled in school?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.AttendedschoolregularlyoverthepastyearYesNoId) HeaderText="All children and adolescents in the household aged 6-17, 8.2  Attended school regularly over the past year (at least 4 days a week)?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(GraduationBenchMarkDetail.ProgressedtonextclassfromlastyeartothisschoolyearYesNoId) HeaderText="All children and adolescents in the household aged 6-17, 8.3  Progressed to next class from last year to this school year?" AllowEditing="true" EditType="EditType.DropDownEdit" TextAlign="TextAlign.Left" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="180"></GridForeignColumn>
+            </GridColumns>
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    SfGrid<GraduationBenchMarkDetail>? GraduationBenchMarkDetailGrid;
+
+    List<GraduationBenchMarkDetail>? DataSource { get; set; }
+    [Parameter]
+    public int? HouseHoldId { get; set; }
+    [Parameter]
+    public List<GraduationBenchMarkDetail>? GraduationBenchMarkDetailData{ get; set; }
+    [Parameter]
+    public List<ViewHouseHoldMembers>? HouseHoldMembersData { get; set; }
+    [Parameter]
+    public List<AYesNo> YesNoData { get; set; }
+    int? PreviousHouseHoldId { get; set; }
+
+    public async Task<List<GraduationBenchMarkDetail>> ReturnDetail()
+    {
+        await GraduationBenchMarkDetailGrid.EndEditAsync();
+        return DataSource;
+    }
+    public async Task CellSelectHandler(CellSelectEventArgs<GraduationBenchMarkDetail> args)
+    {
+        //get selected cell index
+        var CellIndexes = await GraduationBenchMarkDetailGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await GraduationBenchMarkDetailGrid.GetColumnFieldNames();
+        //await GraduationBenchMarkDetailGrid.ClearSelectionAsync();
+        // edit the selected cell using the cell index and column name
+        await GraduationBenchMarkDetailGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    private async Task OnCellSaved(CellSaveArgs<GraduationBenchMarkDetail> args)
+    {
+        await GraduationBenchMarkDetailGrid.EndEditAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataSource = new List<GraduationBenchMarkDetail>();
+        Random Rand = new Random();
+        if (HouseHoldMembersData != null && HouseHoldMembersData.Count > 0)
+        {
+            if (GraduationBenchMarkDetailData != null && GraduationBenchMarkDetailData.Count > 0)
+            {
+                foreach (var n in HouseHoldMembersData)
+                {
+                    var exists = GraduationBenchMarkDetailData.FirstOrDefault(o => o.HouseHoldMemberId == n.HouseHoldMemberId);
+                    if (exists != null)
+                    {
+                        DataSource.Add(exists);
+                    }
+                    else
+                    {
+                        DataSource.Add(new GraduationBenchMarkDetail()
+                            {
+                                HouseHoldMemberId = n.HouseHoldMemberId,
+                                GraduationBenchMarkDetailId = Rand.Next(-10000, -1)
+                            });
+                    }
+                }
+            }
+            else
+            {
+                foreach (var n in HouseHoldMembersData)
+                {
+                    DataSource.Add(new GraduationBenchMarkDetail()
+                        {
+                            HouseHoldMemberId = n.HouseHoldMemberId,
+                            GraduationBenchMarkDetailId = Rand.Next(-10000, -1)
+                        });
+                }
+            }
+        }
+        PreviousHouseHoldId = HouseHoldId;
+        await base.OnInitializedAsync();
+    }
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (PreviousHouseHoldId == null || (PreviousHouseHoldId != HouseHoldId))
+        {
+            DataSource = new List<GraduationBenchMarkDetail>();
+            Random Rand = new Random();
+            if (HouseHoldMembersData != null && HouseHoldMembersData.Count > 0)
+            {
+                if (GraduationBenchMarkDetailData != null && GraduationBenchMarkDetailData.Count > 0)
+                {
+                    foreach (var n in HouseHoldMembersData)
+                    {
+                        var exists = GraduationBenchMarkDetailData.FirstOrDefault(o => o.HouseHoldMemberId == n.HouseHoldMemberId);
+                        if (exists != null)
+                        {
+                            DataSource.Add(exists);
+                        }
+                        else
+                        {
+                            DataSource.Add(new GraduationBenchMarkDetail()
+                                {
+                                    HouseHoldMemberId = n.HouseHoldMemberId,
+                                    GraduationBenchMarkDetailId = Rand.Next(-10000, -1)
+                                });
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var n in HouseHoldMembersData)
+                    {
+                        DataSource.Add(new GraduationBenchMarkDetail()
+                            {
+                                HouseHoldMemberId = n.HouseHoldMemberId,
+                                GraduationBenchMarkDetailId = Rand.Next(-10000, -1)
+                            });
+                    }
+                }
+            }
+            PreviousHouseHoldId = HouseHoldId;
+        }
+    }
+}

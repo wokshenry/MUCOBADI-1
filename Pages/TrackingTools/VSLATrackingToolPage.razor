@@ -1,0 +1,2417 @@
+﻿@page "/VSLATrackingToolPage"
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+    }
+
+    h3 {
+        color: red;
+    }
+
+    .pp {
+        color: ghostwhite;
+        background-color: #6F1E51;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> VSLA TRACKING TOOL </li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3" hidden>
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="form-group col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+        <SfGrid @ref="VslaTrackingToolGrid" TValue="VslaTrackingTool" Query="@MainQuery" Width="100%"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(VslaTrackingToolAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnVslaTrackingToolActionBegin" OnActionComplete="@OnVslaTrackingToolActionComplete" TValue="VslaTrackingTool"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="VslaTrackingToolContext">
+                    @{
+                        VslaTrackingToolReviewData = (VslaTrackingToolContext as VslaTrackingTool);
+                        <div style="margin-top: 10px; padding: 10px; border-color: black; border-width: 2px; border-style: solid; ">
+                            <div class="form-row">
+                                <div class="form-group col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.TrackingToolId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <h4 style="text-align:center;">USAID ICARE VSLA TRACKING TOOL</h4>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Name of IP/CSO</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.ImplementingPartnerId)" AllowFiltering="true" Enabled="true" TItem="AImplementingPartner" TValue="int?" DataSource="@ImplementingPartnerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AImplementingPartner.ImplementingPartnerId)" Text="@nameof(AImplementingPartner.ImplementingPartnerName)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Group Name </p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.GroupId)" AllowFiltering="true" Enabled="true" TItem="AGroups" TValue="int?" DataSource="@GroupsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="AGroups" TValue="int?" ValueChange="OnGroupsChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>VSLA+ Code </p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.GroupCode)" AllowFiltering="true" Enabled="true" TItem="ViewGroupCode" TValue="string" DataSource="@ViewGroupCodeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ViewGroupCode.GroupCode)" Text="@nameof(ViewGroupCode.GroupCode)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Group Formation</p>
+                                    <SfDatePicker @bind-Value="@(VslaTrackingToolReviewData.GroupFoundation)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" AllowFiltering="true" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="OnADistrictChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.SubcountyId)" Enabled="true" TItem="ASubcounty" TValue="int?" AllowFiltering="true" DataSource="@_SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3" hidden>
+                                    <p>Parish</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.ParishId)" AllowFiltering="true" Enabled="true" TItem="AParish" TValue="int?" DataSource="@ParishData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Cycle</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.GroupCycleId)" AllowFiltering="true" Enabled="true" TItem="AGroupCycle" TValue="int?" DataSource="@GroupCycleData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListFieldSettings Value="@nameof(AGroupCycle.GroupCycleId)" Text="@nameof(AGroupCycle.GroupCycleDesc)"></DropDownListFieldSettings>
+                                        <DropDownListEvents TItem="AGroupCycle" TValue="int?" ValueChange="OnGroupCycleChange"></DropDownListEvents>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3" hidden>
+                                    <p>Group Name</p>
+                                    <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.GroupCompositionCode)" PopupWidth="150%" Enabled="true" TItem="ViewGroupComposition" TValue="int?" DataSource="@GroupCompositionData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                        <DropDownListTemplates TItem="ViewGroupComposition">
+                                            <ItemTemplate>
+                                                <div style="margin-left:10px;">
+                                                    <table>
+                                                        <tr>
+                                                            <td><p>Code:@((context as ViewGroupComposition).GroupCode)</p></td>
+                                                            <td><p style="margin-left:10px;">Name: @((context as ViewGroupComposition).GroupName)</p></td>
+                                                            <td><p style="margin-left:10px;">Cycle :@((context as ViewGroupComposition).GroupCycleDesc)</p></td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </ItemTemplate>
+                                            <ValueTemplate>
+                                                <div>
+                                                    <p style="margin-left:10px;">@((context as ViewGroupComposition).GroupCode) | @((context as ViewGroupComposition).GroupName) | @((context as ViewGroupComposition).GroupCycleDesc)</p>
+                                                </div>
+                                            </ValueTemplate>
+                                        </DropDownListTemplates>
+                                        <DropDownListFieldSettings Value="@nameof(ViewGroupComposition.GroupCompositionCode)" Text="@nameof(ViewGroupComposition.GroupName)" GroupBy="@(nameof(ViewGroupComposition.GroupTypeDesc))"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Cycle Saving start Date</p>
+                                    <SfDatePicker @bind-Value="@(VslaTrackingToolReviewData.CycleSavingStartDate)" Format="dd/MM/yyyy" Placeholder="Enter Date and time" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-3" hidden>
+                                    <p>Reporting Month</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.ReportingMonth)" Enabled="true" Placeholder="Pleses enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                @if (VslaTrackingToolReviewData.ImplementingPartnerId != null && VslaTrackingToolReviewData.GroupCompositionCode > 0 && VslaTrackingToolReviewData.GroupCycleId > 0 && VslaTrackingToolReviewData.CycleSavingStartDate != null)
+                                {
+                                    
+                                    <div class="form-group col-md-12">
+                                        <SfGrid TValue="AMonth" AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                                                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+                                            <SfDataManager AdaptorInstance="@typeof(TrackingToolMonthAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+                                            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+                                            <GridEditSettings AllowAdding="false" AllowDeleting="false" AllowEditing="false" Mode="@EditMode.Dialog"></GridEditSettings>
+                                            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                            <GridPageSettings PageSize="20"></GridPageSettings>
+                                            <GridColumns>
+                                                <GridColumn Field=@nameof(AMonth.MonthId) HeaderText="Month Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                                                <GridColumn Field=@nameof(AMonth.MonthDesc) HeaderText="Reporting Month" Width="200"></GridColumn>
+                                            </GridColumns>
+                                            <GridTemplates>
+                                                <DetailTemplate Context="MonthContext">
+                                                    @{
+                                                        var MonthDetails = (MonthContext as AMonth);
+                                                        var mQuery = new Query().AddParams("MonthId", MonthDetails.MonthId).AddParams("GroupCompositionCode", VslaTrackingToolReviewData.GroupCompositionCode);
+                                                        if (VslaTrackingToolReviewData.TrackingToolId > 0)
+                                                        {
+                                                            mQuery.AddParams("TrackingToolId", VslaTrackingToolReviewData.TrackingToolId);
+                                                        }
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Direct Beneficiaries</h4>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="VslaTrackingToolDirectMemberGrid" TValue="spVSLA_Tracking_Tool_Direct_MemberGetAllResult" AllowPaging="true" AllowFiltering="true" Query="@mQuery" Width="100%" FrozenColumns="6"
+                                                                        GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="false" Toolbar="@(new string[] {"Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <SfDataManager AdaptorInstance="@typeof(TrackingToolChildDirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Batch">
+                                                                        <Template Context="VslaGroupDirectMemberContext">
+                                                                            @{
+                                                                                var VslaGroupDirectMemberReviewData = (VslaGroupDirectMemberContext as spVSLA_Tracking_Tool_Direct_MemberGetAllResult);
+                                                                                VslaGroupDirectMemberReviewData.MonthId = MonthDetails.MonthId;
+                                                                                <div class="form-row" style="padding:10px;">
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.VSLATrackingToolDirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.TrackingToolId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            HH INDIVIDUAL CODE AND NAME
+                                                                                        </p>
+                                                                                        <p>@VslaGroupDirectMemberReviewData.HouseHoldMemberCode  @VslaGroupDirectMemberReviewData.FullName</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Sex
+                                                                                        </p>
+                                                                                        <p>@VslaGroupDirectMemberReviewData.GenderDescription</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Age
+                                                                                        </p>
+                                                                                        <p>@VslaGroupDirectMemberReviewData.Age</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Month
+                                                                                        </p>
+                                                                                        <p>@MonthDetails.MonthDesc</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Member Status(A/D)</p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.MemberStausId)" Enabled="true" TItem="AGroupMemberStatus" TValue="int?" DataSource="@GroupMemberStatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AGroupMemberStatus.MemberStausId)" Text="@nameof(AGroupMemberStatus.MemberStatusDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h4>3. Amount of money (UGX) </h4>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Saved</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Loan Fund(LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Saved_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Amount saved for Welfare/Social Fund(WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Saved_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Amount contributed to OVC Fund (OF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Saved_OF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Borrowed</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Borrowed as Loans(LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Borrowed_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Social fund borrowed (WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Borrowed_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Re-paid</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Loan paid in a given month (LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Repaid_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Welfare/Social fund paid in a given month (WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaGroupDirectMemberReviewData.Repaid_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h4>4. Main reason for borrowing  </h4>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>LF</p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.LF_Reason_For_Borrowing_Id)" Enabled="true" TItem="AReasonForBorrowingLoan" TValue="int?" DataSource="@ReasonForBorrowingLoanData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" Text="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>WF</p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaGroupDirectMemberReviewData.WF_Reason_For_Borrowing_Id)" Enabled="true" TItem="AReasonForBorrowingLoan" TValue="int?" DataSource="@ReasonForBorrowingLoanData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" Text="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                    </GridEditSettings>
+                                                                    @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                    <GridEvents OnActionComplete="@TemplateActionComplete" OnActionBegin="@VslaGroupDirectMemberActionBegin"  CellSaved="DirectMemberCellSavedHandler"  CellSelected="DirectMemberCellSelectHandler" TValue="spVSLA_Tracking_Tool_Direct_MemberGetAllResult"></GridEvents>
+                                                                    @*<GridEvents CellSaved="OnCellSaved" OnActionComplete="TemplateActionComplete" OnBatchSave="BatchSaveHandler" QueryCellInfo="QueryCellInfoHandler" TValue="CouncilofDecisionsCountry"></GridEvents>*@
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn HeaderText="Manage Records" Width="100" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>*@
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.VSLATrackingToolDirectMemberId) Visible="false" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.MonthId) Visible="false" HeaderText="Month Code" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.HouseHoldMemberCode) HeaderText="Household/ Member Code" Width="180"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.FullName) HeaderText="Name of participant" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.GenderDescription) Visible="true" HeaderText="Sex" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Age) HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridForeignColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.MemberStausId) Visible="true" HeaderText="Member Status(A/D)" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip" ForeignKeyField="@nameof(AGroupMemberStatus.MemberStausId)" ForeignKeyValue="@nameof(AGroupMemberStatus.MemberStatusDesc)" ForeignDataSource="@GroupMemberStatusData"></GridForeignColumn>
+                                                                        <GridColumn HeaderText="3. Amount of money (UGX) " Width="1200">
+                                                                            <GridColumns>
+                                                                                <GridColumn HeaderText="Saved " Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Saved_LF) Visible="true" HeaderText="LF=Loan Fund" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Saved_WF) Visible="true" HeaderText="WF=Amount saved for Welfare/Social Fund" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Saved_OF) Visible="true" HeaderText="OF = Amount contributed to OVC Fund " EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                                <GridColumn HeaderText="Borrowed" Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Borrowed_LF) Visible="true" HeaderText="LF= Borrowed as Loans" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Borrowed_WF) Visible="true" HeaderText="WF=Amount of Social fund borrowed" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                                <GridColumn HeaderText="Re-paid" Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Repaid_LF) Visible="true" HeaderText="LF=Amount of Loan paid in a given month" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.Repaid_WF) Visible="true" HeaderText="WF=Amount of Welfare/Social fund paid in a given month" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                            </GridColumns>
+                                                                        </GridColumn>
+                                                                        <GridColumn HeaderText="4. Main reason for borrowing" Width="200">
+                                                                            <GridColumns>
+                                                                                <GridForeignColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.LF_Reason_For_Borrowing_Id) Visible="true" HeaderText="LF" TextAlign="TextAlign.Left" Width="180" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" ClipMode="ClipMode.EllipsisWithTooltip" ForeignKeyField="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" ForeignKeyValue="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)" ForeignDataSource="@ReasonForBorrowingLoanData"></GridForeignColumn>
+                                                                                <GridForeignColumn Field=@nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.WF_Reason_For_Borrowing_Id) Visible="true" HeaderText="WF" TextAlign="TextAlign.Left" Width="180" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" ClipMode="ClipMode.EllipsisWithTooltip" ForeignKeyField="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" ForeignKeyValue="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)" ForeignDataSource="@ReasonForBorrowingLoanData"></GridForeignColumn>
+                                                                            </GridColumns>
+                                                                        </GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                            <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                                            <div class="form-group col-md-12">
+                                                                <h4>Indirect Beneficiaries</h4>
+                                                            </div>
+                                                            <div>
+                                                                <p><b>Note:</b> All Indirect Beneficiaries should be given codes in this order.  Starting with the Indirect District Code (IBU), then Sub county code (01 for Budhaya), then VSLA+ group Code (starting V01), then HH Code (Starting with 1000 for every group) and Lastly the Individual Code (Starting with 01) e.g.<b>IBU-01-V01-1000-01</b>.  </p>
+                                                                <p>In instances where there are two (2) or more indirect beneficiaries from the same Household, the last individual code should be changed e.g. <b>IBU-01-V01-1000-01</b> for One HH member then,<b>IBU-01-V01-1000-02</b>  for the next member and so on.   </p>
+                                                            </div>
+                                                            <div class="form-group col-md-12">
+                                                                <SfGrid @ref="VslaTrackingToolInDirectMemberGrid" TValue="spVSLATrackingToolInDirectMemberGetAllResult" AllowPaging="true" AllowFiltering="true" Query="@mQuery" Width="100%" FrozenColumns="6"
+                                                                        GridLines="GridLine.Both" AllowTextWrap="true" AllowSelection="true" AllowGrouping="false" Toolbar="@(new string[] {"Edit","Delete","Update","Cancel","ColumnChooser"})">
+                                                                    <GridPageSettings PageSize="20"></GridPageSettings>
+                                                                    <SfDataManager AdaptorInstance="@typeof(TrackingToolChildIndirectMemberAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+                                                                    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" ShowConfirmDialog="false" Mode="@EditMode.Batch">
+                                                                        <Template Context="VslaGroupShareOutIndirectMemberContext">
+                                                                            @{
+                                                                                var VslaTrackingToolInDirectMemberReviewData = (VslaGroupShareOutIndirectMemberContext as spVSLATrackingToolInDirectMemberGetAllResult);
+                                                                                VslaTrackingToolInDirectMemberReviewData.MonthId = MonthDetails.MonthId;
+                                                                                <div class="form-row" style="padding:10px;">
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.TrackingToolId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12" hidden>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.VSLATrackingToolInDirectMemberId" Enabled="false"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Indirect Member Code
+                                                                                        </p>
+                                                                                        <p>@VslaTrackingToolInDirectMemberReviewData.IndirectMemberCode</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Name</p>
+                                                                                        <p>@VslaTrackingToolInDirectMemberReviewData.MemberName</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Month
+                                                                                        </p>
+                                                                                        <p>@MonthDetails.MonthDesc</p>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>
+                                                                                            Member Status
+                                                                                            (A/D)
+                                                                                        </p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaTrackingToolInDirectMemberReviewData.MemberStausId)" Enabled="true" TItem="AGroupMemberStatus" TValue="int?" DataSource="@GroupMemberStatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AGroupMemberStatus.MemberStausId)" Text="@nameof(AGroupMemberStatus.MemberStatusDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h4>3. Amount of money (UGX) </h4>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Saved</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Loan Fund(LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Saved_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Amount saved for Welfare/Social Fund(WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Saved_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-4">
+                                                                                        <p>Amount contributed to OVC Fund (OF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Saved_OF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Borrowed</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Borrowed as Loans(LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Borrowed_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Social fund borrowed (WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Borrowed_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h5>Re-paid</h5>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Loan paid in a given month (LF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Repaid_LF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>Amount of Welfare/Social fund paid in a given month (WF)</p>
+                                                                                        <SfNumericTextBox @bind-Value="@VslaTrackingToolInDirectMemberReviewData.Repaid_WF" Enabled="true"></SfNumericTextBox>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-12">
+                                                                                        <h4>4. Main reason for borrowing  </h4>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>LF</p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaTrackingToolInDirectMemberReviewData.LF_Reason_For_Borrowing_Id)" Enabled="true" TItem="AReasonForBorrowingLoan" TValue="int?" DataSource="@ReasonForBorrowingLoanData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" Text="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                    <div class="form-group col-md-6">
+                                                                                        <p>WF</p>
+                                                                                        <SfDropDownList @bind-Value="@(VslaTrackingToolInDirectMemberReviewData.WF_Reason_For_Borrowing_Id)" Enabled="true" TItem="AReasonForBorrowingLoan" TValue="int?" DataSource="@ReasonForBorrowingLoanData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                                                            <DropDownListFieldSettings Value="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" Text="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)"></DropDownListFieldSettings>
+                                                                                        </SfDropDownList>
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                        </Template>
+                                                                    </GridEditSettings>
+                                                                    @*<GridSearchSettings IgnoreCase="true"></GridSearchSettings>*@
+                                                                    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Both"></GridSelectionSettings>
+                                                                    <GridEvents OnActionComplete="@VslaTrackingToolInDirectMemberActionComplete" OnActionBegin="@VslaTrackingToolInDirectMemberActionBegin"   CellSaved="IndirectMemberCellSavedHandler"  CellSelected="IndirectMemberCellSelectHandler" TValue="spVSLATrackingToolInDirectMemberGetAllResult"></GridEvents>
+                                                                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+                                                                    <GridColumns>
+                                                                        @*<GridColumn HeaderText="Manage Records" Width="100" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                                                                            <GridCommandColumns>
+                                                                                <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                                                                            </GridCommandColumns>
+                                                                        </GridColumn>*@
+                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.VSLATrackingToolInDirectMemberId) Visible="true" HeaderText="Graduation Checklist Detail Id" IsPrimaryKey="true" TextAlign="TextAlign.Left" Width="110"> </GridColumn>
+                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.MonthId) Visible="false" HeaderText="Month Code" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spIndirect_Group_MembersGetAllResult.IndirectMemberCode) HeaderText="Household/ Member Code" Width="180"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spIndirect_Group_MembersGetAllResult.MemberName) HeaderText="Name of participant" Width="200"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spIndirect_Group_MembersGetAllResult.GenderDescription) Visible="true" HeaderText="Sex" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridColumn Field=@nameof(spIndirect_Group_MembersGetAllResult.Age) HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                                                                        <GridForeignColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.MemberStausId) Visible="true" HeaderText="Member Status(A/D)" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip" ForeignKeyField="@nameof(AGroupMemberStatus.MemberStausId)" ForeignKeyValue="@nameof(AGroupMemberStatus.MemberStatusDesc)" ForeignDataSource="@GroupMemberStatusData"></GridForeignColumn>
+                                                                        <GridColumn HeaderText="3. Amount of money (UGX) " Width="1200">
+                                                                            <GridColumns>
+                                                                                <GridColumn HeaderText="Saved " Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Saved_LF) Visible="true" HeaderText="LF=Loan Fund" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Saved_WF) Visible="true" HeaderText="WF=Amount saved for Welfare/Social Fund" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Saved_OF) Visible="true" HeaderText="OF = Amount contributed to OVC Fund " EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                                <GridColumn HeaderText="Borrowed" Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Borrowed_LF) Visible="true" HeaderText="LF= Borrowed as Loans" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Borrowed_WF) Visible="true" HeaderText="WF=Amount of Social fund borrowed" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                                <GridColumn HeaderText="Re-paid" Width="400">
+                                                                                    <GridColumns>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Repaid_LF) Visible="true" HeaderText="LF=Amount of Loan paid in a given month" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                        <GridColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.Repaid_WF) Visible="true" HeaderText="WF=Amount of Welfare/Social fund paid in a given month" EditType="Syncfusion.Blazor.Grids.EditType.NumericEdit" TextAlign="TextAlign.Left" Width="200" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                                                                    </GridColumns>
+                                                                                </GridColumn>
+                                                                            </GridColumns>
+                                                                        </GridColumn>
+                                                                        <GridColumn HeaderText="4. Main reason for borrowing" Width="200">
+                                                                            <GridColumns>
+                                                                                <GridForeignColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.LF_Reason_For_Borrowing_Id) Visible="true" HeaderText="LF" TextAlign="TextAlign.Left" Width="180" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" ClipMode="ClipMode.EllipsisWithTooltip" ForeignKeyField="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" ForeignKeyValue="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)" ForeignDataSource="@ReasonForBorrowingLoanData"></GridForeignColumn>
+                                                                                <GridForeignColumn Field=@nameof(spVSLATrackingToolInDirectMemberGetAllResult.WF_Reason_For_Borrowing_Id) Visible="true" HeaderText="WF" TextAlign="TextAlign.Left" Width="180" ClipMode="ClipMode.EllipsisWithTooltip" EditType="Syncfusion.Blazor.Grids.EditType.DropDownEdit" ForeignKeyField="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingId)" ForeignKeyValue="@nameof(AReasonForBorrowingLoan.ReasonForBorrowingDesc)" ForeignDataSource="@ReasonForBorrowingLoanData"></GridForeignColumn>
+                                                                            </GridColumns>
+                                                                        </GridColumn>
+                                                                    </GridColumns>
+                                                                </SfGrid>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </DetailTemplate>
+                                            </GridTemplates>
+                                        </SfGrid>
+                                    </div>
+                                    <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                }
+
+                                <div class="form-group col-md-12">
+                                    <h4>Cross Cutting VSLA Group Data</h4>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <td>
+                                                <p>Linkage to External Savings </p>
+                                                <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.LinkageToExternalSaving)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                </SfDropDownList>
+                                                @if (VslaTrackingToolReviewData.LinkageToExternalSaving == 1)
+                                                {
+                                                    <p>Where</p>
+                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.NameLinkageToExternalSaving)" Enabled="true" Placeholder="Pleses enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                }
+                                            </td>
+                                            <td>
+                                                <p>Members at start of the Cycle</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoMembersAtStartOfCycle" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Cumm. Value of Savings this Cycle (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.CummValueOfSavingsThisCycle" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Loan Fund Cash in box+Bank (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.LoanCashInBoxBank" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Cash Balance in OVC Fund</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.CashBalanceInOvcFund" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <p>Linkage to External Credit</p>
+                                                <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.LinkageToExternalCredit)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                    <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                </SfDropDownList>
+                                                @if (VslaTrackingToolReviewData.LinkageToExternalCredit == 1)
+                                                {
+                                                    <p>Where</p>
+                                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.NameLinkageToExternalCredit)" Enabled="true" Placeholder="Pleses enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                }
+                                            </td>
+                                            <td>
+                                                <p>No. of members attending meeting</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoMemberAttendingMeeting" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Value of Loans outstanding (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.ValueOfLoanOutStanding" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Cash in Welfare Fund (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.CashInWelfareFund" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Cumulative No. of OVC Accessing T.C.S</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.CumulativeNoOvcAccessingTcs" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <p>Amount of Savings Deposited to FFI (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.AmountSavingDepositedToFfi" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>No. of Loans Outstanding</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoOfOutstandingLoan" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Unpaid balance of late loans (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.UnpaidBalanceOfLateLoan" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Cumm. value of Property Now (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.CummValueOfPropertyNow" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>Total Cumulative cash pay-out in OVC Fund</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.TotalCumulativeCashPayoutOvcFund" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <p>Vale of Outstanding Loans at FFI (UGX)</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.ValeOfOutstandingLoansAtFfi" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>No. of members running IGAs</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoOfMembersRunningIgas" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>No. of Bens. Trained in F.L</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoOfBensTrainedFl" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>No. of Bens. Trained in S.P.M</p>
+                                                <SfNumericTextBox @bind-Value="@VslaTrackingToolReviewData.NoOfBensTrainedSpm" Enabled="true"></SfNumericTextBox>
+                                            </td>
+                                            <td>
+                                                <p>VSLA Group trained by </p>
+                                                <SfDropDownList @bind-Value="@(VslaTrackingToolReviewData.VslaGroupTrainerId)" Enabled="true" TItem="AVslaGroupTrainer" TValue="int?" DataSource="@VslaGroupTrainerData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never">
+                                                    <DropDownListFieldSettings Value="@nameof(AVslaGroupTrainer.VslaGroupTrainerId)" Text="@nameof(AVslaGroupTrainer.VslaGroupTrainerDesc)"></DropDownListFieldSettings>
+                                                </SfDropDownList>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="form-group col-md-12" style="border-bottom-color:black; border-bottom-width:2px; border-bottom-style:solid;"></div>
+                                <div class="form-group col-md-4">
+                                    <p>Collected by: Name </p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.CollectedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Designation</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.CollectedDeignation)" Enabled="true" Placeholder="Pleses enter the Designation" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(VslaTrackingToolReviewData.CollectionDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Reviewed by: Name </p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.ReviewedBy)" Enabled="true" Placeholder="Pleses enter the name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Designation</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(VslaTrackingToolReviewData.ReviewDesignation)" Enabled="true" Placeholder="Pleses enter the Designation" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <p>Date</p>
+                                    <SfDatePicker @bind-Value="@(VslaTrackingToolReviewData.ReviewDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="SaveVslaTrackingToolBtnClick"> Save Form</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelVslaTrackingToolBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(VslaTrackingTool.TrackingToolId) HeaderText="Group Composition Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(VslaTrackingTool.ImplementingPartnerId) HeaderText="Name of IP/CSO" ForeignKeyField="@nameof(AImplementingPartner.ImplementingPartnerId)" ForeignKeyValue="@nameof(AImplementingPartner.ImplementingPartnerName)" ForeignDataSource="@ImplementingPartnerData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(VslaTrackingTool.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(VslaTrackingTool.SubcountyId) HeaderText="Sub-County" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                @*<GridForeignColumn Field=@nameof(VslaTrackingTool.ParishId) HeaderText="Parish" ForeignKeyField="@nameof(AParish.ParishId)" ForeignKeyValue="@nameof(AParish.ParishDescription)" ForeignDataSource="@ParishData" Width="200"></GridForeignColumn>*@
+                <GridColumn Field=@nameof(VslaTrackingTool.CycleSavingStartDate) HeaderText="Cycle Saving start Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(VslaTrackingTool.GroupCompositionCode) HeaderText="Group Name" ForeignKeyField="@nameof(ViewGroupComposition.GroupCompositionCode)" ForeignKeyValue="@nameof(ViewGroupComposition.GroupName)" ForeignDataSource="@GroupCompositionData" Width="220"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(VslaTrackingTool.GroupCycleId) HeaderText="Cycle" ForeignKeyField="@nameof(AGroupCycle.GroupCycleId)" ForeignKeyValue="@nameof(AGroupCycle.GroupCycleDesc)" ForeignDataSource="@GroupCycleData" Width="220"></GridForeignColumn>
+                @*<GridColumn Field=@nameof(VslaTrackingTool.TotalDividentPaid) HeaderText="Total Dividends paid this Cycle (UGX)" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.OldShareValue) HeaderText="Old share Value" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.ShareOutDate) HeaderText="Share out date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.WriteOfThisCycle) HeaderText="Write of this cycle" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.Cbtname) HeaderText="CBT name" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.TotalCashAvailableToBeShared) HeaderText="Total cash available to be shared" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.ChairPersonName) HeaderText="Chair person’s Name" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.SecretaryName) HeaderText="Secretary’s Name" Width="220"></GridColumn>
+                    <GridColumn Field=@nameof(VslaTrackingTool.TreasurerName) HeaderText="Treasurer’s Name" Width="220"></GridColumn>*@
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+        {
+            new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+            new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+            new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+            new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+        };
+    #endregion Toasters
+    SfGrid<VslaTrackingTool> VslaTrackingToolGrid;
+    private VslaTrackingTool VslaTrackingToolReviewData { get; set; }
+
+    SfGrid<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> VslaTrackingToolDirectMemberGrid;
+    List<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> VslaGroupDirectMemberDatasource = new();
+
+    SfGrid<spVSLATrackingToolInDirectMemberGetAllResult> VslaTrackingToolInDirectMemberGrid;
+    List<spVSLATrackingToolInDirectMemberGetAllResult> VslaTrackingToolInDirectMemberDatasource = new();
+
+    List<ViewHouseHoldMembers> HouseHoldMembersData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<AGroupPosition> GroupPositionData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<AVslaGroupTrainer> VslaGroupTrainerData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AImplementingPartner> ImplementingPartnerData { get; set; }
+    List<AGroupMemberStatus> GroupMemberStatusData { get; set; }
+    List<AReasonForBorrowingLoan> ReasonForBorrowingLoanData { get; set; }
+    List<ViewGroupComposition> GroupCompositionData { get; set; }
+    List<AGroupCycle> GroupCycleData { get; set; }
+    List<AGroups> GroupsData { get; set; }
+    List<ViewGroupCode> ViewGroupCodeData { get; set; }
+
+    public Query MainQuery = new Query();
+    public Query ChildQuery = new Query();
+
+    private SearchPanel InputModel = new();
+
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+
+    private async Task SaveVslaTrackingToolBtnClick()
+    {
+        if (VslaTrackingToolDirectMemberGrid != null)
+        {
+            await VslaTrackingToolDirectMemberGrid.EndEditAsync();
+        }
+        await VslaTrackingToolGrid.EndEditAsync();
+    }
+    private async Task CancelVslaTrackingToolBtnClick()
+    {
+        if (VslaTrackingToolDirectMemberGrid != null)
+        {
+            await VslaTrackingToolDirectMemberGrid.EndEditAsync();
+        }
+        await VslaTrackingToolGrid.CloseEditAsync();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    GenderData = db.AGender.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+                    GroupPositionData = db.AGroupPosition.AsNoTracking().ToList();
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    VslaGroupTrainerData = db.AVslaGroupTrainer.AsNoTracking().ToList();
+                    YesNoData = db.AYesNo.AsNoTracking().ToList();
+                    ImplementingPartnerData = db.AImplementingPartner.AsNoTracking().ToList();
+                    GroupMemberStatusData = db.AGroupMemberStatus.AsNoTracking().ToList();
+                    ReasonForBorrowingLoanData = db.AReasonForBorrowingLoan.AsNoTracking().ToList();
+                    //HouseHoldMembersData = db.ViewHouseHoldMembers.AsNoTracking().ToList();
+                    GroupCompositionData = db.ViewGroupComposition.AsNoTracking().ToList();
+                    GroupCycleData = db.AGroupCycle.AsNoTracking().ToList();
+                    GroupsData = db.AGroups.AsNoTracking().ToList();
+                    ViewGroupCodeData = db.ViewGroupCode.AsNoTracking().ToList();
+
+                    InputModel = new();
+                    _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                    if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                    {
+                        var districtlist = userManagement.GetUserDistrict();
+                        if (districtlist != null && districtlist.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in districtlist)
+                            {
+                                m.Add(n);
+                            }
+
+                            InputModel.DistrictId = m.ToArray();
+                            _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                        }
+                        var subcountyList = userManagement.GetUserSubcounty();
+                        if (subcountyList != null && subcountyList.Count > 0)
+                        {
+                            List<int?> m = new List<int?>();
+                            foreach (var n in subcountyList)
+                            {
+                                m.Add(n);
+                            }
+                            InputModel.SubcountyId = m.ToArray();
+                            _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                            MainQuery = new Query();
+                            MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                        }
+                    }
+                    else
+                    {
+                        isEnabled = true;
+                    }
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+            if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+
+    private void OnGroupsChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AGroups> args)
+    {
+        if (args.ItemData != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                ViewGroupCodeData = db.ViewGroupCode.Where(o => o.GroupId == args.Value).AsNoTracking().ToList();
+                if (VslaTrackingToolReviewData.GroupCycleId > 0 && VslaTrackingToolReviewData.GroupId != null)
+                {
+                    GroupCompositionData = db.ViewGroupComposition.Where(o => o.GroupId == args.Value && o.GroupCycleId == VslaTrackingToolReviewData.GroupId).OrderBy(o => o.GroupCompositionCode).AsNoTracking().ToList();
+                    var last = GroupCompositionData.LastOrDefault();
+                    if (last != null)
+                    {
+                        VslaTrackingToolReviewData.GroupCompositionCode = last.GroupCompositionCode;
+                        VslaTrackingToolReviewData.GroupCode = last.GroupCode;
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnGroupCycleChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AGroupCycle> args)
+    {
+        if (args.ItemData != null)
+        {
+            if(VslaTrackingToolReviewData.GroupCycleId > 0 && VslaTrackingToolReviewData.GroupId != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    GroupCompositionData = db.ViewGroupComposition.Where(o => o.GroupCycleId == args.Value && o.GroupId== VslaTrackingToolReviewData.GroupId).OrderBy(o => o.GroupCompositionCode).AsNoTracking().ToList();
+                    var last = GroupCompositionData.LastOrDefault();
+                    if (last != null)
+                    {
+                        VslaTrackingToolReviewData.GroupCompositionCode = last.GroupCompositionCode;
+                        VslaTrackingToolReviewData.GroupCode = last.GroupCode;
+                    }
+                }
+            }
+
+        }
+    }
+    public void OnADistrictChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        try
+        {
+            if (args.ItemData != null)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    _SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.Value).AsNoTracking().ToList();
+                    HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.DistrictId == args.Value).AsNoTracking().ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        
+    }
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    #region Graduation Checklist Header
+    public class VslaTrackingToolAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public VslaTrackingToolAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<VslaTrackingTool>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+
+                string[] _district = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _district = DistrictId.Split(',');
+                }
+                string[] _SubcountyId = new string[] { };
+                if (!string.IsNullOrEmpty(SubcountyId))
+                {
+                    _SubcountyId = SubcountyId.Split(',');
+                }
+                string[] _ParishId = new string[] { };
+                if (!string.IsNullOrEmpty(ParishId))
+                {
+                    _ParishId = ParishId.Split(',');
+                }
+                string[] _VillageId = new string[] { };
+                if (!string.IsNullOrEmpty(VillageId))
+                {
+                    _VillageId = VillageId.Split(',');
+                }
+
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.VslaTrackingTool.Where(o => (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true)) &&
+                (_ParishId.Length == 0 || (o.ParishId != null && _ParishId.Any(a => a == o.ParishId.ToString()) == true))).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<VslaTrackingTool>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as VslaTrackingTool);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TrackingToolId + 1);
+                        }
+                        val.TrackingToolId = id;
+                        db.VslaTrackingTool.Add(val);
+                        db.SaveChanges();
+                        toastService.ShowSuccess("Record Saved Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as VslaTrackingTool);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated Successfully", "Success");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnVslaTrackingToolActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<VslaTrackingTool> args)
+    {
+        try
+        {
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            //{
+            //    using (var db = new SPToCoreContext())
+            //    {
+            //        _SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.RowData.DistrictId).AsNoTracking().ToList();
+            //        //VslaGroupDirectMemberDatasource = await db.VslaTrackingToolDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+            //        //VslaTrackingToolInDirectMemberDatasource = await db.VslaTrackingToolInDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+            //    }
+            //}
+            //if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            //{
+            //    using (var db = new SPToCoreContext())
+            //    {
+            //        //VslaGroupDirectMemberDatasource = await db.VslaTrackingToolDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+            //        //VslaTrackingToolInDirectMemberDatasource = await db.VslaTrackingToolInDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+            //    }
+            //}
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (args.Data.GroupCompositionCode==0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the group name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.GroupCycleId==0)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Cycle", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.CycleSavingStartDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Cycle Saving start Date.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the sub-county.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ImplementingPartnerId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the IP/CSO.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.GroupFoundation== null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Group Formation.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (String.IsNullOrEmpty(args.Data.ReportingMonth))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Reporting Month.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.TotalDividentPaid == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Total Dividends paid this Cycle (UGX).", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.OldShareValue == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Old share Value.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.TotalCashAvailableToBeShared == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Total cash available to be shared.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else if (String.IsNullOrEmpty(args.Data.CollectedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Person that collected the data ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CollectedDeignation))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Desigination of the person that collected the Data.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.CollectionDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date of the data collection.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.ReviewedBy))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the name of person who reveiwed this information", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (String.IsNullOrEmpty(args.Data.CollectedDeignation))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Designation of person who reveiwed this information.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.ReviewDate == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Date of the data Review.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else
+                {
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    public void OnVslaTrackingToolActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<VslaTrackingTool> args)
+    {
+        try
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                VslaTrackingToolGrid.PreventRender(false);
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+                {
+                    using (var db = new SPToCoreContext())
+                    {
+                        _SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.RowData.DistrictId).AsNoTracking().ToList();
+                        HouseHoldMembersData = db.ViewHouseHoldMembers.Where(o => o.DistrictId == args.RowData.DistrictId).AsNoTracking().ToList();
+                        //VslaGroupDirectMemberDatasource = await db.VslaTrackingToolDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+                        //VslaTrackingToolInDirectMemberDatasource = await db.VslaTrackingToolInDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+                    }
+                }
+                if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+                {
+                    using (var db = new SPToCoreContext())
+                    {
+                        HouseHoldMembersData = new();
+                        //VslaGroupDirectMemberDatasource = await db.VslaTrackingToolDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+                        //VslaTrackingToolInDirectMemberDatasource = await db.VslaTrackingToolInDirectMember.Where(o => o.TrackingToolId == args.RowData.TrackingToolId).ToListAsync();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        
+        
+    }
+
+    public async Task CellSelectHandler(CellSelectEventArgs<VslaTrackingToolDirectMember> args)
+    {
+        //get selected cell index
+        var CellIndexes = await VslaTrackingToolDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await VslaTrackingToolDirectMemberGrid.GetColumnFieldNames();
+        //await VslaTrackingToolDirectMemberGrid.ClearSelectionAsync();
+        // edit the selected cell using the cell index and column name
+        await VslaTrackingToolDirectMemberGrid.EditCellAsync(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public void TemplateActionComplete(ActionEventArgs<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaTrackingToolDirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public void VslaTrackingToolInDirectMemberActionComplete(ActionEventArgs<spVSLATrackingToolInDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            VslaTrackingToolInDirectMemberGrid.PreventRender(false);
+        }
+
+    }
+    public async Task VslaGroupDirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Direct_Member_Id == 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.MemberStausId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Member Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF=Loan Fund (saved)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount saved for Welfare/Social Fund(saved)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_OF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the OF = Amount contributed to OVC Fund ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Borrowed_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF= Borrowed as Loans (Borrowed)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Borrowed_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount of Social fund borrowed (Borrowed)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Repaid_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF=Amount of Loan paid in a given month(Re-Paid)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Repaid_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount of Welfare/Social fund paid in a given month (Re-Paid)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.LF_Reason_For_Borrowing_Id == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF (Main reason for borrowing)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.WF_Reason_For_Borrowing_Id == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF (Main reason for borrowing)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (VslaTrackingToolReviewData.TrackingToolId == 0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == VslaTrackingToolReviewData.TrackingToolId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.TrackingToolId + 1);
+                            }
+                            VslaTrackingToolReviewData.TrackingToolId = id;
+                            args.Data.TrackingToolId = id;
+                            db.VslaTrackingTool.Add(VslaTrackingToolReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.TrackingToolId = VslaTrackingToolReviewData.TrackingToolId;
+                }
+            }
+        }
+    }
+    public async Task VslaTrackingToolInDirectMemberActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<spVSLATrackingToolInDirectMemberGetAllResult> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (args.Data.VSLA_Group_Indirect_Member_Id== 0)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Indirect Member Code", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.MemberStausId == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Member Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF=Loan Fund (saved)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount saved for Welfare/Social Fund(saved)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Saved_OF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the OF = Amount contributed to OVC Fund ", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Borrowed_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF= Borrowed as Loans (Borrowed)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Borrowed_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount of Social fund borrowed (Borrowed)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Repaid_LF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF=Amount of Loan paid in a given month(Re-Paid)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.Repaid_WF == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF=Amount of Welfare/Social fund paid in a given month (Re-Paid)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.LF_Reason_For_Borrowing_Id == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the LF (Main reason for borrowing)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.WF_Reason_For_Borrowing_Id == null)
+            {
+                await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the WF (Main reason for borrowing)", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                if (VslaTrackingToolReviewData.TrackingToolId==0)
+                {
+                    using (var db = new MUCOBADIContext())
+                    {
+                        var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == VslaTrackingToolReviewData.TrackingToolId);
+                        if (exist == null)
+                        {
+                            int id = 1;
+                            var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).LastOrDefault();
+                            if (last != null)
+                            {
+                                id = (last.TrackingToolId + 1);
+                            }
+                            VslaTrackingToolReviewData.TrackingToolId = id;
+                            args.Data.TrackingToolId = id;
+                            db.VslaTrackingTool.Add(VslaTrackingToolReviewData);
+                            db.SaveChanges();
+                        }
+                    }
+                }
+                else
+                {
+                    args.Data.TrackingToolId = VslaTrackingToolReviewData.TrackingToolId;
+                }
+            }
+        }
+    }
+
+    public async Task DirectMemberCellSelectHandler(CellSelectEventArgs<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> args)
+    {
+        //get selected cell index
+        var CellIndexes = await VslaTrackingToolDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await VslaTrackingToolDirectMemberGrid.GetColumnFieldNames();
+        // edit the selected cell using the cell index and column name
+        await VslaTrackingToolDirectMemberGrid.EditCell(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public async Task DirectMemberCellSavedHandler(CellSaveArgs<spVSLA_Tracking_Tool_Direct_MemberGetAllResult> args)
+    {
+        try
+        {
+            var index = await VslaTrackingToolDirectMemberGrid.GetRowIndexByPrimaryKey(args.RowData.VSLATrackingToolDirectMemberId);
+
+            if (VslaTrackingToolReviewData.TrackingToolId == 0)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == VslaTrackingToolReviewData.TrackingToolId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TrackingToolId + 1);
+                        }
+                        VslaTrackingToolReviewData.TrackingToolId = id;
+                        args.Data.TrackingToolId = id;
+                        db.VslaTrackingTool.Add(VslaTrackingToolReviewData);
+                        db.SaveChanges();
+                    }
+                    await VslaTrackingToolDirectMemberGrid.UpdateCell(index, nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.TrackingToolId), VslaTrackingToolReviewData.TrackingToolId);
+                }
+            }
+            else
+            {
+                args.Data.TrackingToolId =  VslaTrackingToolReviewData.TrackingToolId;
+                await VslaTrackingToolDirectMemberGrid.UpdateCell(index, nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.TrackingToolId), VslaTrackingToolReviewData.TrackingToolId);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await VslaTrackingToolDirectMemberGrid.EndEditAsync();
+             StateHasChanged();
+        }
+    }
+    public async Task IndirectMemberCellSelectHandler(CellSelectEventArgs<spVSLATrackingToolInDirectMemberGetAllResult> args)
+    {
+        //get selected cell index
+        var CellIndexes = await VslaTrackingToolInDirectMemberGrid.GetSelectedRowCellIndexes();
+
+        //get the row and cell index
+        var CurrentEditRowIndex = CellIndexes[0].Item1;
+        var CurrentEditCellIndex = (int)CellIndexes[0].Item2;
+
+        //get the available fields
+        var fields = await VslaTrackingToolInDirectMemberGrid.GetColumnFieldNames();
+        // edit the selected cell using the cell index and column name
+        await VslaTrackingToolInDirectMemberGrid.EditCell(CurrentEditRowIndex, fields[CurrentEditCellIndex]);
+    }
+    public async Task IndirectMemberCellSavedHandler(CellSaveArgs<spVSLATrackingToolInDirectMemberGetAllResult> args)
+    {
+        try
+        {
+            var index = await VslaTrackingToolInDirectMemberGrid.GetRowIndexByPrimaryKey(args.RowData.VSLATrackingToolInDirectMemberId);
+
+            if (VslaTrackingToolReviewData.TrackingToolId == 0)
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exist = db.VslaTrackingTool.FirstOrDefault(o => o.TrackingToolId == VslaTrackingToolReviewData.TrackingToolId);
+                    if (exist == null)
+                    {
+                        int id = 1;
+                        var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.TrackingToolId + 1);
+                        }
+                        VslaTrackingToolReviewData.TrackingToolId = id;
+                        args.Data.TrackingToolId = id;
+                        db.VslaTrackingTool.Add(VslaTrackingToolReviewData);
+                        db.SaveChanges();
+                    }
+                    await VslaTrackingToolInDirectMemberGrid.UpdateCell(index, nameof(spVSLATrackingToolInDirectMemberGetAllResult.TrackingToolId), VslaTrackingToolReviewData.TrackingToolId);
+                }
+            }
+            else
+            {
+                args.Data.TrackingToolId =  VslaTrackingToolReviewData.TrackingToolId;
+                await VslaTrackingToolInDirectMemberGrid.UpdateCell(index, nameof(spVSLA_Tracking_Tool_Direct_MemberGetAllResult.TrackingToolId), VslaTrackingToolReviewData.TrackingToolId);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {    await VslaTrackingToolInDirectMemberGrid.EndEditAsync();
+             StateHasChanged();
+        }
+    }
+    #endregion Graduation Checklist Header
+
+    #region Group Members
+    public class TrackingToolMonthAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public TrackingToolMonthAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<AMonth>();
+            try
+            {
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.AMonth.ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<AMonth>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+    }
+    public class TrackingToolChildDirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public TrackingToolChildDirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spVSLA_Tracking_Tool_Direct_MemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? TrackingToolId = null;
+                int? MonthId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "TrackingToolId").Value != null)
+                    {
+                        TrackingToolId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "TrackingToolId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "MonthId").Value != null)
+                    {
+                        MonthId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "MonthId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spVSLA_Tracking_Tool_Direct_MemberGetAllAsync(TrackingToolId, GroupCompositionCode, MonthId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spVSLA_Tracking_Tool_Direct_MemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spVSLA_Tracking_Tool_Direct_MemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.VslaTrackingToolDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolDirectMemberId == val.VSLATrackingToolDirectMemberId && o.MonthId == val.MonthId);
+                    if (_exist == null)
+                    {
+                        VslaTrackingToolDirectMember m = new();
+                        m.TrackingToolId = val.TrackingToolId.Value;
+                        m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                        m.MemberStausId = val.MemberStausId;
+                        m.MonthId = val.MonthId;
+                        m.SavedLf = val.Saved_LF;
+                        m.SavedWf = val.Saved_WF;
+                        m.SavedOf = val.Saved_OF;
+                        m.BorrowedLf = val.Borrowed_LF;
+                        m.BorrowedWf = val.Borrowed_WF;
+                        m.RepaidLf = val.Repaid_LF;
+                        m.RepaidWf = val.Repaid_WF;
+                        m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        int id = 1;
+                        var last = db.VslaTrackingToolDirectMember.OrderBy(o => o.VslatrackingToolDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslatrackingToolDirectMemberId + 1);
+                        }
+                        m.VslatrackingToolDirectMemberId = id;
+                        db.VslaTrackingToolDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.MemberStausId = val.MemberStausId;
+                        _exist.SavedLf = val.Saved_LF;
+                        _exist.SavedWf = val.Saved_WF;
+                        _exist.SavedOf = val.Saved_OF;
+                        _exist.BorrowedLf = val.Borrowed_LF;
+                        _exist.BorrowedWf = val.Borrowed_WF;
+                        _exist.RepaidLf = val.Repaid_LF;
+                        _exist.RepaidWf = val.Repaid_WF;
+                        _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override object Update(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spVSLA_Tracking_Tool_Direct_MemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.VslaTrackingToolDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolDirectMemberId == val.VSLATrackingToolDirectMemberId && o.MonthId == val.MonthId);
+                    if (_exist == null)
+                    {
+                        VslaTrackingToolDirectMember m = new();
+                        m.TrackingToolId = val.TrackingToolId.Value;
+                        m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                        m.MonthId = val.MonthId;
+                        m.MemberStausId = val.MemberStausId;
+                        m.SavedLf = val.Saved_LF;
+                        m.SavedWf = val.Saved_WF;
+                        m.SavedOf = val.Saved_OF;
+                        m.BorrowedLf = val.Borrowed_LF;
+                        m.BorrowedWf = val.Borrowed_WF;
+                        m.RepaidLf = val.Repaid_LF;
+                        m.RepaidWf = val.Repaid_WF;
+                        m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        int id = 1;
+                        var last = db.VslaTrackingToolDirectMember.OrderBy(o => o.VslatrackingToolDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslatrackingToolDirectMemberId + 1);
+                        }
+                        m.VslatrackingToolDirectMemberId = id;
+                        db.VslaTrackingToolDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.MemberStausId = val.MemberStausId;
+                        _exist.SavedLf = val.Saved_LF;
+                        _exist.SavedWf = val.Saved_WF;
+                        _exist.SavedOf = val.Saved_OF;
+                        _exist.BorrowedLf = val.Borrowed_LF;
+                        _exist.BorrowedWf = val.Borrowed_WF;
+                        _exist.RepaidLf = val.Repaid_LF;
+                        _exist.RepaidWf = val.Repaid_WF;
+                        _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override async Task<object> BatchUpdateAsync(DataManager dm, object Changed, object Added, object Deleted, string KeyField, string Key, int? dropIndex)
+        {
+            object products = null;
+            try
+            {
+                if (Changed != null)
+                {
+                    products = Changed;
+                    foreach (var val in (List<spVSLA_Tracking_Tool_Direct_MemberGetAllResult>)Changed)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.VslaTrackingToolDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolDirectMemberId == val.VSLATrackingToolDirectMemberId && o.MonthId == val.MonthId);
+                            if (_exist == null)
+                            {
+                                VslaTrackingToolDirectMember m = new();
+                                m.TrackingToolId = val.TrackingToolId.Value;
+                                m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                                m.MonthId = val.MonthId;
+                                m.MemberStausId = val.MemberStausId;
+                                m.SavedLf = val.Saved_LF;
+                                m.SavedWf = val.Saved_WF;
+                                m.SavedOf = val.Saved_OF;
+                                m.BorrowedLf = val.Borrowed_LF;
+                                m.BorrowedWf = val.Borrowed_WF;
+                                m.RepaidLf = val.Repaid_LF;
+                                m.RepaidWf = val.Repaid_WF;
+                                m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                int id = 1;
+                                var last = db.VslaTrackingToolDirectMember.OrderBy(o => o.VslatrackingToolDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslatrackingToolDirectMemberId + 1);
+                                }
+                                m.VslatrackingToolDirectMemberId = id;
+                                db.VslaTrackingToolDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberStausId = val.MemberStausId;
+                                _exist.SavedLf = val.Saved_LF;
+                                _exist.SavedWf = val.Saved_WF;
+                                _exist.SavedOf = val.Saved_OF;
+                                _exist.BorrowedLf = val.Borrowed_LF;
+                                _exist.BorrowedWf = val.Borrowed_WF;
+                                _exist.RepaidLf = val.Repaid_LF;
+                                _exist.RepaidWf = val.Repaid_WF;
+                                _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Added != null)
+                {
+                    products = Added;
+                    foreach (var val in (List<spVSLA_Tracking_Tool_Direct_MemberGetAllResult>)Added)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.VslaTrackingToolDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolDirectMemberId == val.VSLATrackingToolDirectMemberId && o.MonthId == val.MonthId);
+                            if (_exist == null)
+                            {
+                                VslaTrackingToolDirectMember m = new();
+                                m.TrackingToolId = val.TrackingToolId.Value;
+                                m.VslaGroupDirectMemberId = val.VSLA_Group_Direct_Member_Id;
+                                m.MonthId = val.MonthId;
+                                m.MemberStausId = val.MemberStausId;
+                                m.SavedLf = val.Saved_LF;
+                                m.SavedWf = val.Saved_WF;
+                                m.SavedOf = val.Saved_OF;
+                                m.BorrowedLf = val.Borrowed_LF;
+                                m.BorrowedWf = val.Borrowed_WF;
+                                m.RepaidLf = val.Repaid_LF;
+                                m.RepaidWf = val.Repaid_WF;
+                                m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                int id = 1;
+                                var last = db.VslaTrackingToolDirectMember.OrderBy(o => o.VslatrackingToolDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslatrackingToolDirectMemberId + 1);
+                                }
+                                m.VslatrackingToolDirectMemberId = id;
+                                db.VslaTrackingToolDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberStausId = val.MemberStausId;
+                                _exist.SavedLf = val.Saved_LF;
+                                _exist.SavedWf = val.Saved_WF;
+                                _exist.SavedOf = val.Saved_OF;
+                                _exist.BorrowedLf = val.Borrowed_LF;
+                                _exist.BorrowedWf = val.Borrowed_WF;
+                                _exist.RepaidLf = val.Repaid_LF;
+                                _exist.RepaidWf = val.Repaid_WF;
+                                _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Deleted != null)
+                {
+                    products = Deleted;
+                    //foreach (var rec in (List<OrderDetails>)Deleted)
+                    //{
+                    //    Orders.Remove(Orders.Where(or => or.OrderID == rec.OrderID).FirstOrDefault());
+                    //}
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return products;
+        }
+    }
+    public class TrackingToolChildIndirectMemberAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        //private UserManagement _userManagement;
+        public TrackingToolChildIndirectMemberAdapter(IToastService ts/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<spVSLATrackingToolInDirectMemberGetAllResult>();
+            try
+            {
+                int? GroupCompositionCode = null;
+                int? TrackingToolId = null;
+                int? MonthId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "TrackingToolId").Value != null)
+                    {
+                        TrackingToolId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "TrackingToolId").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value != null)
+                    {
+                        GroupCompositionCode = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "GroupCompositionCode").Value.ToString());
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "MonthId").Value != null)
+                    {
+                        MonthId = Convert.ToInt32(val.FirstOrDefault(o => o.Key == "MonthId").Value.ToString());
+                    }
+                }
+                using (var dbContext = new SPToCoreContext())
+                {
+                    data = await dbContext.spVSLATrackingToolInDirectMemberGetAllAsync(TrackingToolId, GroupCompositionCode, MonthId);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<spVSLATrackingToolInDirectMemberGetAllResult>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as spVSLATrackingToolInDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.VslaTrackingToolInDirectMember.FirstOrDefault(o => o.TrackingToolId ==val.TrackingToolId && o.VslatrackingToolInDirectMemberId == val.VSLATrackingToolInDirectMemberId && o.MonthId== val.MonthId);
+                    if (_exist == null)
+                    {
+                        VslaTrackingToolInDirectMember m = new();
+                        m.TrackingToolId = val.TrackingToolId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.MonthId = val.MonthId;
+                        m.MemberStausId = val.MemberStausId;
+                        m.SavedLf = val.Saved_LF;
+                        m.SavedWf = val.Saved_WF;
+                        m.SavedOf = val.Saved_OF;
+                        m.BorrowedLf = val.Borrowed_LF;
+                        m.BorrowedWf = val.Borrowed_WF;
+                        m.RepaidLf = val.Repaid_LF;
+                        m.RepaidWf = val.Repaid_WF;
+                        m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        int id = 1;
+                        var last = db.VslaTrackingToolInDirectMember.OrderBy(o => o.VslatrackingToolInDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslatrackingToolInDirectMemberId + 1);
+                        }
+                        m.VslatrackingToolInDirectMemberId = id;
+                        db.VslaTrackingToolInDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.MemberStausId = val.MemberStausId;
+                        _exist.SavedLf = val.Saved_LF;
+                        _exist.SavedWf = val.Saved_WF;
+                        _exist.SavedOf = val.Saved_OF;
+                        _exist.BorrowedLf = val.Borrowed_LF;
+                        _exist.BorrowedWf = val.Borrowed_WF;
+                        _exist.RepaidLf = val.Repaid_LF;
+                        _exist.RepaidWf = val.Repaid_WF;
+                        _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override object Update(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as spVSLATrackingToolInDirectMemberGetAllResult);
+                using (var db = new MUCOBADIContext())
+                {
+                    var _exist = db.VslaTrackingToolInDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolInDirectMemberId == val.VSLATrackingToolInDirectMemberId && o.MonthId == val.MonthId);
+                    if (_exist == null)
+                    {
+                        VslaTrackingToolInDirectMember m = new();
+                        m.TrackingToolId = val.TrackingToolId.Value;
+                        m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                        m.MonthId = val.MonthId;
+                        m.MemberStausId = val.MemberStausId;
+                        m.SavedLf = val.Saved_LF;
+                        m.SavedWf = val.Saved_WF;
+                        m.SavedOf = val.Saved_OF;
+                        m.BorrowedLf = val.Borrowed_LF;
+                        m.BorrowedWf = val.Borrowed_WF;
+                        m.RepaidLf = val.Repaid_LF;
+                        m.RepaidWf = val.Repaid_WF;
+                        m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        int id = 1;
+                        var last = db.VslaTrackingToolInDirectMember.OrderBy(o => o.VslatrackingToolInDirectMemberId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.VslatrackingToolInDirectMemberId + 1);
+                        }
+                        m.VslatrackingToolInDirectMemberId = id;
+                        db.VslaTrackingToolInDirectMember.Add(m);
+                        db.SaveChanges();
+                    }
+                    else
+                    {
+                        _exist.MemberStausId = val.MemberStausId;
+                        _exist.SavedLf = val.Saved_LF;
+                        _exist.SavedWf = val.Saved_WF;
+                        _exist.SavedOf = val.Saved_OF;
+                        _exist.BorrowedLf = val.Borrowed_LF;
+                        _exist.BorrowedWf = val.Borrowed_WF;
+                        _exist.RepaidLf = val.Repaid_LF;
+                        _exist.RepaidWf = val.Repaid_WF;
+                        _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                        _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                        db.Entry(_exist).State = EntityState.Modified;
+                        db.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return value;
+        }
+         public override async Task<object> BatchUpdateAsync(DataManager dm, object Changed, object Added, object Deleted, string KeyField, string Key, int? dropIndex)
+        {
+            object products = null;
+            try
+            {
+                if (Changed != null)
+                {
+                    products = Changed;
+                    foreach (var val in (List<spVSLATrackingToolInDirectMemberGetAllResult>)Changed)
+                    {
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.VslaTrackingToolInDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolInDirectMemberId == val.VSLATrackingToolInDirectMemberId && o.MonthId == val.MonthId);
+                            if (_exist == null)
+                            {
+                                VslaTrackingToolInDirectMember m = new();
+                                m.TrackingToolId = val.TrackingToolId.Value;
+                                m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                                m.MonthId = val.MonthId;
+                                m.MemberStausId = val.MemberStausId;
+                                m.SavedLf = val.Saved_LF;
+                                m.SavedWf = val.Saved_WF;
+                                m.SavedOf = val.Saved_OF;
+                                m.BorrowedLf = val.Borrowed_LF;
+                                m.BorrowedWf = val.Borrowed_WF;
+                                m.RepaidLf = val.Repaid_LF;
+                                m.RepaidWf = val.Repaid_WF;
+                                m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                int id = 1;
+                                var last = db.VslaTrackingToolInDirectMember.OrderBy(o => o.VslatrackingToolInDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslatrackingToolInDirectMemberId + 1);
+                                }
+                                m.VslatrackingToolInDirectMemberId = id;
+                                db.VslaTrackingToolInDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberStausId = val.MemberStausId;
+                                _exist.SavedLf = val.Saved_LF;
+                                _exist.SavedWf = val.Saved_WF;
+                                _exist.SavedOf = val.Saved_OF;
+                                _exist.BorrowedLf = val.Borrowed_LF;
+                                _exist.BorrowedWf = val.Borrowed_WF;
+                                _exist.RepaidLf = val.Repaid_LF;
+                                _exist.RepaidWf = val.Repaid_WF;
+                                _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Added != null)
+                {
+                    products = Added;
+                    foreach (var val in (List<spVSLATrackingToolInDirectMemberGetAllResult>)Added)
+                    {
+                       using (var db = new MUCOBADIContext())
+                        {
+                            var _exist = db.VslaTrackingToolInDirectMember.FirstOrDefault(o => o.TrackingToolId == val.TrackingToolId && o.VslatrackingToolInDirectMemberId == val.VSLATrackingToolInDirectMemberId && o.MonthId == val.MonthId);
+                            if (_exist == null)
+                            {
+                                VslaTrackingToolInDirectMember m = new();
+                                m.TrackingToolId = val.TrackingToolId.Value;
+                                m.VslaGroupIndirectMemberId = val.VSLA_Group_Indirect_Member_Id;
+                                m.MonthId = val.MonthId;
+                                m.MemberStausId = val.MemberStausId;
+                                m.SavedLf = val.Saved_LF;
+                                m.SavedWf = val.Saved_WF;
+                                m.SavedOf = val.Saved_OF;
+                                m.BorrowedLf = val.Borrowed_LF;
+                                m.BorrowedWf = val.Borrowed_WF;
+                                m.RepaidLf = val.Repaid_LF;
+                                m.RepaidWf = val.Repaid_WF;
+                                m.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                m.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                int id = 1;
+                                var last = db.VslaTrackingToolInDirectMember.OrderBy(o => o.VslatrackingToolInDirectMemberId).LastOrDefault();
+                                if (last != null)
+                                {
+                                    id = (last.VslatrackingToolInDirectMemberId + 1);
+                                }
+                                m.VslatrackingToolInDirectMemberId = id;
+                                db.VslaTrackingToolInDirectMember.Add(m);
+                                db.SaveChanges();
+                            }
+                            else
+                            {
+                                _exist.MemberStausId = val.MemberStausId;
+                                _exist.SavedLf = val.Saved_LF;
+                                _exist.SavedWf = val.Saved_WF;
+                                _exist.SavedOf = val.Saved_OF;
+                                _exist.BorrowedLf = val.Borrowed_LF;
+                                _exist.BorrowedWf = val.Borrowed_WF;
+                                _exist.RepaidLf = val.Repaid_LF;
+                                _exist.RepaidWf = val.Repaid_WF;
+                                _exist.LfReasonForBorrowingId = val.LF_Reason_For_Borrowing_Id;
+                                _exist.WfReasonForBorrowingId = val.WF_Reason_For_Borrowing_Id;
+                                db.Entry(_exist).State = EntityState.Modified;
+                                db.SaveChanges();
+                            }
+                        }
+                    }
+
+                }
+                if (Deleted != null)
+                {
+                    products = Deleted;
+                    //foreach (var rec in (List<OrderDetails>)Deleted)
+                    //{
+                    //    Orders.Remove(Orders.Where(or => or.OrderID == rec.OrderID).FirstOrDefault());
+                    //}
+
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return products;
+        }
+    }
+    #endregion Group Members
+}

@@ -1,0 +1,1484 @@
+﻿@page "/HVATReport"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>HOUSEHOLD VULNERABILITY ASSESSMENT TOOL (HVAT) FOR CAREGIVERS [OVCMIS FORM 007A]</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+<EditForm Model="@InputModel" OnValidSubmit="@OnSearchSubmit">
+    <DataAnnotationsValidator />
+    <div class="row" style="margin-bottom:10px;">
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.HouseHoldId" TValue="int?[]" TItem="BeneficiaryIdentificationRegister" AllowFiltering="true" Placeholder="HouseHold Id" Mode="@VisualMode.CheckBox" DataSource="@HouseHoldData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="House Hold" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(BeneficiaryIdentificationRegister.HouseHoldId)" Text="@nameof(BeneficiaryIdentificationRegister.HouseHoldCode)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="District" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="District" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="ChangeDistrict"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" Enabled="@EnableSubcountyDropDown" AllowFiltering="true" Placeholder="Subcounty" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Subcounty" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" Enabled="@EnableParishDropDown" AllowFiltering="true" Placeholder="Parish" Mode="@VisualMode.CheckBox" DataSource="@ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Parish" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" Enabled="@EnableVillageDropDown" AllowFiltering="true" Placeholder="Village" Mode="@VisualMode.CheckBox" DataSource="@VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Village" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="form-group col-md-3">
+                    <p>Reporting Period Start date</p>
+                    <SfDatePicker @bind-Value="@InputModel.StartDate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+                 <div class="form-group col-md-3">
+                    <p>Reporting Period End date</p>
+                    <SfDatePicker @bind-Value="@InputModel.EndDate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+       @* <div class="form-group col-md-3">
+            <p>Reporting Period</p>
+            <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+        <div class="form-group col-md-3">
+            <p>Financial Year</p>
+            <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>*@
+
+        @if (Downloadreport == false)
+        {
+            <div class="col col-md-3">
+                <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+            </div>
+
+        }
+
+        @if (!string.IsNullOrEmpty(Response))
+        {
+            <div class="form-group col-md-12">
+                @if (Response.Contains("No Record"))
+                {
+                    <p class="alert alert-danger" style="padding:10px;">@Response</p>
+                }
+                else
+                {
+                    <p class="alert alert-success" style="padding:10px;">@Response</p>
+                }
+            </div>
+        }
+
+
+        <div class="form-group col-md-12">
+            <SfSpinner @ref="DownloadingSpinner" Label="Downloading Report Please Wait....." Size="50" Type="@SpinnerType.Bootstrap"></SfSpinner>
+        </div>
+    </div>
+    <ValidationSummary />
+</EditForm>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private BeneficiaryRegisterSearch InputModel = new BeneficiaryRegisterSearch();
+    private List<BeneficiaryIdentificationRegister> HouseHoldData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+    private List<ASubcounty> SubcountyData { get; set; }
+    private List<AParish> ParishData { get; set; }
+    private List<AVillage> VillageData { get; set; }
+    public bool EnableSubcountyDropDown = false;
+    public bool EnableParishDropDown = false;
+    public bool EnableVillageDropDown = false;
+    public Query DistricttQuery { get; set; } = null;
+    string Response { get; set; }
+    SfSpinner DownloadingSpinner;
+    bool Downloadreport { get; set; } = false;
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                InputModel = new BeneficiaryRegisterSearch();
+                using (var db = new SPToCoreContext())
+                {
+                    HouseHoldData = db.BeneficiaryIdentificationRegister.AsNoTracking().ToList();
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+
+                    //FianacialYearData = new List<FianacialYear>();
+                    //QuarterData = db.AQuarter.AsNoTracking().ToList();
+                    //int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o=> o.DateofIdentification.HasValue==true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new BeneficiaryRegisterSearch();
+    }
+
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableSubcountyDropDown = true;
+                SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableParishDropDown = true;
+                ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableVillageDropDown = true;
+                VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    private async Task OnSearchSubmit()
+    {
+        Downloadreport = true;
+        await DownloadingSpinner.ShowAsync();
+
+        try
+        {
+            using (var db = new SPToCoreContext())
+            {
+                string HouseHoldId = null;
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+
+                if (InputModel.HouseHoldId != null && InputModel.HouseHoldId.Length > 0)
+                {
+                    HouseHoldId = string.Join(",", InputModel.HouseHoldId);
+                }
+
+                if (InputModel.DistrictId != null && InputModel.DistrictId.Length > 0)
+                {
+                    DistrictId = string.Join(",", InputModel.DistrictId);
+                }
+                if (InputModel.SubcountyId != null && InputModel.SubcountyId.Length > 0)
+                {
+                    SubcountyId = string.Join(",", InputModel.SubcountyId);
+                }
+                if (InputModel.ParishId != null && InputModel.ParishId.Length > 0)
+                {
+                    ParishId = string.Join(",", InputModel.ParishId);
+                }
+                if (InputModel.VillageId != null && InputModel.VillageId.Length > 0)
+                {
+                    VillageId = string.Join(",", InputModel.VillageId);
+                }
+
+                DateTime? startdate = null;
+                DateTime? enddate = null;
+                //var quarter = QuarterData.FirstOrDefault(o => o.QuarterId == InputModel.QuarterId);
+                //if (quarter != null)
+                //{
+                //    startdate = new DateTime(InputModel.YearId.Value, quarter.StartMonthId.Value, 1);
+                //    if (quarter.EndMonthId < quarter.StartMonthId)
+                //    {
+                //        enddate = new DateTime((InputModel.YearId.Value + 1), quarter.EndMonthId.Value, DateTime.DaysInMonth((InputModel.YearId.Value + 1), quarter.EndMonthId.Value));
+                //    }
+                //    else
+                //    {
+                //        enddate = new DateTime(InputModel.YearId.Value, quarter.EndMonthId.Value, DateTime.DaysInMonth(InputModel.YearId.Value, quarter.EndMonthId.Value));
+                //    }
+                //}
+                var data = await db.spViewHVAT007AReportAsync(HouseHoldId, DistrictId, SubcountyId, ParishId, VillageId, InputModel.StartDate, InputModel.EndDate);
+
+                if (data.Count > 0)
+                {
+                    using (ExcelEngine excelEngine = new ExcelEngine())
+                    {
+                        IApplication application = excelEngine.Excel;
+                        application.DefaultVersion = ExcelVersion.Excel2013;
+                        IWorkbook workbook = application.Workbooks.Create(1);
+                        IWorksheet worksheet = workbook.Worksheets[0];
+                        worksheet.Name = "HVAT Report";
+
+                        #region Styles
+                        var headerStyle = workbook.Styles.Add("headerStyle");
+
+                        headerStyle.BeginUpdate();
+                        headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                        headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        headerStyle.Font.Bold = true;
+                        headerStyle.Font.FontName = "Arial";
+                        headerStyle.Font.Size = 8f;
+                        headerStyle.Font.Color = ExcelKnownColors.White;
+
+                        headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        headerStyle.Borders.Color = ExcelKnownColors.White;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                        headerStyle.WrapText = true;
+
+                        headerStyle.EndUpdate();
+
+                        var Style = workbook.Styles.Add("bodyStyle");
+
+                        Style.BeginUpdate();
+                        Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                        Style.Font.Bold = false;
+                        Style.Font.FontName = "Arial";
+                        Style.Font.Size = 8f;
+                        Style.Font.Color = ExcelKnownColors.Black;
+                        Style.WrapText = true;
+                        Style.Borders.Color = ExcelKnownColors.Black;
+                        Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        Style.EndUpdate();
+
+
+                        var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                        CategoryStyle.BeginUpdate();
+                        CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                        /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                        CategoryStyle.Font.Bold = true;
+                        CategoryStyle.Font.FontName = "Arial";
+                        CategoryStyle.Font.Size = 15f;
+                        CategoryStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryStyle.WrapText = true;
+                        CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.EndUpdate();
+
+                        var HHHeadStyle = workbook.Styles.Add("HHHeadStyle");
+
+                        HHHeadStyle.BeginUpdate();
+                        HHHeadStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        HHHeadStyle.Color = Syncfusion.Drawing.Color.FromArgb(140, 152, 152); //ASBESTOS
+                        HHHeadStyle.Font.Bold = true;
+                        HHHeadStyle.Font.FontName = "Arial";
+                        HHHeadStyle.Font.Size = 12f;
+                        HHHeadStyle.Font.Color = ExcelKnownColors.White;
+                        HHHeadStyle.WrapText = true;
+                        HHHeadStyle.Borders.Color = ExcelKnownColors.White;
+                        HHHeadStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        HHHeadStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        HHHeadStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        HHHeadStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        HHHeadStyle.EndUpdate();
+
+                        var HHMembersStyle = workbook.Styles.Add("HHMembersStyle");
+
+                        HHMembersStyle.BeginUpdate();
+                        HHMembersStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        HHMembersStyle.Color = Syncfusion.Drawing.Color.FromArgb(237, 145, 33); // CARROT ORANGE
+                        HHMembersStyle.Font.Bold = true;
+                        HHMembersStyle.Font.FontName = "Arial";
+                        HHMembersStyle.Font.Size = 12f;
+                        HHMembersStyle.Font.Color = ExcelKnownColors.White;
+                        HHMembersStyle.WrapText = true;
+                        HHMembersStyle.Borders.Color = ExcelKnownColors.White;
+                        HHMembersStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        HHMembersStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        HHMembersStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        HHMembersStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        HHMembersStyle.EndUpdate();
+
+                        var priorityarea1 = workbook.Styles.Add("priorityarea1");
+                        priorityarea1.BeginUpdate();
+                        priorityarea1.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        priorityarea1.Color = Syncfusion.Drawing.Color.FromArgb(39, 60, 118);
+                        priorityarea1.Font.Bold = true;
+                        priorityarea1.Font.FontName = "Arial";
+                        priorityarea1.Font.Size = 12f;
+                        priorityarea1.Font.Color = ExcelKnownColors.White;
+                        priorityarea1.WrapText = true;
+                        priorityarea1.Borders.Color = ExcelKnownColors.White;
+                        priorityarea1.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea1.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea1.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea1.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea1.EndUpdate();
+
+                        var priorityarea2 = workbook.Styles.Add("priorityarea2");
+                        priorityarea2.BeginUpdate();
+                        priorityarea2.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        priorityarea2.Color = Syncfusion.Drawing.Color.FromArgb(232, 65, 32);
+                        priorityarea2.Font.Bold = true;
+                        priorityarea2.Font.FontName = "Arial";
+                        priorityarea2.Font.Size = 12f;
+                        priorityarea2.Font.Color = ExcelKnownColors.White;
+                        priorityarea2.WrapText = true;
+                        priorityarea2.Borders.Color = ExcelKnownColors.White;
+                        priorityarea2.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea2.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea2.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea2.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea2.EndUpdate();
+
+                        var priorityarea3 = workbook.Styles.Add("priorityarea3");
+                        priorityarea3.BeginUpdate();
+                        priorityarea3.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        priorityarea3.Color = Syncfusion.Drawing.Color.FromArgb(178, 16, 60);
+                        priorityarea3.Font.Bold = true;
+                        priorityarea3.Font.FontName = "Arial";
+                        priorityarea3.Font.Size = 12f;
+                        priorityarea3.Font.Color = ExcelKnownColors.White;
+                        priorityarea3.WrapText = true;
+                        priorityarea3.Borders.Color = ExcelKnownColors.White;
+                        priorityarea3.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea3.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea3.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea3.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea3.EndUpdate();
+
+                        var priorityarea4 = workbook.Styles.Add("priorityarea4");
+                        priorityarea4.BeginUpdate();
+                        priorityarea4.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        priorityarea4.Color = Syncfusion.Drawing.Color.FromArgb(33, 56, 171);
+                        priorityarea4.Font.Bold = true;
+                        priorityarea4.Font.FontName = "Arial";
+                        priorityarea4.Font.Size = 12f;
+                        priorityarea4.Font.Color = ExcelKnownColors.White;
+                        priorityarea4.WrapText = true;
+                        priorityarea4.Borders.Color = ExcelKnownColors.White;
+                        priorityarea4.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea4.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea4.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea4.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea4.EndUpdate();
+
+                        var priorityarea5 = workbook.Styles.Add("priorityarea5");
+                        priorityarea5.BeginUpdate();
+                        priorityarea5.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        priorityarea5.Color = Syncfusion.Drawing.Color.FromArgb(136, 84, 208);
+                        priorityarea5.Font.Bold = true;
+                        priorityarea5.Font.FontName = "Arial";
+                        priorityarea5.Font.Size = 12f;
+                        priorityarea5.Font.Color = ExcelKnownColors.White;
+                        priorityarea5.WrapText = true;
+                        priorityarea5.Borders.Color = ExcelKnownColors.White;
+                        priorityarea5.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea5.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea5.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea5.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        priorityarea5.EndUpdate();
+
+                        var assessmentstatus = workbook.Styles.Add("assessmentstatus");
+                        assessmentstatus.BeginUpdate();
+                        assessmentstatus.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        assessmentstatus.Color = Syncfusion.Drawing.Color.FromArgb(111,30,81);
+                        assessmentstatus.Font.Bold = true;
+                        assessmentstatus.Font.FontName = "Arial";
+                        assessmentstatus.Font.Size = 12f;
+                        assessmentstatus.Font.Color = ExcelKnownColors.White;
+                        assessmentstatus.WrapText = true;
+                        assessmentstatus.Borders.Color = ExcelKnownColors.White;
+                        assessmentstatus.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        assessmentstatus.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        assessmentstatus.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        assessmentstatus.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        assessmentstatus.EndUpdate();
+                        #endregion
+
+                        
+                        int row = 1;
+                        worksheet.Range["A" + row].Text = "HVAT Report";
+                        worksheet.Range["A" + row + ":DM" + row].CellStyle = CategoryStyle;
+                        worksheet.Range["A" + row + ":DM" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["A" + row + ":DM" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["A" + row].RowHeight = 30;
+                        worksheet.Range["A" + row + ":DM" + row].Merge();
+                        row++;
+                        row++;
+
+                        worksheet.Range["A" + row].Text = "HouseHold Head";
+                        worksheet.Range["A" + row + ":R" + row].CellStyle = HHHeadStyle;
+                        worksheet.Range["A" + row + ":R" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["A" + row + ":R" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["A" + row].RowHeight = 20;
+                        worksheet.Range["A" + row + ":R" + row].Merge();
+
+                        worksheet.Range["S" + row].Text = "HouseHold Members";
+                        worksheet.Range["S" + row + ":AN" + row].CellStyle = HHMembersStyle;
+                        worksheet.Range["S" + row + ":AN" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["S" + row + ":AN" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["S" + row].RowHeight = 20;
+                        worksheet.Range["S" + row + ":AN" + row].Merge();
+
+                        worksheet.Range["AO" + row].Text = "PRIORITY AREA 1: ECONOMIC STABILITY AND SECURITY";
+                        worksheet.Range["AO" + row + ":BE" + row].CellStyle = HHHeadStyle;
+                        worksheet.Range["AO" + row + ":BE" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["AO" + row + ":BE" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["AO" + row].RowHeight = 20;
+                        worksheet.Range["AO" + row + ":BE" + row].Merge();
+
+                        worksheet.Range["BF" + row].Text = "PRIORITY AREA 2: SURVIVAL AND HEALTH";
+                        worksheet.Range["BF" + row + ":CJ" + row].CellStyle = HHMembersStyle;
+                        worksheet.Range["BF" + row + ":CJ" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["BF" + row + ":CJ" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["BF" + row].RowHeight = 20;
+                        worksheet.Range["BF" + row + ":CJ" + row].Merge();
+
+                        worksheet.Range["CK" + row].Text = "PRIORITY AREA 3: EDUCATION AND DEVELOPMENT";
+                        worksheet.Range["CK" + row + ":CU" + row].CellStyle = HHHeadStyle;
+                        worksheet.Range["CK" + row + ":CU" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["CK" + row + ":CU" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["CK" + row].RowHeight = 20;
+                        worksheet.Range["CK" + row + ":CU" + row].Merge();
+
+                        worksheet.Range["CV" + row].Text = "PRIORITY AREA 4: CARE AND PROTECTION";
+                        worksheet.Range["CV" + row + ":DM" + row].CellStyle = HHMembersStyle;
+                        worksheet.Range["CV" + row + ":DM" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        worksheet.Range["CV" + row + ":DM" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["CV" + row].RowHeight = 20;
+                        worksheet.Range["CV" + row + ":DM" + row].Merge();
+
+                        row++;
+
+                        //House Hold Head Details
+
+                        worksheet.Range["A" + row].Text = "HouseHold Code";
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        worksheet.Range["B" + row].Text = "Date of Identification";
+                        worksheet.Range["B" + row].ColumnWidth = 20;
+
+                        worksheet.Range["C" + row].Text = "HH Head Name";
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = "HH Head Gender";
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = "District";
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = "Subcounty";
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = "Parish";
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        worksheet.Range["H" + row].Text = "Village";
+                        worksheet.Range["H" + row].ColumnWidth = 20;
+
+                        worksheet.Range["I" + row].Text = "HH Head Age";
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = "Assessment Date";
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = "Service Provider Name";
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = "Service Provider Contact";
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        worksheet.Range["M" + row].Text = "Source Document";
+                        worksheet.Range["M" + row].ColumnWidth = 20;
+
+                        worksheet.Range["N" + row].Text = "Name of Subcounty Community Development Officer (CDO)";
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = "Tel Contact of Subcounty Community Development Officer (CDO)";
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        worksheet.Range["P" + row].Text = "Phase of Administration";
+                        worksheet.Range["P" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Q" + row].Text = "HH Marital Status";
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                        worksheet.Range["R" + row].Text = "HH Education Level";
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+
+                        //House Hold Members Details
+                        worksheet.Range["S" + row].Text = "House Hold Member Code";
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+                        worksheet.Range["T" + row].Text = "Enrollment Date";
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = "HH Member Name";
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = "HH Member Gender";
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = "HH Member Age";
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        worksheet.Range["X" + row].Text = "HH Member HIV Status";
+                        worksheet.Range["X" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Y" + row].Text = "HH Member Known Risk Factor";
+                        worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Z" + row].Text = "HH Member Currently on ART";
+                        worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AA" + row].Text = "Is Care Giver?";
+                        worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AB" + row].Text = "Is Enrolled in School";
+                        worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AC" + row].Text = "Is Attending School Regularly";
+                        worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AD" + row].Text = "Education Level";
+                        worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AE" + row].Text = "Name of School";
+                        worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AF" + row].Text = "Is Orphaned?";
+                        worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AG" + row].Text = "Is child <5 Malnurished";
+                        worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AH" + row].Text = "Does Child Have Birth Certificate?";
+                        worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AI" + row].Text = "Is Disabled?";
+                        worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AJ" + row].Text = "Is Child Immunized?";
+                        worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AK" + row].Text = "HH Member Known Risk Factor";
+                        worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AL" + row].Text = "HH Member Currently on ART";
+                        worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AM" + row].Text = "HH Member Cohort";
+                        worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AN" + row].Text = "HH Member ART Number";
+                        worksheet.Range["AN" + row].ColumnWidth = 20;
+                        
+
+                        //SECTION II: HOUSEHOLD ASSESSMENT
+                        //PRIORITY AREA 1: ECONOMIC STABILITY AND SECURITY
+
+                        worksheet.Range["AO" + row].Text = "1.1 Who pays for most of the HH expenses?";
+                        worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AP" + row].Text = "1.1 Who pays for most of the HH expenses score";
+                        worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AQ" + row].Text = "1.2 What is the main source of HH income";
+                        worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AR" + row].Text = "1.2 What is the main source of HH income score";
+                        worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AS" + row].Text = "1.3 Are you a member of a savings group or association?";
+                        worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AT" + row].Text = "1.3 Are you a member of a savings group or association score";
+                        worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AU" + row].Text = "1.4 How much have you saved in the last three months? (expressed in Uganda Shillings)";
+                        worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AV" + row].Text = "1.5 Do you or any HH member benefit from any of the following programs?";
+                        worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AW" + row].Text = "1.5 Do you or any HH member benefit from any of the following programs score";
+                        worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AX" + row].Text = "1.6 What is the current monthly HH income? (expressed in Uganda Shillings)";
+                        worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AY" + row].Text = "1.6 What is the current monthly HH income score";
+                        worksheet.Range["AY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AZ" + row].Text = "1.7 What kinds of material goods or assets do you have?";
+                        worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BA" + row].Text = "1.7 What kinds of material goods or assets do you have score";
+                        worksheet.Range["BA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BB" + row].Text = "1.8 If the HH incurred any of the following expenses in the past 12 months, was it able to pay without using cash transfer, grant, scholarship, borrowing or without selling HH permanent assets like land or bicycle?";
+                        worksheet.Range["BB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BC" + row].Text = "1.8 If the HH incurred any of the following expenses in the past 12 months, was it able to pay without using cash transfer, grant, scholarship, borrowing or without selling HH permanent assets like land or bicycle score";
+                        worksheet.Range["BC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BD" + row].Text = "ECONOMIC STABILITY AND SECURITY TOTAL (PA SCORE)";
+                        worksheet.Range["BD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BE" + row].Text = "PERCENT PA SCORE (%)";
+                        worksheet.Range["BE" + row].ColumnWidth = 20;
+
+                        //PRIORITY AREA 2: SURVIVAL AND HEALTH
+
+                        worksheet.Range["BF" + row].Text = "2.1 Over the past month [state the month], what has been the main source of food consumed by the members of your HH?";
+                        worksheet.Range["BF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BG" + row].Text = "2.1 Over the past month [state the month], what has been the main source of food consumed by the members of your HH score";
+                        worksheet.Range["BG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BH" + row].Text = "2.2 What does the family usually eat (at least 3 times a week)?";
+                        worksheet.Range["BH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BI" + row].Text = "2.2 What does the family usually eat (at least 3 times a week) score?";
+                        worksheet.Range["BI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BJ" + row].Text = "2.3 How many meals does the HH have in a day?";
+                        worksheet.Range["BJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BK" + row].Text = "2.3 How many meals does the HH have in a day score";
+                        worksheet.Range["BK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BL" + row].Text = "2.4 In the past month [state the month], has any member of the HH gone a whole day and night without eating anything at all due to lack of food?";
+                        worksheet.Range["BL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BM" + row].Text = "2.4 In the past month [state the month], has any member of the HH gone a whole day and night without eating anything at all due to lack of food score";
+                        worksheet.Range["BM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BN" + row].Text = "2.5 Do children in the HH have any of the following signs of malnutrition?";
+                        worksheet.Range["BN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BO" + row].Text = "2.5 Do children in the HH have any of the following signs of malnutrition score";
+                        worksheet.Range["BO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BP" + row].Text = "2.6 Do the following apply to this HH? [Observe for yourself where applicable]";
+                        worksheet.Range["BP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BQ" + row].Text = "2.6 Do the following apply to this HH? [Observe for yourself where applicable] score";
+                        worksheet.Range["BQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BR" + row].Text = "2.7 Does the HH have a person with a disability?";
+                        worksheet.Range["BR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BS" + row].Text = "2.7 Does the HH have a person with a disability score";
+                        worksheet.Range["BS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BT" + row].Text = "2.8 Does any person in the HH have a long - term illness?";
+                        worksheet.Range["BT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BU" + row].Text = "2.9 Have all children in need of health services for chronic illnesses and/or disability been referred for and are receiving the necessary treatment?";
+                        worksheet.Range["BU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BV" + row].Text = "2.9 Have all children in need of health services for chronic illnesses and/or disability been referred for and are receiving the necessary treatment score";
+                        worksheet.Range["BV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BW" + row].Text = "2.10 Does the caregiver know the HIV status of all members in the HH in the last six months? Note: For all members including the caregiver with unknown HIV status, refer for HTS.";
+                        worksheet.Range["BW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BX" + row].Text = "2.10 Does the caregiver know the HIV status of all members in the HH in the last six months? Note: For all members including the caregiver with unknown HIV status, refer for HTS score";
+                        worksheet.Range["BX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BY" + row].Text = "2.11 Are all eligible HH members who are HIV+ and/or have tuberculosis on care or treatment? Yes/No/NA (If Yes, request ART/Health card)";
+                        worksheet.Range["BY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BZ" + row].Text = "2.11 Are all eligible HH members who are HIV+ and/or have tuberculosis on care or treatment? Yes/No/NA (If Yes, request ART/Health card) score";
+                        worksheet.Range["BZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CA" + row].Text = "2.12 Are all the HH members who are HIV+ adhering to treatment as prescribed?";
+                        worksheet.Range["CA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CB" + row].Text = "2.12 Are all the HH members who are HIV+ adhering to treatment as prescribed score";
+                        worksheet.Range["CB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CC" + row].Text = "2.13 Have all the eligible HH members had a blood test called viral load (VL) in the last twelve (12) months?";
+                        worksheet.Range["CC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CD" + row].Text = "2.13 Have all the eligible HH members had a blood test called viral load (VL) in the last twelve (12) months score";
+                        worksheet.Range["CD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CE" + row].Text = "2.14 Is the viral load for all the HH members who are HIV+ suppressed?";
+                        worksheet.Range["CE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CF" + row].Text = "2.14 Is the viral load for all the HH members who are HIV+ suppressed score";
+                        worksheet.Range["CF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CG" + row].Text = "2.15 Does the HH have a stable shelter that is adequate, safe, and dry? [Observe for yourself]";
+                        worksheet.Range["CG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CH" + row].Text = "2.15 Does the HH have a stable shelter that is adequate, safe, and dry? [Observe for yourself] score";
+                        worksheet.Range["CH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CI" + row].Text = "SURVIVAL AND HEALTH TOTAL (PA SCORE)";
+                        worksheet.Range["CI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CJ" + row].Text = "PERCENT PA SCORE  (%)";
+                        worksheet.Range["CJ" + row].ColumnWidth = 20;
+
+                        //PRIORITY AREA 3: EDUCATION AND DEVELOPMENT
+
+                        worksheet.Range["CK" + row].Text = "3.1 Are all the children aged 6–17 years in this HH enrolled in school, vocational training or apprenticeship [Score 0 if Not Applicable, i.e., the children are 1–5 years old]";
+                        worksheet.Range["CK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CL" + row].Text = "3.1 Are all the children aged 6–17 years in this HH enrolled in school, vocational training or apprenticeship [Score 0 if Not Applicable, i.e., the children are 1–5 years old] score";
+                        worksheet.Range["CL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CM" + row].Text = "3.2 Have all the children aged 6–17 years in this HH attended school, vocational training or apprenticeship regularly (At least 4 days a week on average) in the past 12 months";
+                        worksheet.Range["CM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CN" + row].Text = "3.2 Have all the children aged 6–17 years in this HH attended school, vocational training or apprenticeship regularly (At least 4 days a week on average) in the past 12 months score";
+                        worksheet.Range["CN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CO" + row].Text = "3.3 How many children aged 3-5 years in this HH are not enrolled in Pre-School or have missed Pre-School 3 or more times a week? [Score 0 if not applicable, i.e., the children are 0–2 years old]";
+                        worksheet.Range["CO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CP" + row].Text = "3.3 How many children aged 3-5 years in this HH are not enrolled in Pre-School or have missed Pre-School 3 or more times a week? [Score 0 if not applicable, i.e., the children are 0–2 years old] score";
+                        worksheet.Range["CP" + row].ColumnWidth = 20;
+
+                        //RECHECK THIS BELOW
+                        worksheet.Range["CQ" + row].Text = "3.4 Have the children/child successfully progressed from one level to another at school, vocational training or apprenticeship compared to last academic year? - Not applicable (No child/children were in school in the previous year)";
+                        worksheet.Range["CQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CR" + row].Text = "3.4 Have the children/child successfully progressed from one level to another at school, vocational training or apprenticeship compared to last academic year? -  Reason(s) for not progressing";
+                        worksheet.Range["CR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CS" + row].Text = "3.4 Have the children/child successfully progressed from one level to another at school, vocational training or apprenticeship compared to last academic year? -  Reason(s) for not progressing score";
+                        worksheet.Range["CS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CT" + row].Text = "EDUCATION AND DEVELOPMENT TOTAL:";
+                        worksheet.Range["CT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CU" + row].Text = "PERCENT PA SCORE  (%)";
+                        worksheet.Range["CU" + row].ColumnWidth = 20;
+
+                        //PRIORITY AREA 4: CARE AND PROTECTION
+
+                        worksheet.Range["CV" + row].Text = "4.1 In the past 12 months, have all the children in this HH been under the care of and lived with the same adult primary Caregiver?";
+                        worksheet.Range["CV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CW" + row].Text = "4.1 In the past 12 months, have all the children in this HH been under the care of and lived with the same adult primary Caregiver score";
+                        worksheet.Range["CW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CX" + row].Text = "4.2 In the past 6 months, are there any children in this HH who are withdrawn or consistently sad, unhappy, or depressed, and not able to participate in daily activities, including playing with friends and family?";
+                        worksheet.Range["CX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CY" + row].Text = "4.2 In the past 6 months, are there any children in this HH who are withdrawn or consistently sad, unhappy, or depressed, and not able to participate in daily activities, including playing with friends and family score";
+                        worksheet.Range["CY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CZ" + row].Text = "4.3 What would you do if any of your children experienced or became a victim of child abuse or violence?";
+                        worksheet.Range["CZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DA" + row].Text = "4.3 What would you do if any of your children experienced or became a victim of child abuse or violence score";
+                        worksheet.Range["DA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DB" + row].Text = "4.4 In the past 6 months, has any child in the HH had the following happen to them, in or outside the HH? [Note: If you see an obvious issue of abuse or you already know about it, then indicate yes]. Indicate Yes / No";
+                        worksheet.Range["DB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DC" + row].Text = "4.4 In the past 6 months, has any child in the HH had the following happen to them, in or outside the HH? [Note: If you see an obvious issue of abuse or you already know about it, then indicate yes]. Indicate Yes / No score";
+                        worksheet.Range["DC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DD" + row].Text = "4.5. Has the care giver personally experienced any of these forms of sexual and gender-based violence in the past 6 months?";
+                        worksheet.Range["DD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DE" + row].Text = "4.5. Has the care giver personally experienced any of these forms of sexual and gender-based violence in the past 6 months score";
+                        worksheet.Range["DE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DF" + row].Text = "CARE AND PROTECTION TOTAL:";
+                        worksheet.Range["DF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DG" + row].Text = "PERCENT PA SCORE  (%)";
+                        worksheet.Range["DG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DH" + row].Text = "Assessment Status(%)";
+                        worksheet.Range["DH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DI" + row].Text = "Assessment Status";
+                        worksheet.Range["DI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DJ" + row].Text = "Assessor’s Name";
+                        worksheet.Range["DJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DK" + row].Text = "Assessor’s Title";
+                        worksheet.Range["DK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DL" + row].Text = "Telephone";
+                        worksheet.Range["DL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DM" + row].Text = "Assessor’s Observations (a requirement for all assessments)";
+                        worksheet.Range["DM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["A" + row + ":DM" + row].CellStyle = headerStyle;
+
+                        row++;
+                        foreach (var n in data)
+                        {
+                            worksheet.Range["A" + row].Text = n.HouseHoldCode;
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            if (n.DateofIdentification.HasValue)
+                            {
+                                worksheet.Range["B" + row].Text = n.DateofIdentification.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["B" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["C" + row].Text = n.Surname + " " + n.GivenName;
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = n.GenderDescription;
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = n.DistrictDescription;
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = n.SubcountyDescription;
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text = n.ParishDescription;
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = n.VillageDescription;
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+
+                            if (n.Age.HasValue)
+                            {
+                                worksheet.Range["I" + row].Number = n.Age.Value;
+                                worksheet.Range["I" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.AssessmentDate.HasValue)
+                            {
+                                worksheet.Range["J" + row].Text = n.AssessmentDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["J" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["K" + row].Text = n.ServiceProviderName;
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = n.ServiceProviderContact;
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = n.SourceDocumentDescription;
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            worksheet.Range["N" + row].Text = n.CDOName;
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            worksheet.Range["O" + row].Text = n.CDOContact;
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = n.AdministrationPhaseDescription;
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = n.MaritalStatusDescription;
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = n.HHEducationLevelDescription;
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            //HouseHold Members Data
+
+                            worksheet.Range["S" + row].Text = n.HouseHoldMemberCode;
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            if (n.EnrollmentDate.HasValue)
+                            {
+                                worksheet.Range["T" + row].Text = n.EnrollmentDate.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["U" + row].Text = n.HouseHoldMemberSurname + " " + n.HouseHoldMemberGivenname;
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["V" + row].Text = n.HouseHoldMemberGenderDescription;
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            if (n.HouseHoldMemberAge.HasValue)
+                            {
+                                worksheet.Range["W" + row].Number = n.HouseHoldMemberAge.Value;
+                                worksheet.Range["W" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["X" + row].Text = n.HouseHoldMemberHIVStatusDescription;
+                            worksheet.Range["X" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Y" + row].Text = n.HouseHoldMemberKnownRiskFactorDescription;
+                            worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Z" + row].Text = n.HouseHoldMemberCurrentlyonARTDescription;
+                            worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AA" + row].Text = n.CareGiverDesc;
+                            worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AB" + row].Text = n.IsEnrolledInSchoolDescription;
+                            worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AC" + row].Text = n.IsAttendingSchoolRegularlyDescription;
+                            worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AD" + row].Text = n.EducationLevelDescription;
+                            worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AE" + row].Text = n.NameofSchool;
+                            worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AF" + row].Text = n.IsOrphanedDescription;
+                            worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AG" + row].Text = n.IsChildUnder5MalnourishedDescription;
+                            worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AH" + row].Text = n.DoesChildHaveBirthCertificateDescription;
+                            worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AI" + row].Text = n.IsDisabledDescription;
+                            worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AJ" + row].Text = n.IschildimmunisedDescription;
+                            worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AK" + row].Text = n.HouseHoldMemberKnownRiskFactorDescription;
+                            worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AL" + row].Text = n.HouseHoldMemberCurrentlyonARTDescription;
+                            worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                            if (n.HouseHoldMemberCohort.HasValue)
+                            {
+                                worksheet.Range["AM" + row].Text = n.HouseHoldMemberCohort.Value.ToString("dd/MM/yyyy");
+                                worksheet.Range["AM" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AN" + row].Text = n.ARTNumber;
+                            worksheet.Range["AN" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":AN" + row].CellStyle = Style;
+
+
+                            worksheet.Range["AO" + row].Text = n.ExpensePaymentDescription;
+                            worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                            if (n.ExpensePaymentScore.HasValue)
+                            {
+                                worksheet.Range["AP" + row].Number = n.ExpensePaymentScore.Value;
+                                worksheet.Range["AP" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AQ" + row].Text = n.IncomeSourceDescription;
+                            worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                            if (n.IncomeSourceScore.HasValue)
+                            {
+                                worksheet.Range["AR" + row].Number = n.IncomeSourceScore.Value;
+                                worksheet.Range["AR" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AS" + row].Text = n.IsSavingsGroupMemberDescription;
+                            worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                            if (n.IsSavingsGroupMemberScore.HasValue)
+                            {
+                                worksheet.Range["AT" + row].Number = n.IsSavingsGroupMemberScore.Value;
+                                worksheet.Range["AT" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AU" + row].Text = n.SavingSchemeDescription;
+                            worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                            worksheet.Range["AV" + row].Text = n.MemberBenefitsDescription;
+                            worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                            if (n.MemberBenefitsScore.HasValue)
+                            {
+                                worksheet.Range["AW" + row].Number = n.MemberBenefitsScore.Value;
+                                worksheet.Range["AW" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AX" + row].Text = n.HouseHoldIncomeDescription;
+                            worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                            if (n.HouseHoldIncomeScore.HasValue)
+                            {
+                                worksheet.Range["AY" + row].Number = n.HouseHoldIncomeScore.Value;
+                                worksheet.Range["AY" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["AZ" + row].Text = n.AssetsDescription;
+                            worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                            if (n.HHAssetsScore.HasValue)
+                            {
+                                worksheet.Range["BA" + row].Number = n.HHAssetsScore.Value;
+                                worksheet.Range["BA" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BB" + row].Text = n.IncurredExpensesDescription;
+                            worksheet.Range["BB" + row].ColumnWidth = 20;
+
+                            if (n.IncurredExpensesScore.HasValue)
+                            {
+                                worksheet.Range["BC" + row].Number = n.IncurredExpensesScore.Value;
+                                worksheet.Range["BC" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.EconomicStabilityTotal.HasValue)
+                            {
+                                worksheet.Range["BD" + row].Number = n.EconomicStabilityTotal.Value;
+                                worksheet.Range["BD" + row].ColumnWidth = 20;
+
+                            }
+
+                            double? calc = 0;
+                            double? total = 29;
+                            if (n.EconomicStabilityTotal>0)
+                            {
+                                calc = (n.EconomicStabilityTotal / total) * 100;
+                                worksheet.Range["BE" + row].Number = Math.Round(Convert.ToDouble(calc), 0);
+                            }
+
+                            worksheet.Range["BF" + row].Text = n.FoodConsumedDescription;
+                            worksheet.Range["BF" + row].ColumnWidth = 20;
+
+                            if (n.FoodConsumedScore.HasValue)
+                            {
+                                worksheet.Range["BG" + row].Number = n.FoodConsumedScore.Value;
+                                worksheet.Range["BG" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BH" + row].Text = n.FoodGroupDescription;
+                            worksheet.Range["BH" + row].ColumnWidth = 20;
+
+                            if (n.FoodGroupScore.HasValue)
+                            {
+                                worksheet.Range["BI" + row].Number = n.FoodGroupScore.Value;
+                                worksheet.Range["BI" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BJ" + row].Text = n.MealDescription;
+                            worksheet.Range["BJ" + row].ColumnWidth = 20;
+
+                            if (n.MealScore.HasValue)
+                            {
+                                worksheet.Range["BK" + row].Number = n.MealScore.Value;
+                                worksheet.Range["BK" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BL" + row].Text = n.LackofFoodDescription;
+                            worksheet.Range["BL" + row].ColumnWidth = 20;
+
+                            if (n.LackofFoodScore.HasValue)
+                            {
+                                worksheet.Range["BM" + row].Number = n.LackofFoodScore.Value;
+                                worksheet.Range["BM" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BN" + row].Text = n.MalnutritionSignDescription;
+                            worksheet.Range["BN" + row].ColumnWidth = 20;
+
+                            if (n.MalnutritionSignScore.HasValue)
+                            {
+                                worksheet.Range["BO" + row].Number = n.MalnutritionSignScore.Value;
+                                worksheet.Range["BO" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BP" + row].Text = n.ApplicableOptionDescription;
+                            worksheet.Range["BP" + row].ColumnWidth = 20;
+
+                            if (n.ApplicableOptionScore.HasValue)
+                            {
+                                worksheet.Range["BQ" + row].Number = n.ApplicableOptionScore.Value;
+                                worksheet.Range["BQ" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BR" + row].Text = n.HavePersonWithDisabilityDescription;
+                            worksheet.Range["BR" + row].ColumnWidth = 20;
+
+                            if (n.HavePersonWithDisabilityScore.HasValue)
+                            {
+                                worksheet.Range["BS" + row].Number = n.HavePersonWithDisabilityScore.Value;
+                                worksheet.Range["BS" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BT" + row].Text = n.HaveLongTermIllnessDescription;
+                            worksheet.Range["BT" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BU" + row].Text = n.ReferredDisabilityDescription;
+                            worksheet.Range["BU" + row].ColumnWidth = 20;
+
+                            if (n.HaveLongTermIllnessScore.HasValue)
+                            {
+                                worksheet.Range["BV" + row].Number = n.HaveLongTermIllnessScore.Value;
+                                worksheet.Range["BV" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BW" + row].Text = n.KnownHIVStatusDescription;
+                            worksheet.Range["BW" + row].ColumnWidth = 20;
+
+                            if (n.ReferredDisabilityScore.HasValue)
+                            {
+                                worksheet.Range["BX" + row].Number = n.ReferredDisabilityScore.Value;
+                                worksheet.Range["BX" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["BY" + row].Text = n.KnownHIVStatusDescription;
+                            worksheet.Range["BY" + row].ColumnWidth = 20;
+
+                            worksheet.Range["BZ" + row].Text = n.TreatmentDescription;
+                            worksheet.Range["BZ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["CA" + row].Text = n.TreatmentScoreDescription;
+                            worksheet.Range["CA" + row].ColumnWidth = 20;
+
+                            if (n.TreatmentAdheranceScore.HasValue)
+                            {
+                                worksheet.Range["CB" + row].Number = n.TreatmentAdheranceScore.Value;
+                                worksheet.Range["CB" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CC" + row].Text = n.BloodTestDescription;
+                            worksheet.Range["CC" + row].ColumnWidth = 20;
+
+                            if (n.BloodTestScore.HasValue)
+                            {
+                                worksheet.Range["CD" + row].Number = n.BloodTestScore.Value;
+                                worksheet.Range["CD" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CE" + row].Text = n.ViralLoadSuppressedDescription;
+                            worksheet.Range["CE" + row].ColumnWidth = 20;
+
+                            if (n.HHViralLoadSuppresedScore.HasValue)
+                            {
+                                worksheet.Range["CF" + row].Number = n.HHViralLoadSuppresedScore.Value;
+                                worksheet.Range["CF" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CG" + row].Text = n.ShelterDescription;
+                            worksheet.Range["CG" + row].ColumnWidth = 20;
+
+                            if (n.ShelterScore.HasValue)
+                            {
+                                worksheet.Range["CH" + row].Number = n.ShelterScore.Value;
+                                worksheet.Range["CH" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.SurvivalandHealthTotal.HasValue)
+                            {
+                                worksheet.Range["CI" + row].Number = n.SurvivalandHealthTotal.Value;
+                                worksheet.Range["CI" + row].ColumnWidth = 20;
+                            }
+
+                            double? calcsurvival = 0;
+                            double? totalsurvival = 51;
+                            if (n.SurvivalandHealthTotal > 0)
+                            {
+                                calcsurvival = (n.SurvivalandHealthTotal / totalsurvival) * 100;
+                                worksheet.Range["CJ" + row].Number = Math.Round(Convert.ToDouble(calcsurvival), 0);
+                            }
+
+                            worksheet.Range["CK" + row].Text = n.Childrenaged6_17EnrolledInSchoolDescription;
+                            worksheet.Range["CK" + row].ColumnWidth = 20;
+
+                            if (n.Childrenaged6_17EnrolledInSchoolScore.HasValue)
+                            {
+                                worksheet.Range["CL" + row].Number = n.Childrenaged6_17EnrolledInSchoolScore.Value;
+                                worksheet.Range["CL" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CM" + row].Text = n.Childrenaged6_17AttendedInSchoolDescription;
+                            worksheet.Range["CM" + row].ColumnWidth = 20;
+
+                            if (n.Childrenaged6_17AttendedInSchoolScore.HasValue)
+                            {
+                                worksheet.Range["CN" + row].Number = n.Childrenaged6_17AttendedInSchoolScore.Value;
+                                worksheet.Range["CN" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CO" + row].Text = n.PreSchoolNotEnrolledDescription;
+                            worksheet.Range["CO" + row].ColumnWidth = 20;
+
+                            if (n.PreSchoolNotEnrolledScore.HasValue)
+                            {
+                                worksheet.Range["CP" + row].Number = n.PreSchoolNotEnrolledScore.Value;
+                                worksheet.Range["CP" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CQ" + row].Text = n.Children_ChildProgressingDescription;
+                            worksheet.Range["CQ" + row].ColumnWidth = 20;
+
+                            //start on correcting BV
+                            worksheet.Range["CR" + row].Text = n.ProgressingReasonDescription;
+                            worksheet.Range["CR" + row].ColumnWidth = 20;
+
+                            if (n.ProgressingReasonScore.HasValue)
+                            {
+                                worksheet.Range["CS" + row].Number = n.ProgressingReasonScore.Value;
+                                worksheet.Range["CS" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.EducationandDevelopmentTotal.HasValue)
+                            {
+                                worksheet.Range["CT" + row].Number = n.EducationandDevelopmentTotal.Value;
+                                worksheet.Range["CT" + row].ColumnWidth = 20;
+                            }
+
+                            double? calceducationanddevelopmenttotal = 0;
+                            double? totaleducationanddevelopmenttotal = 10;
+                            if (n.EducationandDevelopmentTotal > 0)
+                            {
+                                calceducationanddevelopmenttotal = (n.EducationandDevelopmentTotal / totaleducationanddevelopmenttotal) * 100;
+                                worksheet.Range["CU" + row].Number = Math.Round(Convert.ToDouble(calceducationanddevelopmenttotal), 0);
+                            }
+                                                        
+                            worksheet.Range["CV" + row].Text = n.SameAdultPrimaryCareGiverDescription;
+                            worksheet.Range["CV" + row].ColumnWidth = 20;
+
+                            if (n.SameAdultPrimaryCareGiverScore.HasValue)
+                            {
+                                worksheet.Range["CW" + row].Number = n.SameAdultPrimaryCareGiverScore.Value;
+                                worksheet.Range["CW" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CX" + row].Text = n.ComplicationsDescription;
+                            worksheet.Range["CX" + row].ColumnWidth = 20;
+
+                            if (n.ComplicationsScore.HasValue)
+                            {
+                                worksheet.Range["CY" + row].Number = n.ComplicationsScore.Value;
+                                worksheet.Range["CY" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["CZ" + row].Text = n.ChildAbuseDescription;
+                            worksheet.Range["CZ" + row].ColumnWidth = 20;
+
+                            if (n.ChildAbuseScore.HasValue)
+                            {
+                                worksheet.Range["DA" + row].Number = n.ChildAbuseScore.Value;
+                                worksheet.Range["DA" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["DB" + row].Text = n.OccuranceDescription;
+                            worksheet.Range["DB" + row].ColumnWidth = 20;
+
+                            if (n.OccuranceScore.HasValue)
+                            {
+                                worksheet.Range["DC" + row].Number = n.OccuranceScore.Value;
+                                worksheet.Range["DC" + row].ColumnWidth = 20;
+                            }
+
+                            worksheet.Range["DD" + row].Text = n.ViolenceDescription;
+                            worksheet.Range["DD" + row].ColumnWidth = 20;
+
+                            if (n.ViolenceScore.HasValue)
+                            {
+                                worksheet.Range["DE" + row].Number = n.ViolenceScore.Value;
+                                worksheet.Range["DE" + row].ColumnWidth = 20;
+                            }
+
+                            if (n.CareandProtectionTotal.HasValue)
+                            {
+                                worksheet.Range["DF" + row].Number = n.CareandProtectionTotal.Value;
+                                worksheet.Range["DF" + row].ColumnWidth = 20;
+                            }
+
+                            double? calccareandprotection = 0;
+                            double? totalcareandprotection = 20;
+                            if (n.CareandProtectionTotal > 0)
+                            {
+                                calccareandprotection = (n.CareandProtectionTotal / totalcareandprotection) * 100;
+                                worksheet.Range["DG" + row].Number = Math.Round(Convert.ToDouble(calccareandprotection), 0);
+                            }
+                                                       
+                            double totalpercentage = Convert.ToDouble(calceducationanddevelopmenttotal + calcsurvival + calc + calccareandprotection);
+
+                            if (totalpercentage > 0)
+                            {
+                                totalpercentage = (totalpercentage / 4);
+                                worksheet.Range["DH" + row].Number = Math.Round(Convert.ToDouble(totalpercentage), 1);
+
+                                if (totalpercentage <= 24.4)
+                                {
+                                    worksheet.Range["DI" + row].Text = "Can graduate: 0–24%";
+                                }
+                                else if (totalpercentage > 24.4 && totalpercentage <= 49.4)
+                                {
+                                    worksheet.Range["DI" + row].Text = "Slightly Vulnerable: 25–49%";
+                                }
+                                else if (totalpercentage > 49.4 && totalpercentage <= 74.4)
+                                {
+                                    worksheet.Range["DI" + row].Text = "Moderately Vulnerable: 50–74%";
+                                }
+                                else if (totalpercentage > 74.4 && totalpercentage <= 100)
+                                {
+                                    worksheet.Range["DI" + row].Text = "Critically Vulnerable: 75–100%";
+                                }
+                            }
+
+                            worksheet.Range["DJ" + row].Text = n.AssessorName;
+                            worksheet.Range["DJ" + row].ColumnWidth = 20;
+
+                            worksheet.Range["DK" + row].Text = n.AssessorTitle;
+                            worksheet.Range["DK" + row].ColumnWidth = 20;
+
+                            worksheet.Range["DL" + row].Text = n.TelephoneContact;
+                            worksheet.Range["DL" + row].ColumnWidth = 20;
+
+                            worksheet.Range["DM" + row].Text = n.AssessorObservation;
+                            worksheet.Range["DM" + row].ColumnWidth = 20;
+
+
+                            worksheet.Range["A" + row + ":DM" + row].CellStyle = Style;
+
+                            //Assign color to columns of totals 
+                            worksheet.Range["BD" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["BE" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["CI" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["CJ" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["CT" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["CU" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["DF" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["DG" + row].CellStyle.Color = Syncfusion.Drawing.Color.Gold;
+                            worksheet.Range["DH" + row].CellStyle.Color = Syncfusion.Drawing.Color.Violet;
+                            worksheet.Range["DI" + row].CellStyle.Color = Syncfusion.Drawing.Color.Violet;
+
+                            row++;
+                        }
+
+                        MemoryStream ms = new MemoryStream();
+                        // Save and close the document.
+                        workbook.SaveAs(ms);
+                        //Reset the memory stream position.
+                        ms.Position = 0;
+                        await JS.SaveAs("HVAT for Caregivers Report.xlsx", ms.ToArray());
+                        ms.Dispose();
+                        workbook.Close();
+                        //excelEngine.Dispose();
+                        Response = "Success:- The report was successfully downloaded.";
+                    }
+                }
+                else
+                {
+                    Response = "No Record:- There were no records found for this search";
+                }
+
+            }
+        }
+
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await DownloadingSpinner.HideAsync();
+            Downloadreport = false;
+
+            //Response = "Report Downloaded Successfully";
+            //Downloadreport = false;
+            //await DownloadingSpinner.HideAsync();
+            //await Task.CompletedTask;
+            //StateHasChanged();
+        }
+    }
+
+}

@@ -1,0 +1,708 @@
+﻿@page "/TBSensitizationPage"
+@using System.Collections;
+@using MUCOBADI.Data;
+@using Microsoft.EntityFrameworkCore;
+@inject IToastService toasterService;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@inject MUCOBADIContext db;
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID ICARE |</strong> Community TB Sensitization and Screening Form </li>
+</ol>
+<div class="row">
+    <div class="col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                    <HeaderTemplate>Search Panel</HeaderTemplate>
+                    <ContentTemplate>
+                        <div style="padding:10px;">
+                            <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <p>District</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <p>Sub-County</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true"
+                                        Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData"
+                                        ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county"
+                                                       FloatLabelType="FloatLabelType.Never" PopupHeight="350px" Query="@SearchSubcountyQuery">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <p>Parish</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true"
+                                        Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@ParishData"
+                                        ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true"
+                                        FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px"
+                                                       Query="@SearchParishQuery">
+                                            <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <p>Village</p>
+                                        <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage"
+                                        AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@VillageData"
+                                        ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" 
+                                        FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px"
+                                                       Query="@SearchVillageQuery">
+                                            <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                        </SfMultiSelect>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+                                    </div>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="col-md-12">
+        <SfGrid @ref=@CommunityTbSensitizationGrid TValue="CommunityTbSensitization" Query="@MainQuery" Width="100%" Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})"
+        AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true" AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <SfDataManager AdaptorInstance="@typeof(TbSensitizationAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+            <GridEvents OnActionBegin="OnCommunityTbSensitizationActionBegin" OnActionComplete="@OnCommunityTbSensitizationActionComplete" TValue="CommunityTbSensitization"></GridEvents>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="SensitizationContext">
+                    @{
+                        CommunityTbSensitizationReviewData = (SensitizationContext as CommunityTbSensitization);
+                        if(CommunityTbSensitizationReviewData != null)
+                        {
+                            <div class="row">
+                                <div class="col-md-12" hidden>
+                                    <SfNumericTextBox @bind-Value="@CommunityTbSensitizationReviewData.SensitizationId" Enabled="false"></SfNumericTextBox>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>District</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Sub-County</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.SubCountyId)" Enabled="true"
+                                    TItem="ASubcounty" TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" 
+                                    FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                    Query="@(new Query().Where(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = CommunityTbSensitizationReviewData.DistrictId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Parish</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.ParishId)" Enabled="true"
+                                                    TItem="AParish" TValue="int?" DataSource="@ParishData" Placeholder="Please select"
+                                                    FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                    Query="@(new Query().Where(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = CommunityTbSensitizationReviewData.SubCountyId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Village</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.VillageId)" Enabled="true"
+                                                    TItem="AVillage" TValue="int?" DataSource="@VillageData" Placeholder="Please select"
+                                                    FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                    Query="@(new Query().Where(new WhereFilter() { Field = "ParishId", Operator = "equal", value = CommunityTbSensitizationReviewData.ParishId, IgnoreCase = false, IgnoreAccent = false }))">
+                                        <DropDownListFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Client Name</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTbSensitizationReviewData.ClientName)" Enabled="true" Placeholder="Please enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Date of Birth</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTbSensitizationReviewData.Dob)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Age</p>
+                                    <SfNumericTextBox @bind-Value="@CommunityTbSensitizationReviewData.Age" Format="N0"></SfNumericTextBox>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Phone Number</p>
+                                    <SfTextBox Multiline="false" @bind-Value="@(CommunityTbSensitizationReviewData.PhoneNumber)" Enabled="true" Placeholder="Please enter the Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Activity Date</p>
+                                    <SfDatePicker @bind-Value="@(CommunityTbSensitizationReviewData.ActivityDate)" Format="dd/MM/yyyy" Placeholder="Enter Date" FloatLabelType="FloatLabelType.Never"> </SfDatePicker>
+                                </div>
+                                <div class="col-md-4">
+                                 <p>Sex </p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.GenderId)" Enabled="true" TItem="AGender" TValue="string" DataSource="@GenderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AGender.GenderId)" Text="@nameof(AGender.GenderDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                 <div class="col-md-4">
+                                    <p>Activity Type </p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.ActivityTypeId)" Enabled="true" TItem="AActivityType" TValue="int?" DataSource="@ActivityTypeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AActivityType.ActivityTypeId)" Text="@nameof(AActivityType.ActivityTypeDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                 </div>
+                                <div class="col-md-4">
+                                    <p>Venue of activity </p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.TbScreeningVenueId)" Enabled="true" TItem="ATbScreeningVenue" TValue="int?" DataSource="@ScreeningVenueData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(ATbScreeningVenue.TbScreeningVenueId)" Text="@nameof(ATbScreeningVenue.TbScreeningVenueDesc)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                 <div class="col-md-4">
+                                  <p>Sensitised On TB?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.IsSensitisedOnTb)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                 </div>
+                                <div class="col-md-4">
+                                <p>Cough?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.IsCoughing)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (CommunityTbSensitizationReviewData.IsCoughing == 1)
+                                {
+                                    <div class="col-md-4">
+                                        <p>If cough how long? (in days)</p>
+                                        <SfNumericTextBox @bind-Value="@CommunityTbSensitizationReviewData.DaysCoughing" Format="N0"></SfNumericTextBox>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <p>Coughing up Blood?</p>
+                                        <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.IsCoughingUpBlood)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                            <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                }
+                                
+                                <div class="col-md-4">
+                                <p>Has Fever?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.HasFever)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if(CommunityTbSensitizationReviewData.HasFever==1){
+                                    <div class="col-md-4">
+                                        <p>If fever, how long? ( In days)</p>
+                                        <SfNumericTextBox @bind-Value="@CommunityTbSensitizationReviewData.DaysWithFever" Format="N0"></SfNumericTextBox>
+                                    </div>
+                                }
+                                
+                                <div class="col-md-4">
+                                <p>Weight loss / Poor weight gain</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.WeightLoss)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Excessive Night Sweats?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.ExcessiveNightSweats)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <p>Other?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.OtherSymptoms)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if(CommunityTbSensitizationReviewData.OtherSymptoms==1){
+                                    <div class="col-md-4">
+                                        <p>Specify</p>
+                                        <SfTextBox Multiline="false" @bind-Value="@(CommunityTbSensitizationReviewData.OtherSymptomDesc)" Enabled="true" Placeholder="Please enter" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                    </div>
+                                }
+                                <div class="col-md-4">
+                                    <p>Is a client a presumptive TB case?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.IsaclientapresumptiveTbcase)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                                @if (CommunityTbSensitizationReviewData.IsaclientapresumptiveTbcase == 1)
+                                {
+                                    <div class="col-md-4">
+                                        <p>If client is a presumptive case, Is samplesent for testing? Record the type of test</p>
+                                        <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.RequestedTestTypeId)" Enabled="true" TItem="ARequestedTestType" TValue="int?" DataSource="@RequestedTestTypeData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                            <DropDownListFieldSettings Value="@nameof(ARequestedTestType.RequestedTestTypeId)" Text="@nameof(ARequestedTestType.RequestedTestTypeDesc)"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                }
+                                
+                                <div class="col-md-4">
+                                    <p>Client refered for evaluation?</p>
+                                    <SfDropDownList @bind-Value="@(CommunityTbSensitizationReviewData.ClientReferedForEvaluation)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                        <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                    </SfDropDownList>
+                                </div>
+                            </div>
+                        }
+                    }
+                </Template>
+            </GridEditSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.SensitizationId) HeaderText="Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.DistrictId) HeaderText="District" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.SubCountyId) HeaderText="Sub-County" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="200"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.ParishId) HeaderText="Parish" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AParish.ParishId)" ForeignKeyValue="@nameof(AParish.ParishDescription)" ForeignDataSource="@ParishData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.VillageId) HeaderText="Village" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AVillage.VillageId)" ForeignKeyValue="@nameof(AVillage.VillageDescription)" ForeignDataSource="@VillageData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.ActivityDate) HeaderText="Activity Date" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" Width="160"></GridColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.ClientName) HeaderText="Client Name" EditType="EditType.DefaultEdit" Width="200"></GridColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.Age) HeaderText="Age" EditType="EditType.NumericEdit" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.PhoneNumber) HeaderText="Phone Number" EditType="EditType.DefaultEdit" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.GenderId) HeaderText="Sex (M/F)" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" ForeignDataSource="@GenderData" Width="120"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.ActivityTypeId) HeaderText="Activity Type" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AActivityType.ActivityTypeId)" ForeignKeyValue="@nameof(AActivityType.ActivityTypeDesc)" ForeignDataSource="@ActivityTypeData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.TbScreeningVenueId) HeaderText="Venue" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(ATbScreeningVenue.TbScreeningVenueId)" ForeignKeyValue="@nameof(ATbScreeningVenue.TbScreeningVenueDesc)" ForeignDataSource="@ScreeningVenueData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.IsSensitisedOnTb) HeaderText="Sensitised On TB" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.IsCoughing) HeaderText="Cough?" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.DaysCoughing) HeaderText="If cough how long? (in days)" EditType="EditType.DefaultEdit" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.IsCoughingUpBlood) HeaderText="Coughing blood?" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.HasFever) HeaderText="Fever? " EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.DaysWithFever) HeaderText="If fever, how long? ( In days)" EditType="EditType.DefaultEdit" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.WeightLoss) HeaderText="Weight loss / Poor weight gain" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.ExcessiveNightSweats) HeaderText="Excessive Night sweats?" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.OtherSymptoms) HeaderText="Other? (Yes/No)" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(CommunityTbSensitization.OtherSymptomDesc) HeaderText="If yes, specify" EditType="EditType.DefaultEdit" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.IsaclientapresumptiveTbcase) HeaderText="Is a client a presumptive TB case?" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.RequestedTestTypeId) HeaderText="If client is a presumptive case, Is samplesent for testing? Record the type of test" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(ARequestedTestType.RequestedTestTypeId)" ForeignKeyValue="@nameof(ARequestedTestType.RequestedTestTypeDesc)" ForeignDataSource="@RequestedTestTypeData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(CommunityTbSensitization.ClientReferedForEvaluation) HeaderText="Client refered for evaluation" EditType="EditType.DropDownEdit" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+</div>
+
+@code {
+    List<AActivityType> ActivityTypeData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<ARequestedTestType> RequestedTestTypeData { get; set; }
+    List<ATbScreeningVenue> ScreeningVenueData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<AGender> GenderData { get; set; }
+
+    SfGrid<CommunityTbSensitization> CommunityTbSensitizationGrid;
+    CommunityTbSensitization CommunityTbSensitizationReviewData { get; set; }
+
+    Query MainQuery = new Query();
+    Query SearchSubcountyQuery = new Query();
+    Query SearchParishQuery = new Query();
+    Query SearchVillageQuery = new Query();
+
+    private SearchPanel InputModel = new();
+    bool isEnabled { get; set; } = false;
+
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            toasterService.ShowError(ex.Message.ToString());
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+        if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+        {
+            var districtlist = userManagement.GetUserDistrict();
+            if (districtlist != null && districtlist.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in districtlist)
+                {
+                    m.Add(n);
+                }
+
+                InputModel.DistrictId = m.ToArray();
+                MainQuery = new Query();
+                MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+            }
+            var subcountyList = userManagement.GetUserSubcounty();
+            if (subcountyList != null && subcountyList.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in subcountyList)
+                {
+                    m.Add(n);
+                }
+                InputModel.SubcountyId = m.ToArray();
+                MainQuery = new Query();
+                MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+            }
+        }
+        else
+        {
+            isEnabled = true;
+        }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            List<WhereFilter> filterList = new List<WhereFilter>();
+            foreach (var item in args.Value)
+            {
+                filterList.Add(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = item, IgnoreCase = true });
+            }
+
+            var orWhere = WhereFilter.Or(filterList);
+            SearchSubcountyQuery = new Query().Where(orWhere);
+        }
+        else
+        {
+            SearchSubcountyQuery = new Query();
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            List<WhereFilter> filterList = new List<WhereFilter>();
+            foreach (var item in args.Value)
+            {
+                filterList.Add(new WhereFilter() { Field = "SubcountyId", Operator = "equal", value = item, IgnoreCase = true });
+            }
+
+            var orWhere = WhereFilter.Or(filterList);
+            SearchParishQuery = new Query().Where(orWhere);
+        }
+        else
+        {
+            SearchParishQuery = new Query();
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                List<WhereFilter> filterList = new List<WhereFilter>();
+                foreach (var item in args.Value)
+                {
+                    filterList.Add(new WhereFilter() { Field = "ParishId", Operator = "equal", value = item, IgnoreCase = true });
+                }
+
+                var orWhere = WhereFilter.Or(filterList);
+                SearchVillageQuery = new Query().Where(orWhere);
+            }
+        }
+        else
+        {
+            SearchVillageQuery = new Query();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                GenderData = db.AGender.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+                RequestedTestTypeData = db.ARequestedTestType.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                ScreeningVenueData = db.ATbScreeningVenue.AsNoTracking().ToList();
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                ActivityTypeData = db.AActivityType.AsNoTracking().ToList();
+
+                InputModel = new();
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            toasterService.ShowError(ex.Message.ToString());
+        }
+    }
+
+    public class TbSensitizationAdapter : DataAdaptor
+    {
+        private readonly IToastService toastService;
+        private readonly MUCOBADIContext db;
+        public TbSensitizationAdapter(IToastService ts, MUCOBADIContext db)
+        {
+            this.db = db;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<CommunityTbSensitization>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+
+                string[] _district = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _district = DistrictId.Split(',');
+                }
+                string[] _SubcountyId = new string[] { };
+                if (!string.IsNullOrEmpty(SubcountyId))
+                {
+                    _SubcountyId = SubcountyId.Split(',');
+                }
+                string[] _ParishId = new string[] { };
+                if (!string.IsNullOrEmpty(ParishId))
+                {
+                    _ParishId = ParishId.Split(',');
+                }
+                string[] _VillageId = new string[] { };
+                if (!string.IsNullOrEmpty(VillageId))
+                {
+                    _VillageId = VillageId.Split(',');
+                }
+
+                data = await db.CommunityTbSensitization.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+                (_SubcountyId.Length == 0 || (o.SubCountyId != null && _SubcountyId.Any(a => a == o.SubCountyId.ToString()) == true))
+                ).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<CommunityTbSensitization>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as CommunityTbSensitization);
+                var exist = db.CommunityTbSensitization.FirstOrDefault(o => o.SensitizationId == val.SensitizationId);
+                if (exist == null)
+                {
+                    int id = 1;
+                    var last = db.CommunityTbSensitization.OrderBy(o => o.SensitizationId).LastOrDefault();
+                    if (last != null)
+                    {
+                        id = (last.SensitizationId + 1);
+                    }
+                    val.SensitizationId = id;
+                    db.CommunityTbSensitization.Add(val);
+                    db.SaveChanges();
+                    toastService.ShowSuccess("Record Saved Successfully", "Success");
+                }
+                else
+                {
+                    db.Entry(exist).CurrentValues.SetValues(val);
+                    db.Entry(exist).State = EntityState.Modified;
+                    db.SaveChanges();
+                    toastService.ShowSuccess("Record Savedpdated Successfully", "Success");
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as CommunityTbSensitization);
+                var exist = db.CommunityTbSensitization.FirstOrDefault(o => o.SensitizationId == val.SensitizationId);
+                if (exist != null)
+                {
+                    db.Entry(exist).CurrentValues.SetValues(val);
+                    db.Entry(exist).State = EntityState.Modified;
+                    await db.SaveChangesAsync();
+                    toastService.ShowSuccess("Record updated Successfully", "Success");
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message, "Error");
+            }
+            return value;
+        }
+    }
+    public async Task OnCommunityTbSensitizationActionBegin(Syncfusion.Blazor.Grids.ActionEventArgs<CommunityTbSensitization> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+            }
+        }
+        catch (Exception ex)
+        {
+            toasterService.ShowError(ex.Message.ToString());
+        }
+    }
+    public void OnCommunityTbSensitizationActionComplete(Syncfusion.Blazor.Grids.ActionEventArgs<CommunityTbSensitization> args)
+    {
+        
+        try
+        {
+            if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+            {
+                CommunityTbSensitizationGrid.PreventRender(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            toasterService.ShowError(ex.Message.ToString());
+        }
+    }
+}

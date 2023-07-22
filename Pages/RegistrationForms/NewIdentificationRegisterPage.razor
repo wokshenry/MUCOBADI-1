@@ -1,0 +1,1227 @@
+﻿@page "/NewIdentificationRegisterPage"
+@using MUCOBADI.Interfaces;
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.Collections.ObjectModel;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject MUCOBADIContext db;
+@inject SPToCoreContext spdb;
+<style>
+    h4 {
+        background-color: black;
+        color: whitesmoke;
+        padding: 10px;
+    }
+</style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>USAID/ICARE Beneficiary Identification Register </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <SfAccordion ExpandMode="@ExpandMode.Single">
+            <AccordionItems>
+                <AccordionItem Expanded="false">
+                <HeaderTemplate>Search Panel</HeaderTemplate>
+                <ContentTemplate>
+                    <div style="padding:10px;">
+                        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <p>District</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Sub-County</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                        <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Parish</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                                        <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <p>Village</p>
+                                    <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                                        <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                                    </SfMultiSelect>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                </div>
+                                <div class="form-group col-md-12">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+                                </div>
+                            </div>
+                        </EditForm>
+                    </div>
+                </ContentTemplate>
+                </AccordionItem>
+            </AccordionItems>
+        </SfAccordion>
+    </div>
+    <div class="form-group col-md-12">
+         <SfGrid @ref="ReviewHeaderGrid" TValue="BeneficiaryIdentificationRegister" Query="@MainQuery" Width="100%"
+                AllowGrouping="false" ShowColumnChooser="true" AllowTextWrap="true"
+                AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true"
+                Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})">
+            @*<GridGroupSettings Columns="@GroupedColumns"></GridGroupSettings>*@
+            <SfDataManager Url="HouseHold" Adaptor="Adaptors.WebApiAdaptor"></SfDataManager>
+            @*<SfDataManager AdaptorInstance="@typeof(NewBeneficiaryIdentificationRegisterHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>*@
+            <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+            <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+            <GridEvents OnActionBegin="OnReviewHeaderActionBegin" OnActionFailure="OnHeaderActionFailure" OnActionComplete="ActionComplete" TValue="BeneficiaryIdentificationRegister"></GridEvents>
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+                <Template Context="ReviewHeaderContext">
+                    @{
+                        ReviewHeaderData = (ReviewHeaderContext as BeneficiaryIdentificationRegister);
+                        <div style="padding:10px;">
+                                                <div class="form-row">
+                                                    <div class="form-group col-md-12" hidden>
+                                                        <SfNumericTextBox @bind-Value="@ReviewHeaderData.HouseHoldId" Enabled="false"></SfNumericTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-12">
+                                                        <h4>Beneficiary Household Information</h4>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>District of residence</p>
+                                                        <SfDropDownList ID="DistrictId" @bind-Value="@(ReviewHeaderData.DistrictId)" Enabled="true" TItem="ADistrict" TValue="int?" DataSource="@DistrictData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></DropDownListFieldSettings>
+                                                            <DropDownListEvents TItem="ADistrict" TValue="int?" ValueChange="OnHDistrictChange"></DropDownListEvents>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Sub county of residence</p>
+                                                        <SfDropDownList ID="SubcountyId" @bind-Value="@(ReviewHeaderData.SubcountyId)" Enabled="true" TItem="ASubcounty" TValue="int?" DataSource="@SubcountyData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></DropDownListFieldSettings>
+                                                            <DropDownListEvents TItem="ASubcounty" TValue="int?" ValueChange="OnHSubcountyChange"></DropDownListEvents>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Parish of residence</p>
+                                                        <SfDropDownList ID="ParishId" @bind-Value="@(ReviewHeaderData.ParishId)" Enabled="true" TItem="AParish" TValue="int?" DataSource="@ParishData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></DropDownListFieldSettings>
+                                                            <DropDownListEvents TItem="AParish" TValue="int?" ValueChange="OnHParishChange"></DropDownListEvents>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Village of residence</p>
+                                                        <SfDropDownList ID="VillageId" @bind-Value="@(ReviewHeaderData.VillageId)" Enabled="true" TItem="AVillage" TValue="int?" DataSource="@VillageData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Name of Health Facility for HTS </p>
+                                                        <SfDropDownList ID="FacilityId" @bind-Value="@(ReviewHeaderData.FacilityId)" Enabled="true" TItem="AFacility" TValue="int?" DataSource="@FacilityData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AFacility.FacilityId)" Text="@nameof(AFacility.FacilityName)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Date of Identification</p>
+                                                        <SfDatePicker @bind-Value="@(ReviewHeaderData.DateofIdentification)" Format="dd/MM/yyyy" Placeholder="Enter Date of Identification" FloatLabelType="FloatLabelType.Never" />
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Unique Identifier</p>
+                                                        <SfMaskedTextBox @bind-Value="@(ReviewHeaderData.HouseHoldCode)" Readonly="false" Mask=">LL-00-0000"></SfMaskedTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Source of Identification (for Index)</p>
+                                                        <SfDropDownList ID="IdentificationId" @bind-Value="@(ReviewHeaderData.IdentificationId)" Enabled="true" TItem="ASourceofIdentification" TValue="int?" DataSource="@SourceofIdentificationData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ASourceofIdentification.IdentificationId)" Text="@nameof(ASourceofIdentification.IdentificationDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    @if (ReviewHeaderData.IdentificationId == 8)
+                                                    {
+                                                        <div class="form-group col-md-4">
+                                                            <p>Name of Identification source…</p>
+                                                            <SfTextBox Multiline="false" ID="OtherIdentificationSource" @bind-Value="@(ReviewHeaderData.OtherIdentificationSource)" Enabled="true" Placeholder="Enter Other Identification Source" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                        </div>
+                                                    }
+
+
+                                                    <div class="form-group col-md-4">
+                                                        <p>SURNAME</p>
+                                                        <SfTextBox Multiline="false" ID="Surname" @bind-Value="@(ReviewHeaderData.Surname)" Enabled="true" Placeholder="Enter Surname" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>GIVEN NAME</p>
+                                                        <SfTextBox Multiline="false" ID="GivenName" @bind-Value="@(ReviewHeaderData.GivenName)" Enabled="true" Placeholder="Enter Given Name" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Telephone Contact</p>
+                                                        <SfTextBox Multiline="false" ID="TelephoneContact" @bind-Value="@(ReviewHeaderData.TelephoneContact)" Enabled="true" Placeholder="Enter Phone number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Gender</p>
+                                                        <SfDropDownList ID="GenderId" @bind-Value="@(ReviewHeaderData.GenderId)" Enabled="true" TItem="AGender" TValue="string" DataSource="@GenderData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AGender.GenderId)" Text="@nameof(AGender.GenderDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+
+                                                    <div class="form-group col-md-4">
+                                                        <p>Date of Birth </p>
+                                                        <SfDatePicker @bind-Value="@(ReviewHeaderData.DoB)" Format="dd/MM/yyyy" Placeholder="Date of Birth" FloatLabelType="FloatLabelType.Never">
+                                                            <DatePickerEvents TValue="DateTime?" ValueChange="OnHeaderDateChange"></DatePickerEvents>
+                                                        </SfDatePicker>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Age</p>
+                                                        <SfNumericTextBox @bind-Value="@ReviewHeaderData.Age" Enabled="true" Placeholder="Enter the age" OnChange="OnHeaderAgeChange" FloatLabelType="FloatLabelType.Never"></SfNumericTextBox>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Index Beneficiary Known Risk Factor(s)</p>
+                                                        <SfDropDownList ID="KnownRiskFactorId" @bind-Value="@(ReviewHeaderData.KnownRiskFactorId)" Enabled="true" TItem="AKnownRiskFactors" TValue="int?" DataSource="@KnownRiskFactorsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AKnownRiskFactors.KnownRiskFactorId)" Text="@nameof(AKnownRiskFactors.KnownRiskFactorDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Beneficiary HIV Status</p>
+                                                        <SfDropDownList ID="HivstatusId" @bind-Value="@(ReviewHeaderData.HivstatusId)" Enabled="true" TItem="AHivstatus" TValue="int?" DataSource="@HivstatusData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(AHivstatus.HivstatusId)" Text="@nameof(AHivstatus.HivstatusDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    @if (ReviewHeaderData.HivstatusId == 1)
+                                                    {
+                                                        <div class="form-group col-md-4">
+                                                            <p>If HIV+, Currently on ART</p>
+                                                            <SfDropDownList ID="CurrentlyonArt" @bind-Value="@(ReviewHeaderData.CurrentlyonArt)" Enabled="true" TItem="AYesNo" TValue="int?" DataSource="@YesNoData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                <DropDownListFieldSettings Value="@nameof(AYesNo.YesNoId)" Text="@nameof(AYesNo.YesNoDescription)"></DropDownListFieldSettings>
+                                                            </SfDropDownList>
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>ART Number.</p>
+                                                            <SfTextBox Multiline="false" ID="Artnumber" @bind-Value="@(ReviewHeaderData.Artnumber)" Enabled="true" Placeholder="Enter ART Number" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>COHORT</p>
+                                                            <SfDatePicker @bind-Value="@(ReviewHeaderData.Cohort)" Format="dd/MM/yyyy" Placeholder="Enter Cohort" FloatLabelType="FloatLabelType.Never" />
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>Current Treatment Regimen Category</p>
+                                                            <SfDropDownList ID="RegimenCategoryId" @bind-Value="@(ReviewHeaderData.RegimenCategoryId)" Enabled="true" TItem="ARegimenCategory" TValue="int?" DataSource="@RegimenCategoryData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                <DropDownListFieldSettings Value="@nameof(ARegimenCategory.RegimenCategoryId)" Text="@nameof(ARegimenCategory.RegimenCategoryDescription)"></DropDownListFieldSettings>
+                                                            </SfDropDownList>
+                                                        </div>
+
+                                                        <div class="form-group col-md-4">
+                                                            <p>Current Treatment Regimen</p>
+                                                            <SfDropDownList ID="RegimenId" @bind-Value="@(ReviewHeaderData.RegimenId)" Enabled="true" TItem="ARegimen" TValue="int?" DataSource="@RegimenData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                <DropDownListFieldSettings Value="@nameof(ARegimen.RegimenId)" Text="@nameof(ARegimen.RegimenDescription)"></DropDownListFieldSettings>
+                                                            </SfDropDownList>
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>OVC_VLR $ OVC_VLS</p>
+                                                            <SfDropDownList ID="OvcVlrId" @bind-Value="@(ReviewHeaderData.OvcVlrId)" Enabled="true" TItem="AOvcVlrAndOvcVls" TValue="int?" DataSource="@OvcVlrAndOvcVlsData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                <DropDownListFieldSettings Value="@nameof(AOvcVlrAndOvcVls.OvcVlrId)" Text="@nameof(AOvcVlrAndOvcVls.OvcVlrDescription)"></DropDownListFieldSettings>
+                                                            </SfDropDownList>
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>Client VL Status </p>
+                                                            <SfDropDownList ID="ViralLoadSuppressedId" @bind-Value="@(ReviewHeaderData.ViralLoadSuppressedId)" Enabled="true" TItem="AViralLoadSuppressed" TValue="int?" DataSource="@ViralLoadSuppressedData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                                <DropDownListFieldSettings Value="@nameof(AViralLoadSuppressed.ViralLoadSuppressedId)" Text="@nameof(AViralLoadSuppressed.ViralLoadSuppressedDescription)"></DropDownListFieldSettings>
+                                                            </SfDropDownList>
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>Date of Viralload</p>
+                                                            <SfDatePicker @bind-Value="@(ReviewHeaderData.VirallaodDate)" Format="dd/MM/yyyy" Placeholder="Enter date of Virallaod test" FloatLabelType="FloatLabelType.Never" />
+                                                        </div>
+                                                        <div class="form-group col-md-4">
+                                                            <p>Copies</p>
+                                                            <SfTextBox Multiline="false" @bind-Value="@ReviewHeaderData.Copies" Enabled="true" Placeholder="Enter the number of copies/ N/A" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                        </div>
+                                                    }
+
+
+                                                    <div class="form-group col-md-4">
+                                                        <p>Drug Dispensing Model</p>
+                                                        <SfDropDownList ID="DispensingModelId" @bind-Value="@(ReviewHeaderData.DispensingModelId)" Enabled="true" TItem="ADrugDispensingModel" TValue="int?" DataSource="@DrugDispensingModelData" Placeholder="please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ADrugDispensingModel.DispensingModelId)" Text="@nameof(ADrugDispensingModel.DispensingModelDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    <div class="form-group col-md-4">
+                                                        <p>Source document</p>
+                                                        <SfDropDownList ID="SourceDocumentId" @bind-Value="@(ReviewHeaderData.SourceDocumentId)" Enabled="true" TItem="ASourceDocument" TValue="int?" DataSource="@SourceDocumentData" Placeholder="select source of document" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                                            <DropDownListFieldSettings Value="@nameof(ASourceDocument.SourceDocumentId)" Text="@nameof(ASourceDocument.SourceDocumentDescription)"></DropDownListFieldSettings>
+                                                        </SfDropDownList>
+                                                    </div>
+                                                    @if (ReviewHeaderData.SourceDocumentId == 6)
+                                                    {
+                                                        <div class="form-group col-md-4">
+                                                            <p>Other Source document</p>
+                                                            <SfTextBox Multiline="false" ID="OtherSourceDocument" @bind-Value="@(ReviewHeaderData.OtherSourceDocument)" Enabled="true" Placeholder="Enter Other Source of Document" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                                                        </div>
+                                                    }
+                                                    @if (ReviewHeaderData.DistrictId != null && ReviewHeaderData.SubcountyId != null@* && ReviewHeaderData.ParishId != null && ReviewHeaderData.VillageId != null && ReviewHeaderData.FacilityId != null*@
+                                                        && ReviewHeaderData.DateofIdentification != null/*&& ReviewHeaderData.IdentificationId != null*/ && !string.IsNullOrEmpty(ReviewHeaderData.Surname) 
+                                                        && !string.IsNullOrEmpty(ReviewHeaderData.GivenName) /*&& !string.IsNullOrEmpty(ReviewHeaderData.TelephoneContact)*/ && ReviewHeaderData.GenderId != null
+                                                        /*&& ReviewHeaderData.DoB != null*/ && ReviewHeaderData.KnownRiskFactorId != null && ReviewHeaderData.HivstatusId != null
+                                                        /*&& ReviewHeaderData.DispensingModelId != null && ReviewHeaderData.SourceDocumentId != null*/)
+{
+                                                <div class="form-group col-md-12">
+                                                    <h4>Beneficiary Household Member Details</h4>
+                                                </div>
+                                                <div class="form-group col-md-12">
+                                                    <HouseholdDetailPage @ref=@DetailPage CareGiverData="@CareGiverData" EducationLevelData="@EducationLevelData" FacilityData="@FacilityData"
+                                                     GenderData="@GenderData" HivstatusData="@HivstatusData" isEnabled=@isEnabled KnownRiskFactorsData="@KnownRiskFactorsData"
+                                                     OvcVlrAndOvcVlsData="@OvcVlrAndOvcVlsData" ProgramParticipationData="@ProgramParticipationData" RegimenCategoryData="@RegimenCategoryData"
+                                                      RegimenData="@RegimenData" ToastObj="@ToastObj" YesNoData="@YesNoData" ReviewHeaderData="@ReviewHeaderData"
+                                                       HouseholdData="@(ReviewHeaderData.HouseHoldMembers.ToList())"/>
+                                                </div>
+                                            }
+                               
+                                                </div>
+                        </div>
+                    }
+                </Template>
+                <FooterTemplate>
+                    <SfButton CssClass="e-btn e-success" OnClick="RegisterHouseHoldBtnClick"> Register Houshold</SfButton>
+                    <SfButton CssClass="e-btn e-danger" OnClick="CancelHouseHoldBtnClick"> Cancel</SfButton>
+                </FooterTemplate>
+            </GridEditSettings>
+            <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+            <GridPageSettings PageSize="20"></GridPageSettings>
+            <GridColumns>
+                @*<GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>*@
+                <GridColumn HeaderText="Manage Records" Width="120" HeaderTextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left">
+                    <GridCommandColumns>
+                        <GridCommandColumn Type="CommandButtonType.Edit" ButtonOption="@(new CommandButtonOptions() { CssClass="e-icons e-view-details",Content="Edit" })" Title="Edit"></GridCommandColumn>
+                    </GridCommandColumns>
+                </GridColumn>
+                @if (isEnabled)
+                {
+                    <GridColumn HeaderText="" Width="120">
+                    <Template Context="HouseholdContext">
+                        @{
+                            var data = (HouseholdContext as BeneficiaryIdentificationRegister);
+                            if(data != null)
+                            {
+                                <button class="btn btn-danger" @onclick="@(async()=>{await DeleteHousehold(data);})"><span class="fa fa-trash-o"></span> Delete</button>
+                            }
+                        }
+                    </Template>
+                </GridColumn>
+                }
+                
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.HouseHoldId) HeaderText="HouseHold Id" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.DateofIdentification) HeaderText="Date of Identification" Format="dd/MM/yyyy" Width="140"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.HouseHoldCode) HeaderText="HouseHold Code" Width="140"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.DistrictId) HeaderText="District" ForeignKeyField="@nameof(ADistrict.DistrictId)" ForeignKeyValue="@nameof(ADistrict.DistrictDescription)" ForeignDataSource="@DistrictData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.SubcountyId) HeaderText="Subcounty" ForeignKeyField="@nameof(ASubcounty.SubcountyId)" ForeignKeyValue="@nameof(ASubcounty.SubcountyDescription)" ForeignDataSource="@SubcountyData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.ParishId) HeaderText="Parish" ForeignKeyField="@nameof(AParish.ParishId)" ForeignKeyValue="@nameof(AParish.ParishDescription)" ForeignDataSource="@ParishData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.VillageId) HeaderText="Village" ForeignKeyField="@nameof(AVillage.VillageId)" ForeignKeyValue="@nameof(AVillage.VillageDescription)" ForeignDataSource="@VillageData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.Surname) Visible="true" HeaderText="Surname" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="160"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.GivenName) HeaderText="Given Name" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="160"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.GenderId) HeaderText="Gender" ForeignKeyField="@nameof(AGender.GenderId)" ForeignKeyValue="@nameof(AGender.GenderDescription)" ForeignDataSource="@GenderData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.DoB) HeaderText="Date of birth" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.Age) HeaderText="Age" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="100"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.IdentificationId) HeaderText="Source of Identification" ForeignKeyField="@nameof(ASourceofIdentification.IdentificationId)" ForeignKeyValue="@nameof(ASourceofIdentification.IdentificationDescription)" ForeignDataSource="@SourceofIdentificationData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.FacilityId) HeaderText="Health facility" ForeignKeyField="@nameof(AFacility.FacilityId)" ForeignKeyValue="@nameof(AFacility.FacilityName)" ForeignDataSource="@FacilityData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.KnownRiskFactorId) HeaderText="Known Risk Factor" ForeignKeyField="@nameof(AKnownRiskFactors.KnownRiskFactorId)" ForeignKeyValue="@nameof(AKnownRiskFactors.KnownRiskFactorDescription)" ForeignDataSource="@KnownRiskFactorsData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.HivstatusId) HeaderText="HIV status" ForeignKeyField="@nameof(AHivstatus.HivstatusId)" ForeignKeyValue="@nameof(AHivstatus.HivstatusDescription)" ForeignDataSource="@HivstatusData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.CurrentlyonArt) HeaderText="Currently on ART" ForeignKeyField="@nameof(AYesNo.YesNoId)" ForeignKeyValue="@nameof(AYesNo.YesNoDescription)" ForeignDataSource="@YesNoData" Width="150"></GridForeignColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.Artnumber) HeaderText="ART Number" Width="140"></GridColumn>
+                <GridColumn Field=@nameof(BeneficiaryIdentificationRegister.Cohort) HeaderText="COHORT" Format="dd/MM/yyyy" EditType="EditType.DatePickerEdit" TextAlign="Syncfusion.Blazor.Grids.TextAlign.Left" Width="140"></GridColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.RegimenCategoryId) HeaderText="Current Treatment Regimen Category" ForeignKeyField="@nameof(ARegimenCategory.RegimenCategoryId)" ForeignKeyValue="@nameof(ARegimenCategory.RegimenCategoryDescription)" ForeignDataSource="@RegimenCategoryData" Width="150"></GridForeignColumn>
+                <GridForeignColumn Field=@nameof(BeneficiaryIdentificationRegister.RegimenId) HeaderText="Current Treatment Regimen" ForeignKeyField="@nameof(ARegimen.RegimenId)" ForeignKeyValue="@nameof(ARegimen.RegimenDescription)" ForeignDataSource="@RegimenData" Width="150"></GridForeignColumn>
+            </GridColumns>
+        </SfGrid>
+    </div>
+    <div class="form-group col-md-12">
+        <SfDialog Width="80%" Height="auto" AllowDragging=true EnableResize=true CloseOnEscape=false IsModal=true ShowCloseIcon=false
+                  Target=".mainbody" @ref=@HouseholdDeleteDialog Visible=false>
+            <DialogTemplates>
+                <Header>
+                    <h2>Delete confirmation</h2>
+                </Header>
+                <Content>
+                    <div class="dialogContent">
+                        @if(RecordToDelete != null)
+                        {
+                            <p style="font-size:16px;">Are you sure you would like to delete this household <b>(@RecordToDelete.HouseHoldCode)</b>?</p>
+                        }
+                        
+                    </div>
+                </Content>
+                <FooterTemplate>
+                    <button id="sendButton" @onclick="@YesDeleteBtnclicked" class="e-control e-btn e-primary" data-ripple="true">Yes Continue</button>
+                    <button id="sendButton" @onclick="@NoCancelBtnclicked" class="e-control e-btn e-danger" data-ripple="true">No Cancel</button>
+                </FooterTemplate>
+            </DialogTemplates>
+        </SfDialog>
+    </div>
+    <div class="form-group col-md-12">
+        <SfDialog Width="80%" Height="20vh" AllowDragging=true EnableResize=true
+        CloseOnEscape=false IsModal=true ShowCloseIcon=false
+                  Target=".mainbody" @ref=@SavingDialog Visible=false>
+            <DialogTemplates>
+                @*<Header>
+                    <h2>Delete confirmation</h2>
+                </Header>*@
+                <Content>
+                    <div class="dialogContent">
+                        <div class="loader">
+							<div class="loader--dot"></div>
+							<div class="loader--dot"></div>
+							<div class="loader--dot"></div>
+							<div class="loader--dot"></div>
+							<div class="loader--dot"></div>
+							<div class="loader--dot"></div>
+                            <div class="loader-Saving-text"></div>
+						</div>
+                        @*<p>Saving Record please wait......</p>*@
+                    </div>
+                </Content>
+            </DialogTemplates>
+        </SfDialog>
+    </div>
+</div>
+
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    Syncfusion.Blazor.Grids.Action PreviousHouseholdAction { get; set; }
+    private SearchPanel InputModel = new();
+    SfGrid<BeneficiaryIdentificationRegister> ReviewHeaderGrid;
+
+    private BeneficiaryIdentificationRegister ReviewHeaderData { get; set; }
+    private List<HouseHoldMembers> HouseHoldMembersData { get; set; } = new List<HouseHoldMembers>();
+    HouseHoldMembers HouseHoldMemberData { get; set; }
+    public Query MainQuery = new Query();
+    List<ASourceDocument> SourceDocumentData { get; set; }
+    List<ADrugDispensingModel> DrugDispensingModelData { get; set; }
+    List<AViralLoadSuppressed> ViralLoadSuppressedData { get; set; }
+    List<ARegimen> RegimenData { get; set; }
+    List<ARegimenCategory> RegimenCategoryData { get; set; }
+    List<AYesNo> YesNoData { get; set; }
+    List<ACareGiver> CareGiverData { get; set; }
+    List<AFacility> FacilityData { get; set; }
+    List<AHivstatus> HivstatusData { get; set; }
+    List<AKnownRiskFactors> KnownRiskFactorsData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<ASourceofIdentification> SourceofIdentificationData { get; set; }
+    List<AVillage> VillageData { get; set; }
+    List<AParish> ParishData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<AProgramParticipationStatus> ProgramParticipationData { get; set; }
+    List<AEducationLevel> EducationLevelData { get; set; }
+    List<AOvcVlrAndOvcVls> OvcVlrAndOvcVlsData { get; set; }
+
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    bool isEnabled { get; set; } = false;
+    BeneficiaryIdentificationRegister RecordToDelete { get; set; }
+    SfDialog HouseholdDeleteDialog { get; set; }
+    SfDialog SavingDialog { get; set; }
+
+    HouseholdDetailPage DetailPage { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                SourceDocumentData = db.ASourceDocument.AsNoTracking().ToList();
+                DrugDispensingModelData = db.ADrugDispensingModel.AsNoTracking().ToList();
+                ViralLoadSuppressedData = db.AViralLoadSuppressed.AsNoTracking().ToList();
+                RegimenData = db.ARegimen.AsNoTracking().ToList();
+                RegimenCategoryData = db.ARegimenCategory.AsNoTracking().ToList();
+                YesNoData = db.AYesNo.AsNoTracking().ToList();
+                FacilityData = db.AFacility.AsNoTracking().ToList();
+                HivstatusData = db.AHivstatus.AsNoTracking().ToList();
+                KnownRiskFactorsData = db.AKnownRiskFactors.AsNoTracking().ToList();
+                GenderData = db.AGender.AsNoTracking().ToList();
+                SourceofIdentificationData = db.ASourceofIdentification.AsNoTracking().ToList();
+                VillageData = db.AVillage.AsNoTracking().ToList();
+                ParishData = db.AParish.AsNoTracking().ToList();
+                SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                DistrictData = db.ADistrict.AsNoTracking().ToList();
+                _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                ProgramParticipationData = db.AProgramParticipationStatus.AsNoTracking().ToList();
+                EducationLevelData = db.AEducationLevel.AsNoTracking().ToList();
+                CareGiverData = db.ACareGiver.AsNoTracking().ToList();
+                OvcVlrAndOvcVlsData = db.AOvcVlrAndOvcVls.AsNoTracking().ToList();
+                InputModel = new();
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                        MainQuery = new Query();
+                        MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void SearchRecords()
+    {
+        try
+        {
+            MainQuery = new Query();
+            if (InputModel.DistrictId != null)
+            {
+                MainQuery.AddParams("DistrictId", string.Join(",", InputModel.DistrictId));
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                MainQuery.AddParams("SubcountyId", string.Join(",", InputModel.SubcountyId));
+            }
+            if (InputModel.ParishId != null)
+            {
+                MainQuery.AddParams("ParishId", string.Join(",", InputModel.ParishId));
+            }
+            if (InputModel.VillageId != null)
+            {
+                MainQuery.AddParams("VillageId", string.Join(",", InputModel.VillageId));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        MainQuery = new Query();
+        using (var db = new MUCOBADIContext())
+        {
+            var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+            if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+            {
+                var districtlist = userManagement.GetUserDistrict();
+                if (districtlist != null && districtlist.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in districtlist)
+                    {
+                        m.Add(n);
+                    }
+
+                    InputModel.DistrictId = m.ToArray();
+                    _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("DistrictId", string.Join(",", districtlist.ToArray()));
+                }
+                var subcountyList = userManagement.GetUserSubcounty();
+                if (subcountyList != null && subcountyList.Count > 0)
+                {
+                    List<int?> m = new List<int?>();
+                    foreach (var n in subcountyList)
+                    {
+                        m.Add(n);
+                    }
+                    InputModel.SubcountyId = m.ToArray();
+                    _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    MainQuery = new Query();
+                    MainQuery.AddParams("SubcountyId", string.Join(",", subcountyList.ToArray()));
+                }
+            }
+            else
+            {
+                isEnabled = true;
+            }
+        }
+    }
+    private async Task RegisterHouseHoldBtnClick()
+    {
+        try
+        {
+            await SavingDialog.ShowAsync();
+            if(DetailPage != null)
+            {
+                ReviewHeaderData.HouseHoldMembers = DetailPage.ReturnData();
+            }
+
+            await ReviewHeaderGrid.EndEditAsync();
+        }
+        catch (Exception)
+        {
+            try
+            {
+                await ReviewHeaderGrid.Refresh();
+            }
+            catch (Exception)
+            {
+
+            }
+        }     
+
+    }
+    private async Task CancelHouseHoldBtnClick()
+    {
+        try
+        {
+            if(ReviewHeaderGrid != null){
+                await ReviewHeaderGrid.CloseEditAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+
+            //throw;
+        }
+
+    }
+    private void OnHeaderDateChange(ChangedEventArgs<DateTime?> args)
+    {
+        if (ReviewHeaderData.DoB.HasValue)
+        {
+            ReviewHeaderData.Age = (DateTime.Now.Year - ReviewHeaderData.DoB.Value.Year);
+        }
+    }
+
+    private void OnHeaderAgeChange()
+    {
+        if (ReviewHeaderData.Age.HasValue)
+        {
+            ReviewHeaderData.DoB = new DateTime((DateTime.Now.Year - ReviewHeaderData.Age.Value), 1, 1);
+        }
+    }
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+        }
+    }
+
+    private async Task DeleteHousehold(BeneficiaryIdentificationRegister Record)
+    {
+        if (Record != null)
+        {
+            RecordToDelete = Record;
+            await HouseholdDeleteDialog.ShowAsync();
+        }
+    }
+    private async Task YesDeleteBtnclicked()
+    {
+        try
+        {
+            var members = db.HouseHoldMembers.Where(o => o.HouseHoldId == RecordToDelete.HouseHoldId).ToList();
+            if (members.Count > 0)
+            {
+                db.HouseHoldMembers.RemoveRange(members);
+                db.SaveChanges();
+            }
+            db.BeneficiaryIdentificationRegister.Remove(RecordToDelete);
+            db.SaveChanges();
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await HouseholdDeleteDialog.HideAsync();
+            await ReviewHeaderGrid.Refresh();
+        }
+    }
+    private async Task NoCancelBtnclicked()
+    {
+        await HouseholdDeleteDialog.HideAsync();
+    }
+
+
+
+    #region Review Header
+    public class NewBeneficiaryIdentificationRegisterHeaderAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private readonly MUCOBADIContext db;
+        //private UserManagement _userManagement;
+        public NewBeneficiaryIdentificationRegisterHeaderAdapter(IToastService ts, MUCOBADIContext db/*, UserManagement userManagement*/)
+        {
+            //_userManagement = userManagement;
+            toastService = ts;
+            this.db = db;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<BeneficiaryIdentificationRegister>();
+            try
+            {
+                string DistrictId = null;
+                string SubcountyId = null;
+                string ParishId = null;
+                string VillageId = null;
+                if (dataManagerRequest.Params != null && dataManagerRequest.Params.Count > 0)
+                {
+                    var val = dataManagerRequest.Params;
+                    if (val.FirstOrDefault(o => o.Key == "DistrictId").Value != null)
+                    {
+                        DistrictId = val.FirstOrDefault(o => o.Key == "DistrictId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "SubcountyId").Value != null)
+                    {
+                        SubcountyId = val.FirstOrDefault(o => o.Key == "SubcountyId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "ParishId").Value != null)
+                    {
+                        ParishId = val.FirstOrDefault(o => o.Key == "ParishId").Value.ToString();
+                    }
+                    if (val.FirstOrDefault(o => o.Key == "VillageId").Value != null)
+                    {
+                        VillageId = val.FirstOrDefault(o => o.Key == "VillageId").Value.ToString();
+                    }
+                }
+                string[] _district = new string[] { };
+                if (!string.IsNullOrEmpty(DistrictId))
+                {
+                    _district = DistrictId.Split(',');
+                }
+                string[] _SubcountyId = new string[] { };
+                if (!string.IsNullOrEmpty(SubcountyId))
+                {
+                    _SubcountyId = SubcountyId.Split(',');
+                }
+                string[] _ParishId = new string[] { };
+                if (!string.IsNullOrEmpty(ParishId))
+                {
+                    _ParishId = ParishId.Split(',');
+                }
+                string[] _VillageId = new string[] { };
+                if (!string.IsNullOrEmpty(VillageId))
+                {
+                    _VillageId = VillageId.Split(',');
+                }
+                data = await db.BeneficiaryIdentificationRegister.Where(o => (_district.Length == 0 || (o.DistrictId != null && _district.Any(a => a == o.DistrictId.ToString()) == true)) &&
+                    (_SubcountyId.Length == 0 || (o.SubcountyId != null && _SubcountyId.Any(a => a == o.SubcountyId.ToString()) == true)) &&
+                    (_ParishId.Length == 0 || (o.ParishId != null && _ParishId.Any(a => a == o.ParishId.ToString()) == true)) &&
+                    (_VillageId.Length == 0 || (o.VillageId != null && _VillageId.Any(a => a == o.VillageId.ToString()) == true))).Include(o=> o.HouseHoldMembers).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                //toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<BeneficiaryIdentificationRegister>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+        public override async Task<Object> Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryIdentificationRegister);
+                if(val.HouseHoldMembers != null && val.HouseHoldMembers.Count > 0){
+                    int householdMemberId = 1;
+                    var lastmemberId = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                    if (lastmemberId != null)
+                    {
+                        householdMemberId = (lastmemberId.HouseHoldMemberId + 1);
+                    }
+                    int count = 0;
+                    foreach (var item in val.HouseHoldMembers)
+                    {
+                        item.HouseHoldMemberId=(householdMemberId+count);
+                        if (!item.HouseHoldMemberCode.Contains("-"))
+                        {
+                            string householdCode = item.HouseHoldMemberCode.Substring(0, 2) + "-" + item.HouseHoldMemberCode.Substring(2, 2) + "-" + item.HouseHoldMemberCode.Substring(4, 4);
+                            string householdMemberCode = householdCode + "-" + item.HouseHoldMemberCode.Substring((item.HouseHoldMemberCode.Length - 2), 2);
+                            item.HouseHoldMemberCode = householdMemberCode;
+                        }
+                        count++;
+                    }
+                }
+
+
+                var exists = db.BeneficiaryIdentificationRegister.FirstOrDefault(o => o.HouseHoldId == val.HouseHoldId);
+                if (exists == null)
+                {
+                    int id = 1;
+                    var last = db.BeneficiaryIdentificationRegister.OrderBy(o => o.HouseHoldId).LastOrDefault();
+                    if (last != null)
+                    {
+                        id = (last.HouseHoldId + 1);
+                    }
+                    val.HouseHoldId = id;
+                    if (!val.HouseHoldCode.Contains("-"))
+                    {
+                        string householdCode = val.HouseHoldCode.Substring(0, 2) + "-" + val.HouseHoldCode.Substring(2, 2) + "-" + val.HouseHoldCode.Substring(4,4);
+                        val.HouseHoldCode = householdCode;
+                    }
+                    //val.AddedBy = _userManagement.GetStaffName();
+                    //val.AddedDate = DateTime.Now;
+                    db.BeneficiaryIdentificationRegister.Add(val);
+                    await db.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+        public override object Remove(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+
+            return value;
+        }
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                var val = (value as BeneficiaryIdentificationRegister);
+                var exist = db.BeneficiaryIdentificationRegister.FirstOrDefault(o => o.HouseHoldId == val.HouseHoldId);
+                if (exist != null)
+                {
+                    if (!val.HouseHoldCode.Contains("-"))
+                    {
+                        string householdCode = val.HouseHoldCode.Substring(0, 2) + "-" + val.HouseHoldCode.Substring(2, 2) + "-" + val.HouseHoldCode.Substring(4, 4);
+                        val.HouseHoldCode = householdCode;
+                    }
+                    db.Entry(exist).CurrentValues.SetValues(val);
+                    db.Entry(exist).State = EntityState.Modified;
+                    await db.SaveChangesAsync();
+                }
+                if(val.HouseHoldMembers != null && val.HouseHoldMembers.Count > 0)
+                {
+                    foreach (var item in val.HouseHoldMembers)
+                    {
+                        var _exist = await db.HouseHoldMembers.FirstOrDefaultAsync(o => o.HouseHoldMemberId == item.HouseHoldMemberId);
+                        if (_exist != null)
+                        {
+                            if (!item.HouseHoldMemberCode.Contains("-"))
+                            {
+                                string householdCode = item.HouseHoldMemberCode.Substring(0, 2) + "-" + item.HouseHoldMemberCode.Substring(2, 2) + "-" + item.HouseHoldMemberCode.Substring(4, 4);
+                                string householdMemberCode = householdCode + "-" + item.HouseHoldMemberCode.Substring((item.HouseHoldMemberCode.Length - 2), 2);
+                                item.HouseHoldMemberCode = householdMemberCode;
+                            }
+                            db.Entry(_exist).CurrentValues.SetValues(item);
+                            db.Entry(_exist).State = EntityState.Modified;
+                            await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            int id = 1;
+                            var last = await db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).LastOrDefaultAsync();
+                            if (last != null)
+                            {
+                                id = (last.HouseHoldMemberId + 1);
+                            }
+                            item.HouseHoldMemberId = id;
+                            if (!item.HouseHoldMemberCode.Contains("-"))
+                            {
+                                string householdCode = item.HouseHoldMemberCode.Substring(0, 2) + "-" + item.HouseHoldMemberCode.Substring(2, 2) + "-" + item.HouseHoldMemberCode.Substring(4, 4);
+                                string householdMemberCode = householdCode + "-" + item.HouseHoldMemberCode.Substring((item.HouseHoldMemberCode.Length - 2), 2);
+                                item.HouseHoldMemberCode = householdMemberCode;
+                            }
+                            //val.AddedBy = _userManagement.GetStaffName();
+                            //val.AddedDate = DateTime.Now;
+                            db.HouseHoldMembers.Add(item);
+                            await db.SaveChangesAsync();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+        public void saveLog(int HouseHoldId, string Editedcolumn, string previousvalue, string newvalue, string actiontaken)
+        {
+            try
+            {
+                double id = 1;
+                var exist = db.BeneficiaryIdentificationRegisterLog.OrderBy(o => o.HouseHoldLogId).LastOrDefault();
+                if (exist != null)
+                {
+                    id = (exist.HouseHoldLogId + 1);
+                }
+                BeneficiaryIdentificationRegisterLog m = new BeneficiaryIdentificationRegisterLog()
+                    {
+                        HouseHoldLogId = id,
+                        ColumnEdited = Editedcolumn,
+                        HouseHoldId = HouseHoldId,
+                        PreviousValue = previousvalue,
+                        NewValue = newvalue,
+                        // ActionMadeBy = _userManagement.GetStaffName(),
+                        ActionDate = DateTime.Now,
+                        ActionTaken = actiontaken
+                    };
+                db.BeneficiaryIdentificationRegisterLog.Add(m);
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+        }
+    }
+    public async Task OnReviewHeaderActionBegin(ActionEventArgs<BeneficiaryIdentificationRegister> args)
+    {
+        try
+        {
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+            {
+                PreviousHouseholdAction = args.RequestType;
+                SubcountyData = await db.ASubcounty.Where(o => o.DistrictId == args.RowData.DistrictId).AsNoTracking().ToListAsync();
+                ParishData = await db.AParish.Where(o => o.SubcountyId == args.RowData.SubcountyId).AsNoTracking().ToListAsync();
+                VillageData = await db.AVillage.Where(o => o.ParishId == args.RowData.ParishId).AsNoTracking().ToListAsync();
+
+                if(args.RowData.HouseHoldMembers == null)
+                {
+                    args.RowData.HouseHoldMembers = new List<HouseHoldMembers>();
+                }
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                PreviousHouseholdAction = args.RequestType;
+                args.RowData.HouseHoldMembers = new List<HouseHoldMembers>();
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+            {
+                PreviousHouseholdAction = args.RequestType;
+            }
+            if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+            {
+                if (string.IsNullOrEmpty(args.Data.Surname))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Surname", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (string.IsNullOrEmpty(args.Data.GivenName))
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Given name", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DistrictId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the District", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.SubcountyId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Subcounty", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                else if (args.Data.DateofIdentification == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Date of Identification", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (args.Data.IdentificationId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Source of Identification", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.IdentificationId == 8 && String.IsNullOrEmpty(args.Data.OtherIdentificationSource))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the other Source of Identification", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.DoB == null || args.Data.Age == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Date of Birth or please enter the age", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else if (args.Data.GenderId == null)
+                {
+                    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Gender", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                    args.Cancel = true;
+                }
+                //else if (args.Data.KnownRiskFactorId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Known Risk Factor", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Beneficiary HIV Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.CurrentlyonArt == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Currently on ART", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.CurrentlyonArt == 1 && String.IsNullOrEmpty(args.Data.Artnumber))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the Art Number", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.CurrentlyonArt == 1 && args.Data.Cohort == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please Enter the COHORT", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.RegimenCategoryId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Current Regimen Category", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.RegimenId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Current Regimen", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.ViralLoadSuppressedId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Client VL Status", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.ViralLoadSuppressedId != 4 && args.Data.VirallaodDate == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Date of Viralload", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.HivstatusId == 1 && args.Data.ViralLoadSuppressedId != 4 && args.Data.ViralLoadSuppressedId != 3 && String.IsNullOrEmpty(args.Data.Copies))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the Copies", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.DispensingModelId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Drug Dispensing Model", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.SourceDocumentId == 6 && string.IsNullOrEmpty(args.Data.OtherSourceDocument))
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Other Source document", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                //else if (args.Data.SourceDocumentId == null)
+                //{
+                //    await ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please select the Source document", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                //    args.Cancel = true;
+                //}
+                else
+                {
+                    string householdCode = ReviewHeaderData.HouseHoldCode.Substring(0, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(2, 2) + "-" + ReviewHeaderData.HouseHoldCode.Substring(4, 4);
+                    args.Data.HouseHoldCode = householdCode;
+                    ReviewHeaderData.HouseHoldCode = householdCode;
+                    string oldhouseholdCode = householdCode;
+                    if (PreviousHouseholdAction == Syncfusion.Blazor.Grids.Action.Add)
+                    {
+                        var householdexists = await db.BeneficiaryIdentificationRegister.FirstOrDefaultAsync(o => o.HouseHoldCode.Trim() == householdCode.Trim());
+                        var mrecords = await db.HouseHoldMembers.Where(o => o.HouseHoldId == ReviewHeaderData.HouseHoldId).OrderBy(o => o.HouseHoldMemberId).AsNoTracking().ToListAsync();
+                        if (householdexists != null && mrecords.Count() == 0)
+                        {
+                            householdCode = ReviewHeaderData.HouseHoldCode.Substring(0, 6)/* + "-" + ReviewHeaderData.HouseHoldCode.Substring(2, 2) + "-"*/;
+                            var data = await spdb.spLastHouseholdNumberGetAllAsync(householdCode);
+                            if (data.Count > 0)
+                            {
+                                householdCode += (data[0].LastHouseholdNumber.Value + 1).ToString("D4");
+                            }
+                            else
+                            {
+                                householdCode += (1).ToString("D4");
+                            }
+                            ReviewHeaderData.HouseHoldCode = householdCode;
+
+                            await ToastObj.ShowAsync(new ToastModel { Title = "Household Code (" + oldhouseholdCode + ") exists!", Content = "This household code already exists in the database and cannot be duplicated. therefore, we recommend using Household code " + householdCode, CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                            args.Cancel = true;
+                        }
+
+                    }
+                }
+
+                PreviousHouseholdAction = args.RequestType;
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        //finally { StateHasChanged(); }
+    }
+    public async Task ActionComplete(ActionEventArgs<BeneficiaryIdentificationRegister> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            ReviewHeaderGrid.PreventRender(false);
+        }
+        else if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Save) || args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Refresh))
+        {
+            await SavingDialog.HideAsync();
+        }
+    }
+    public async Task OnHeaderActionFailure(Syncfusion.Blazor.Grids.FailureEventArgs args)
+    {
+       // if(args.)
+         await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = args.Error.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+    }
+    
+     private void OnHDistrictChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ADistrict> args)
+    {
+        if (args.ItemData != null)
+        {
+            if(PreviousHouseholdAction == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                ReviewHeaderData.HouseHoldCode = args.ItemData.DistricCode.ToUpper();
+            }
+            SubcountyData = db.ASubcounty.Where(o => o.DistrictId == args.Value).AsNoTracking().ToList();
+        }
+    }
+    private async Task OnHSubcountyChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, ASubcounty> args)
+    {
+        if (args.ItemData != null)
+        {
+            ParishData = db.AParish.Where(o => o.SubcountyId == args.Value).AsNoTracking().ToList();
+            if (PreviousHouseholdAction == Syncfusion.Blazor.Grids.Action.Add)
+            {
+                string householdcode = args.ItemData.SubCountyCode.ToUpper() + "-";
+                ReviewHeaderData.HouseHoldCode = args.ItemData.SubCountyCode.ToUpper() + "-";
+                var data = await spdb.spLastHouseholdNumberGetAllAsync(householdcode);
+                if (data.Count > 0)
+                {
+                    ReviewHeaderData.HouseHoldCode += (data[0].LastHouseholdNumber.Value + 1).ToString("D4");
+                }
+                else
+                {
+                    ReviewHeaderData.HouseHoldCode += (1).ToString("D4");
+                }
+            }
+        }
+    }
+    private void OnHParishChange(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int?, AParish> args)
+    {
+        if (args.ItemData != null)
+        {
+            VillageData = db.AVillage.Where(o => o.ParishId == args.Value).AsNoTracking().ToList();
+        }
+    }
+    #endregion Review Header
+}
+

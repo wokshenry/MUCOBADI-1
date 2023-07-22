@@ -1,0 +1,150 @@
+﻿@page "/ConfirmEmailPage"
+@page "/ConfirmEmailPage/{UserName}"
+@using MUCOBADI.Data;
+@using MUCOBADI.Models;
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@inject NavigationManager NavManager;
+@inject UserManager<IdentityUser> _userManager;
+@inject IJSRuntime JS;
+@inject UserManagement userManagement;
+@using System.Net;
+@using System.Net.Mail;
+<style>
+    body {
+        margin: 0px;
+        padding: 0px;
+        background: url(../image/bg.png);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position-y: -68px;
+        height: 100%;
+        background-color: #000 !important;
+        /*font-family: 'Roboto', 'Roboto Condensed' !important;*/
+        width: 100%;
+        overflow-x: hidden !important;
+    }
+
+    .center-screen {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        min-height: 100vh;
+        /*width:40%;*/
+    }
+
+    h3 {
+        color: ghostwhite;
+        font-family: 'Roboto', 'Roboto Condensed' !important;
+    }
+
+    p {
+        word-wrap: break-word;
+    }
+    .e-spinner-pane.e-customClass .e-spinner-inner .e-spin-material {
+        stroke: white;
+        color:white;
+    }
+</style>
+
+<div class="center-screen">
+    <div style="width:35%;">
+        <h3>Account Activation</h3>
+        <SfSpinner @ref="@ActivationSpinner" Visible="@Isvisible" CssClass="e-customClass" Size="50" Label="Activating account, please wait........."></SfSpinner>
+        @if (!string.IsNullOrEmpty(Returnmessage))
+        {
+            if (Returnmessage.ToLower().Contains("success"))
+            {
+                <p class="badge badge-success" style="width:100%; padding:15px; font-family:Cambria;font-size:large;">@Returnmessage</p>
+            }
+            else
+            {
+                <p class="badge badge-danger" style="width:100%; padding:15px; font-family:Cambria;font-size:large;">@Returnmessage</p>
+            }
+        }
+        <p class="text-center">Return to the login page? <a data-toggle="tab" href="#" @onclick="@BackToLoginClick">Click here</a></p>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public string UserName { get; set; }
+
+    SfSpinner ActivationSpinner;
+
+    private string decriptedSring { get; set; }
+    private bool Isvisible { get; set; }
+    string Returnmessage { get; set; }
+    private void BackToLoginClick()
+    {
+        NavManager.NavigateTo("/", true);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            base.OnInitialized();
+            if (userManagement.IsSignedIn())
+            {
+                string currentUrl = NavManager.Uri + "api/LoginAPI";
+                var text = await JS.InvokeAsync<string>("Logout", currentUrl);
+            }
+            Isvisible = true;
+            if (!string.IsNullOrEmpty(UserName))
+            {
+
+                byte[] c = Convert.FromBase64String(UserName);
+                string _UserName = System.Text.ASCIIEncoding.ASCII.GetString(c);
+
+                //string[] info = decriptedSring.Split(":");
+                var user = await _userManager.FindByNameAsync(_UserName);
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.AspNetEmailConfirmationCode.OrderBy(o => o.ConfirmationId).LastOrDefault(o => o.UserName == _UserName);
+                    if (exists != null)
+                    {
+                        await _userManager.ConfirmEmailAsync(user, exists.ConfirmationCode);
+
+                        await _userManager.SetLockoutEnabledAsync(user, false);
+
+                        exists.ConfirmationDate = DateTime.Now;
+                        db.Entry(exists).State = EntityState.Modified;
+                        db.SaveChanges();
+                        var _user = db.AspNetUsers.FirstOrDefault(o => o.UserName == _UserName);
+
+                        using (var message = new MailMessage("apps.noreply@pau.go.ug", _user.Email))
+                        {
+                            message.Subject = "Successfull PAU EWPRS Account Activation";
+                            message.Body = "Dear " + _user.AccountHolderName + ",<br/><br/>" +
+                                "<p>Kindly be notified that your PAU EWPRS Account has been activated by the Operator. You may now procced to log into the system using the email and password you provided at registration.</p>" +
+                                "<br/> <br/> Regards,<br/><br/> System Notification, <br/> Petroleum Authority of Uganda.<br/><br/>" + DateTime.Now;
+                            message.IsBodyHtml = true;
+                            using (SmtpClient client = new SmtpClient
+                            {
+                                EnableSsl = true,
+                                Host = "smtp.office365.com",//PAU Host
+                                Port = 587,
+                                DeliveryMethod = SmtpDeliveryMethod.Network,
+                                Credentials = new NetworkCredential("apps.noreply@pau.go.ug", "N5Dn0r3p1y")
+                            })
+                            {
+                                //client.EnableSsl = true;
+                                client.Send(message);
+                            }
+                        }
+
+                        Returnmessage = "Success: The account has been successfully activated";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Returnmessage = "Error: something went wrong when processing your request, please try again later or contact the administrator.";
+        }
+        finally { Isvisible = false; }
+    }
+}

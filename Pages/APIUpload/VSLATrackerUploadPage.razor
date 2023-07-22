@@ -1,0 +1,1044 @@
+﻿@*<h3>VSLATrackerUploadPage</h3>*@
+@page "/VSLATrackerUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using System.Globalization;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> VSLA TRacking Tool </strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+          <div class="alert-info" style="padding:10px;">
+            <p>Before uploading this excel, please ensure that the following date columns are in the correct date format (Preferably in the 'dd/MM/yyyy' format);</p>
+            <ul>
+                <li> Group Formation</li>
+                <li>Cycle Saving start Date</li>
+                <li>Reporting Month (enter the first day of the month)</li>
+            </ul>
+        </div>
+    </div>
+  
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+        }
+       @* <p>Row Number: @rownumber <br/>Column Number: @columnnnumber<br/> Used Rows: @usedRows</p>*@
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+   <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            <p class="badge-success" style="padding:10px;">@MessageResponse</p>
+        }
+    </div>
+     <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageError))
+        {
+            <p class="badge-danger" style="padding:10px;">@MessageError</p>
+        }
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    string _MessageResponse;
+    string MessageResponse { get { return _MessageResponse; } set { if (value != null && value != _MessageResponse)
+            {
+                _MessageResponse = value;
+                StateHasChanged();
+            } } }
+ string _Messageerror;
+    string MessageError { get { return _Messageerror; } set { if (value != null && value != _Messageerror)
+            {
+                _Messageerror = value;
+                StateHasChanged();
+            } } }
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        MessageResponse = null;
+        await UploadingSpinner.ShowAsync();
+        try
+        {
+            foreach (var file in args.Files)
+        {
+            using (ExcelEngine excelEngine = new ExcelEngine())
+            {
+
+                //Instantiate the Excel application object
+                IApplication application = excelEngine.Excel;
+
+                file.Stream.Position = 0;
+                //Set the default application version
+                application.DefaultVersion = ExcelVersion.Xlsx;
+                IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                //Get the first worksheet in the workbook into IWorksheet
+                IWorksheet worksheet = workbook.Worksheets[0];
+
+                VslaTrackingTool apiuploadata = new VslaTrackingTool();
+                VslaTrackingToolDirectMember directmember = new();
+                VslaTrackingToolInDirectMember indirectmember = new();
+
+                using (var db = new MUCOBADIContext())
+                {
+                    var months = db.AMonth.ToList();
+                    var districts = db.ADistrict.ToList();
+                    var subcounties = db.ASubcounty.ToList();
+                    var groups = db.AGroups.ToList();
+                    var yesNo = db.AYesNo.ToList();
+                    var vlsa_trainers = db.AVslaGroupTrainer.ToList();
+                    var vslaGroupComposition = db.VslaGroupComposition.ToList();
+                    var memberstatus = db.AClientMemberStatus.ToList();
+                    var borowingReason = db.AReasonForBorrowingLoan.ToList();
+
+                    for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                    {
+                        usedRows = worksheet.UsedRange.LastRow.ToString();
+                        apiuploadata = new VslaTrackingTool();
+                        directmember = new();
+                        indirectmember = new();
+                        int? _district = null;
+                        int? _subcounty = null;
+                        int? _groupCycleId = null;
+                        int? _groupTypeId = 1;
+                        string _vslaGroupCode = null;
+                        int? _groupId = null;
+                        string membercode = null;
+                        string memberName = null;
+
+                        if (worksheet.IsRowVisible(row))
+                        {
+                            rownumber = row.ToString();
+                            await Task.Delay(10);
+                            //ImplementingPartnerId
+                            apiuploadata.ImplementingPartnerId = 1;
+
+                            //GroupId
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 2].Value.Trim()) &&
+                            (worksheet.Range[row, 2].Value.Trim() != ""))
+                            {
+                                columnnnumber = "2";
+                                var obj = groups
+                                .FirstOrDefault(x => x.GroupName.Trim() == worksheet.Range[row, 2].Value.Trim());
+
+                                if (obj != null)
+                                {
+                                    apiuploadata.GroupId = obj.GroupId;
+                                    _groupId = obj.GroupId;
+                                }
+                                else
+                                    _groupId = null;
+                            }
+
+                            //GroupCode
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 3].Value.Trim())
+                               && (worksheet.Range[row, 3].Value.Trim() != ""))
+                            {
+                                columnnnumber = "3";
+                                if(worksheet.Range[row, 3].Value.Trim()=="DIRECT" || worksheet.Range[row, 3].Value.Trim() == "INDIRECT")
+                                {
+                                    _vslaGroupCode = null;
+                                }
+                                else
+                                {
+                                    apiuploadata.GroupCode = worksheet.Range[row, 3].Value.Trim();
+                                    _vslaGroupCode = worksheet.Range[row, 3].Value.Trim();
+                                }
+                            }
+                            else
+                                _vslaGroupCode = null;
+
+                            // Group Formation
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 4].Value.Trim())
+                            && (worksheet.Range[row, 4].Value.Trim() != ""))
+                            {
+                                columnnnumber = "4";
+                                DateTime _date = DateTime.Now;
+                                if(DateTime.TryParseExact(worksheet.Range[row, 4].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.GroupFoundation = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 4].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.GroupFoundation = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 4].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.GroupFoundation = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 4].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.GroupFoundation = _date;
+                                }
+                            }
+
+                            //District
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 6].Value.Trim())
+                                && (worksheet.Range[row, 6].Value.Trim() != ""))
+                            {
+                                columnnnumber = "6";
+                                var district = districts
+                                    .FirstOrDefault(x => x.DistrictDescription.ToLower()
+                                        == worksheet.Range[row, 6].Value.Trim().ToLower());
+                                if (district != null)
+                                {
+                                    apiuploadata.DistrictId = Convert.ToInt32(district.DistrictId);
+                                    _district = Convert.ToInt32(district.DistrictId);
+                                }
+                                else
+                                    _district = null;
+                            }
+
+                            //Sub county
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 7].Value.Trim())
+                                && (worksheet.Range[row, 7].Value.Trim() != ""))
+                            {
+                                columnnnumber = "7";
+                                //var subcounty = subcounties
+                                //.Where(x => x.DistrictId == _district)
+                                //.Where(x => x.SubcountyDescription == worksheet.Range[row, 7].Value.Trim())
+                                //.FirstOrDefault();
+
+                                var subcounty = subcounties.FirstOrDefault(x => x.DistrictId == _district && x.SubcountyDescription.ToLower().Contains(worksheet.Range[row, 7].Value.Trim().ToLower()));
+
+
+                                if (subcounty != null)
+                                {
+                                    apiuploadata.SubcountyId = Convert.ToInt32(subcounty.SubcountyId);
+                                    _subcounty = Convert.ToInt32(subcounty.SubcountyId);
+                                }
+                                else
+                                    _subcounty = null;
+                            }
+
+                            //Cycle
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 8].Value.Trim())
+                                && (worksheet.Range[row, 8].Value.Trim() != ""))
+                            {
+                                columnnnumber = "8";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 8].Value.Trim(), out i))
+                                {
+                                    apiuploadata.GroupCycleId = Convert
+                                    .ToInt32(worksheet.Range[row, 8].Value.Trim());
+                                    _groupCycleId = Convert
+                                        .ToInt32(worksheet.Range[row, 8].Value.Trim());
+                                }
+                                else
+                                    _groupCycleId = null;
+                            }
+                            else
+                                _groupCycleId = null;
+
+                            //Cycle Saving start Date
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 9].Value.Trim())
+                                && (worksheet.Range[row, 9].Value.Trim() != ""))
+                            {
+                                columnnnumber = "9";
+                                //DateTime d;
+                                //bool validDate = DateTime.TryParseExact(
+                                //    worksheet.Range[row, 9].Value.Trim(),
+                                //    new string[] { "dd/MM/yyyy", "MM/dd/yyyy" },
+                                //    CultureInfo.InvariantCulture,
+                                //    DateTimeStyles.None,
+                                //    out d);
+
+                                //if (validDate)
+                                //apiuploadata.CycleSavingStartDate = Convert
+                                //    .ToDateTime(worksheet.Range[row, 9].Value.Trim());
+
+                                DateTime _date = DateTime.Now;
+                                if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.CycleSavingStartDate = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.CycleSavingStartDate = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.CycleSavingStartDate = _date;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    apiuploadata.CycleSavingStartDate = _date;
+                                }
+                            }
+
+                            //Reporting Month
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 10].Value.Trim())
+                                && (worksheet.Range[row, 10].Value.Trim() != ""))
+                            {
+                                columnnnumber = "10";
+
+                                DateTime _date = DateTime.Now;
+                                if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"dd/MM/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    directmember.MonthId = _date.Month;
+                                    indirectmember.MonthId= _date.Month;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"M/d/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    directmember.MonthId = _date.Month;
+                                    indirectmember.MonthId= _date.Month;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"MM/dd/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    directmember.MonthId = _date.Month;
+                                    indirectmember.MonthId= _date.Month;
+                                }
+                                else if(DateTime.TryParseExact(worksheet.Range[row, 9].Value.Trim(),"d/M/yyyy",CultureInfo.InvariantCulture,DateTimeStyles.None, out _date))
+                                {
+                                    directmember.MonthId = _date.Month;
+                                    indirectmember.MonthId= _date.Month;
+                                }
+                                else
+                                {
+                                    var _month = months.FirstOrDefault(o => o.MonthDesc.Contains(worksheet.Range[row, 10].Value.Trim(), StringComparison.CurrentCultureIgnoreCase));
+                                    if(_month != null)
+                                    {
+                                        directmember.MonthId = _month.MonthId;
+                                        indirectmember.MonthId=  _month.MonthId;
+                                    }
+                                }
+                            }
+
+                            //Beneficiary Unique ID  No.
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 11].Value.Trim())
+                                && (worksheet.Range[row, 11].Value.Trim() != ""))
+                            {
+                                columnnnumber = "11";
+                                membercode = worksheet.Range[row, 11].Value.Trim();
+                            }
+
+                            //Full Name 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 12].Value.Trim())
+                                && (worksheet.Range[row, 12].Value.Trim() != ""))
+                            {
+                                columnnnumber = "12";
+                                memberName = worksheet.Range[row, 12].Value.Trim();
+                            }
+                            //Member Status  (A/D)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 15].Value.Trim())
+                                && (worksheet.Range[row, 15].Value.Trim() != ""))
+                            {
+                                columnnnumber = "15";
+                                var _staus = memberstatus.FirstOrDefault(o => o.ClientMemberStatusDes.Contains(worksheet.Range[row, 15].Value.Trim(), StringComparison.CurrentCultureIgnoreCase));
+                                if(_staus != null)
+                                {
+                                    directmember.MemberStausId = _staus.ClientMemberStatusId;
+                                    indirectmember.MemberStausId=  _staus.ClientMemberStatusId;
+                                }
+                            }
+
+                            //Saved LF 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 16].Value.Trim())
+                                && (worksheet.Range[row, 16].Value.Trim() != ""))
+                            {
+                                columnnnumber = "16";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 16].Value.Trim(), out i))
+                                {
+                                    directmember.SavedLf = i;
+                                    indirectmember.SavedLf=  i;
+                                }
+                            }
+
+                            //Saved WF 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 17].Value.Trim())
+                                && (worksheet.Range[row, 17].Value.Trim() != ""))
+                            {
+                                columnnnumber = "17";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 17].Value.Trim(), out i))
+                                {
+                                    directmember.SavedWf = i;
+                                    indirectmember.SavedWf=  i;
+                                }
+                            }
+
+
+                            //Saved OF 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 18].Value.Trim())
+                                && (worksheet.Range[row, 18].Value.Trim() != ""))
+                            {
+                                columnnnumber = "18";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 18].Value.Trim(), out i))
+                                {
+                                    directmember.SavedOf = i;
+                                    indirectmember.SavedOf=  i;
+                                }
+                            }
+
+                            //Borrowed LF
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 19].Value.Trim())
+                                && (worksheet.Range[row, 19].Value.Trim() != ""))
+                            {
+                                columnnnumber = "19";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 19].Value.Trim(), out i))
+                                {
+                                    directmember.BorrowedLf = i;
+                                    indirectmember.BorrowedLf=  i;
+                                }
+                            }
+
+                            //Borrowed WF
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 20].Value.Trim())
+                                && (worksheet.Range[row, 20].Value.Trim() != ""))
+                            {
+                                columnnnumber = "20";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 20].Value.Trim(), out i))
+                                {
+                                    directmember.BorrowedWf = i;
+                                    indirectmember.BorrowedWf=  i;
+                                }
+                            }
+
+                            //Repaid LF
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 22].Value.Trim())
+                                && (worksheet.Range[row, 22].Value.Trim() != ""))
+                            {
+                                columnnnumber = "22";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 22].Value.Trim(), out i))
+                                {
+                                    directmember.RepaidLf = i;
+                                    indirectmember.RepaidLf=  i;
+                                }
+                            }
+
+                            //Repaid WF
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 23].Value.Trim())
+                                && (worksheet.Range[row, 23].Value.Trim() != ""))
+                            {
+                                columnnnumber = "23";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 23].Value.Trim(), out i))
+                                {
+                                    directmember.RepaidWf = i;
+                                    indirectmember.RepaidWf=  i;
+                                }
+                            }
+
+                            //LF Reason For Borrowing
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 24].Value.Trim())
+                                && (worksheet.Range[row, 24].Value.Trim() != ""))
+                            {
+                                columnnnumber = "24";
+
+                                if(worksheet.Range[row, 24].Value.Trim().Length == 1)
+                                {
+                                    if(worksheet.Range[row, 24].Value.Trim().Contains("N", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.LfReasonForBorrowingId = 1;
+                                        indirectmember.LfReasonForBorrowingId=  1;
+                                    }
+                                    else if(worksheet.Range[row, 24].Value.Trim().Contains("E", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.LfReasonForBorrowingId = 2;
+                                        indirectmember.LfReasonForBorrowingId=  2;
+                                    }
+                                    else if(worksheet.Range[row, 24].Value.Trim().Contains("H", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.LfReasonForBorrowingId = 3;
+                                        indirectmember.LfReasonForBorrowingId=  3;
+                                    }
+                                    else if(worksheet.Range[row, 24].Value.Trim().Contains("I", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.LfReasonForBorrowingId = 4;
+                                        indirectmember.LfReasonForBorrowingId=  4;
+                                    }
+                                    else if(worksheet.Range[row, 24].Value.Trim().Contains("O", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.LfReasonForBorrowingId = 5;
+                                        indirectmember.LfReasonForBorrowingId=  5;
+                                    }
+                                    else
+                                    {
+                                        directmember.LfReasonForBorrowingId = 6;
+                                        indirectmember.LfReasonForBorrowingId=  6;
+                                    }
+                                }
+                                else
+                                {
+                                    var _borrow = borowingReason.FirstOrDefault(o => o.ReasonForBorrowingDesc.Contains(worksheet.Range[row, 24].Value.Trim(), StringComparison.CurrentCultureIgnoreCase));
+                                    if(_borrow != null)
+                                    {
+                                        directmember.LfReasonForBorrowingId = _borrow.ReasonForBorrowingId;
+                                        indirectmember.LfReasonForBorrowingId= _borrow.ReasonForBorrowingId;
+                                    }
+                                }
+
+                            }
+
+                            //WF Reason For Borrowing
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 25].Value.Trim())
+                                && (worksheet.Range[row, 25].Value.Trim() != ""))
+                            {
+                                columnnnumber = "25";
+
+                                if(worksheet.Range[row, 25].Value.Trim().Length == 1)
+                                {
+                                    if(worksheet.Range[row, 25].Value.Trim().Contains("N", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.WfReasonForBorrowingId = 1;
+                                        indirectmember.WfReasonForBorrowingId=  1;
+                                    }
+                                    else if(worksheet.Range[row, 25].Value.Trim().Contains("E", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.WfReasonForBorrowingId = 2;
+                                        indirectmember.WfReasonForBorrowingId=  2;
+                                    }
+                                    else if(worksheet.Range[row, 25].Value.Trim().Contains("H", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.WfReasonForBorrowingId = 3;
+                                        indirectmember.WfReasonForBorrowingId=  3;
+                                    }
+                                    else if(worksheet.Range[row, 25].Value.Trim().Contains("I", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.WfReasonForBorrowingId = 4;
+                                        indirectmember.WfReasonForBorrowingId=  4;
+                                    }
+                                    else if(worksheet.Range[row, 25].Value.Trim().Contains("O", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        directmember.WfReasonForBorrowingId = 5;
+                                        indirectmember.WfReasonForBorrowingId=  5;
+                                    }
+                                    else
+                                    {
+                                        directmember.WfReasonForBorrowingId = 6;
+                                        indirectmember.WfReasonForBorrowingId=  6;
+                                    }
+                                }
+                                else
+                                {
+                                    var _borrow = borowingReason.FirstOrDefault(o => o.ReasonForBorrowingDesc.Contains(worksheet.Range[row, 25].Value.Trim(), StringComparison.CurrentCultureIgnoreCase));
+                                    if(_borrow != null)
+                                    {
+                                        directmember.WfReasonForBorrowingId = _borrow.ReasonForBorrowingId;
+                                        indirectmember.WfReasonForBorrowingId= _borrow.ReasonForBorrowingId;
+                                    }
+                                }
+
+                            }
+
+                            //Linkage to External Savings 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 26].Value.Trim())
+                                && (worksheet.Range[row, 26].Value.Trim() != ""))
+                            {
+                                columnnnumber = "26";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 26].Value.Trim(), out i))
+                                {
+                                    apiuploadata.LinkageToExternalSaving = Convert
+                                        .ToInt32(worksheet.Range[row, 26].Value.Trim());
+                                }
+                            }
+
+                            //If Yes, Where?
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 27].Value.Trim())
+                                && (worksheet.Range[row, 27].Value.Trim() != ""))
+                            {
+                                columnnnumber = "27";
+                                apiuploadata.NameLinkageToExternalSaving = worksheet.Range[row, 27].Value.Trim();
+                            }
+
+                            //Members at start of the Cycle
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 28].Value.Trim())
+                                && (worksheet.Range[row, 28].Value.Trim() != ""))
+                            {
+                                columnnnumber = "28";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 28].Value.Trim(), out i))
+                                {
+                                    apiuploadata.NoMembersAtStartOfCycle = Convert.ToInt32(
+                                        worksheet.Range[row, 28].Value.Trim());
+                                }
+                            }
+
+                            //Cumm. Value of Savings this Cycle (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 29].Value.Trim())
+                                && (worksheet.Range[row, 29].Value.Trim() != ""))
+                            {
+                                columnnnumber = "29";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 29].Value, out i))
+                                {
+                                    apiuploadata.CummValueOfSavingsThisCycle = Convert.ToInt32(
+                                        worksheet.Range[row, 29].Value.Trim());
+                                }
+                            }
+
+                            //Loan Fund Cash in box+Bank (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 30].Value.Trim())
+                                && (worksheet.Range[row, 30].Value.Trim() != ""))
+                            {
+                                columnnnumber = "30";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 30].Value, out i))
+                                {
+                                    apiuploadata.LoanCashInBoxBank = Convert
+                                        .ToInt32(worksheet.Range[row, 30].Value.Trim());
+                                }
+                            }
+
+                            //Cash Balance in OVC Fund
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 31].Value.Trim())
+                                && (worksheet.Range[row, 31].Value.Trim() != ""))
+                            {
+                                columnnnumber = "31";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 31].Value, out i))
+                                {
+                                    apiuploadata.CashBalanceInOvcFund = Convert
+                                        .ToInt32(worksheet.Range[row, 31].Value);
+                                }
+                            }
+
+                            //Linkage to External Credit
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 32].Value.Trim())
+                                && (worksheet.Range[row, 32].Value.Trim() != ""))
+                            {
+                                columnnnumber = "32";
+                                var obj = yesNo
+                                .FirstOrDefault(o => o.YesNoDescription.ToLower().Trim() ==
+                                 worksheet.Range[row, 32].Value.ToLower().Trim());
+                                if (obj != null)
+                                    apiuploadata.LinkageToExternalCredit = Convert.ToInt32(obj.YesNoId);
+                            }
+
+                            //If Yes, Where?
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 33].Value.Trim())
+                                && (worksheet.Range[row, 33].Value.Trim() != ""))
+                            {
+                                columnnnumber = "33";
+                                apiuploadata.NameLinkageToExternalCredit = worksheet.Range[row, 33].Value.Trim();
+                            }
+
+                            //No. of members attending meeting
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 34].Value.Trim())
+                                && (worksheet.Range[row, 34].Value.Trim() != ""))
+                            {
+                                columnnnumber = "34";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 34].Value, out i))
+                                {
+                                    apiuploadata.NoMemberAttendingMeeting = Convert.ToInt32(
+                                        worksheet.Range[row, 34].Value.Trim());
+                                }
+                            }
+
+                            //Value of Loans outstanding (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 35].Value.Trim())
+                                && (worksheet.Range[row, 35].Value.Trim() != ""))
+                            {
+                                columnnnumber = "35";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 35].Value.Trim(), out i))
+                                {
+                                    apiuploadata.ValueOfLoanOutStanding = Convert.ToInt32(
+                                        worksheet.Range[row, 35].Value.Trim());
+                                }
+                            }
+
+                            //Cash in Welfare Fund (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 36].Value.Trim())
+                                && (worksheet.Range[row, 36].Value.Trim() != ""))
+                            {
+                                columnnnumber = "36";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 36].Value.Trim(), out i))
+                                {
+                                    apiuploadata.CashInWelfareFund = Convert.ToInt32(
+                                        worksheet.Range[row, 36].Value.Trim());
+                                }
+                            }
+
+                            //Cumulative No. of OVC Accessing T.C.S
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 37].Value.Trim())
+                                && (worksheet.Range[row, 37].Value.Trim() != ""))
+                            {
+                                columnnnumber = "37";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 37].Value, out i))
+                                {
+                                    apiuploadata.CumulativeNoOvcAccessingTcs = Convert.ToInt32(
+                                        worksheet.Range[row, 37].Value);
+                                }
+                            }
+                            //Amount of Savings Deposited to FFI (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 38].Value.Trim())
+                                && (worksheet.Range[row, 38].Value.Trim() != ""))
+                            {
+                                columnnnumber = "38";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 38].Value.Trim(), out i))
+                                {
+                                    apiuploadata.AmountSavingDepositedToFfi = Convert.ToInt32(
+                                        worksheet.Range[row, 38].Value.Trim());
+                                }
+                            }
+                            //No. of Loans Outstanding
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 39].Value.Trim())
+                                && (worksheet.Range[row, 39].Value.Trim() != ""))
+                            {
+                                columnnnumber = "39";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 39].Value.Trim(), out i))
+                                {
+                                    apiuploadata.ValueOfLoanOutStanding = Convert.ToInt32(
+                                        worksheet.Range[row, 39].Value.Trim());
+                                }
+                            }
+
+                            //Unpaid balance of late loans (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 40].Value.Trim())
+                                && (worksheet.Range[row, 40].Value.Trim() != ""))
+                            {
+                                columnnnumber = "40";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 40].Value.Trim(), out i))
+                                {
+                                    apiuploadata.UnpaidBalanceOfLateLoan = Convert.ToInt32(
+                                        worksheet.Range[row, 40].Value.Trim());
+                                }
+                            }
+
+                            //Cumm. value of Property Now (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 41].Value.Trim())
+                                && (worksheet.Range[row, 41].Value.Trim() != ""))
+                            {
+                                columnnnumber = "41";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 41].Value.Trim(), out i))
+                                {
+                                    apiuploadata.CummValueOfPropertyNow = Convert.ToInt32(
+                                        worksheet.Range[row, 41].Value.Trim());
+                                }
+                            }
+
+                            //Total Cumulative cash pay-out in OVC Fund
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 42].Value.Trim())
+                                && (worksheet.Range[row, 42].Value.Trim() != ""))
+                            {
+                                columnnnumber = "42";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 42].Value.Trim(), out i))
+                                {
+                                    apiuploadata.TotalCumulativeCashPayoutOvcFund = Convert.ToInt32(
+                                        worksheet.Range[row, 42].Value.Trim());
+                                }
+                            }
+
+                            //Vale of Outstanding Loans at FFI (UGX)
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 43].Value.Trim())
+                                && (worksheet.Range[row, 43].Value.Trim() != ""))
+                            {
+                                columnnnumber = "43";
+                                double i = 0;
+                                if (double.TryParse(worksheet.Range[row, 43].Value.Trim(), out i))
+                                {
+                                    apiuploadata.ValueOfLoanOutStanding = Convert.ToInt32(
+                                        worksheet.Range[row, 43].Value.Trim());
+                                }
+                            }
+
+                            //No. of members running IGAs
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 44].Value.Trim())
+                                && (worksheet.Range[row, 44].Value.Trim() != ""))
+                            {
+                                columnnnumber = "44";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 44].Value.Trim(), out i))
+                                {
+                                    apiuploadata.NoOfMembersRunningIgas = Convert.ToInt32(
+                                        worksheet.Range[row, 44].Value.Trim());
+                                }
+                            }
+                            //No. of Bens. Trained in F.L
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 45].Value.Trim())
+                                && (worksheet.Range[row, 45].Value.Trim() != ""))
+                            {
+                                columnnnumber = "45";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 45].Value.Trim(), out i))
+                                {
+                                    apiuploadata.NoOfBensTrainedFl = Convert.ToInt32(
+                                        worksheet.Range[row, 45].Value.Trim());
+                                }
+                            }
+
+                            //No. of Bens. Trained in S.P.M
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 46].Value.Trim())
+                                && (worksheet.Range[row, 46].Value.Trim() != ""))
+                            { columnnnumber = "46";
+                                int i = 0;
+                                if (int.TryParse(worksheet.Range[row, 46].Value.Trim(), out i))
+                                {
+                                    apiuploadata.NoOfBensTrainedSpm = Convert.ToInt32(
+                                        worksheet.Range[row, 46].Value.Trim());
+                                }
+                            }
+                            //VSLA Group trained by 
+                            if (!string.IsNullOrEmpty(worksheet.Range[row, 47].Value.Trim())
+                                && (worksheet.Range[row, 47].Value.Trim() != ""))
+                            {
+                                columnnnumber = "47";
+                                var obj = vlsa_trainers
+                                    .FirstOrDefault(x => x.VslaGroupTrainerDesc.ToLower().Trim()
+                                        == worksheet.Range[row, 47].Value.ToLower().Trim());
+
+                                if (obj != null)
+                                    apiuploadata.VslaGroupTrainerId
+                                        = Convert.ToInt32(obj.VslaGroupTrainerId);
+                            }
+
+                            VslaGroupComposition _table1 = db.VslaGroupComposition
+                                .FirstOrDefault(
+                                    o => o.DistrictId == _district &&
+                                    o.SubcountyId == _subcounty &&
+                                    o.GroupTypeId == _groupTypeId &&
+                                    (o.GroupCode == _vslaGroupCode || o.GroupCode== null) &&
+                                    o.GroupId == _groupId);
+
+                            if (_table1 != null)
+                            {
+                                int? compositionCode = null;
+
+                                compositionCode = _table1.GroupCompositionCode;
+
+                                apiuploadata.GroupCompositionCode = Convert.ToInt32(compositionCode);
+
+                                VslaTrackingTool _table = db.VslaTrackingTool
+                                    .FirstOrDefault(
+                                        o => o.GroupCompositionCode == compositionCode &&
+                                        o.GroupCycleId == _groupCycleId
+                                    );
+
+                                if (_table == null)
+                                {
+                                    int id = 1;
+                                    var last = db.VslaTrackingTool.OrderBy(o => o.TrackingToolId).ToList().LastOrDefault();
+                                    if (last != null)
+                                    {
+                                        id = (last.TrackingToolId + 1);
+                                    }
+                                    apiuploadata.TrackingToolId = id;
+                                    try
+                                    {
+                                        db.VslaTrackingTool.Add(apiuploadata);
+                                        db.SaveChanges();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        apiuploadata.TrackingToolId = _table.TrackingToolId;
+                                        //db.Entry(_table).CurrentValues.SetValues(apiuploadata);
+                                        //db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                        //db.SaveChanges();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw ex;
+                                    }
+                                }
+                                if (indirectmember.MonthId == null)
+                                {
+                                    
+                                }
+                                var directmemberexists = db.ViewVslaGroupDirectMembers.FirstOrDefault(o => o.HouseHoldMemberCode == membercode && o.GroupCompositionCode == apiuploadata.GroupCompositionCode);
+                                if(directmemberexists != null)
+                                {
+                                    directmember.VslaGroupDirectMemberId = directmemberexists.VslaGroupDirectMemberId;
+                                    directmember.TrackingToolId = apiuploadata.TrackingToolId;
+
+                                    var exists = db.VslaTrackingToolDirectMember.FirstOrDefault(o => o.VslaGroupDirectMemberId == directmember.VslaGroupDirectMemberId && o.TrackingToolId == apiuploadata.TrackingToolId && o.MonthId == directmember.MonthId);
+                                    if(exists == null && directmember.MonthId != null)
+                                    {
+                                        int id = 1;
+                                        var last = db.VslaTrackingToolDirectMember.OrderBy(o => o.VslatrackingToolDirectMemberId).ToList().LastOrDefault();
+                                        if (last != null)
+                                        {
+                                            id = (last.VslatrackingToolDirectMemberId + 1);
+                                        }
+                                        directmember.VslatrackingToolDirectMemberId = id;
+                                        db.VslaTrackingToolDirectMember.Add(directmember);
+                                        db.SaveChanges();
+                                    }
+                                    else if(exists != null)
+                                    {
+                                        if(directmember.MemberStausId != null)
+                                        {  
+                                             exists.MemberStausId = directmember.MemberStausId;
+                                        }
+                                        if(directmember.LfReasonForBorrowingId != null)
+                                        {  
+                                              exists.LfReasonForBorrowingId = directmember.LfReasonForBorrowingId;
+                                        }
+                                        if(directmember.WfReasonForBorrowingId != null)
+                                        {  
+                                            exists.WfReasonForBorrowingId = directmember.WfReasonForBorrowingId;
+                                        }
+                                          exists.SavedLf = directmember.SavedLf;
+                                           exists.SavedOf = directmember.SavedOf;
+                                            exists.SavedWf = directmember.SavedWf;
+                                             exists.BorrowedLf = directmember.BorrowedLf;
+                                              exists.BorrowedWf = directmember.BorrowedWf;
+                                               exists.RepaidLf = directmember.RepaidLf;
+                                                exists.RepaidWf = directmember.RepaidWf;
+                                                
+                                                  
+                                        ///db.Entry(exists).CurrentValues.SetValues(directmember);
+                                        db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                        db.SaveChanges();
+                                    }
+                                }
+                                else
+                                {
+                                    var indirectmemberexists = db.ViewVslaGroupIndirectMember.FirstOrDefault(o => o.IndirectMemberCode == membercode && o.MemberName==memberName && o.GroupCompositionCode == apiuploadata.GroupCompositionCode);
+                                    if(indirectmemberexists != null)
+                                    {
+                                        indirectmember.VslaGroupIndirectMemberId = indirectmemberexists.VslaGroupIndirectMemberId;
+                                        indirectmember.TrackingToolId = apiuploadata.TrackingToolId;
+
+                                        var exists = db.VslaTrackingToolInDirectMember.FirstOrDefault(o => o.VslaGroupIndirectMemberId == indirectmember.VslaGroupIndirectMemberId && o.TrackingToolId == apiuploadata.TrackingToolId && o.MonthId == directmember.MonthId);
+                                        if(exists == null && indirectmember.MonthId != null)
+                                        {
+                                            int id = 1;
+                                            var last = db.VslaTrackingToolInDirectMember.OrderBy(o => o.VslatrackingToolInDirectMemberId).ToList().LastOrDefault();
+                                            if (last != null)
+                                            {
+                                                id = (last.VslatrackingToolInDirectMemberId + 1);
+                                            }
+                                            indirectmember.VslatrackingToolInDirectMemberId = id;
+                                            db.VslaTrackingToolInDirectMember.Add(indirectmember);
+                                            db.SaveChanges();
+                                        }
+                                        else if(exists != null)
+                                        {
+                                            if(indirectmember.MemberStausId != null)
+                                            {  
+                                                 exists.MemberStausId = indirectmember.MemberStausId;
+                                            }
+                                            if(indirectmember.LfReasonForBorrowingId != null)
+                                            {  
+                                                  exists.LfReasonForBorrowingId = indirectmember.LfReasonForBorrowingId;
+                                            }
+                                            if(indirectmember.WfReasonForBorrowingId != null)
+                                            {  
+                                                exists.WfReasonForBorrowingId = indirectmember.WfReasonForBorrowingId;
+                                            }
+                                            //exists.MemberStausId = indirectmember.MemberStausId;
+                                          exists.SavedLf = indirectmember.SavedLf;
+                                           exists.SavedOf = indirectmember.SavedOf;
+                                            exists.SavedWf = indirectmember.SavedWf;
+                                             exists.BorrowedLf = indirectmember.BorrowedLf;
+                                              exists.BorrowedWf = indirectmember.BorrowedWf;
+                                               exists.RepaidLf = indirectmember.RepaidLf;
+                                                exists.RepaidWf = indirectmember.RepaidWf;
+                                                 //exists.LfReasonForBorrowingId = indirectmember.LfReasonForBorrowingId;
+                                                 // exists.WfReasonForBorrowingId = indirectmember.WfReasonForBorrowingId;
+                                            //db.Entry(exists).CurrentValues.SetValues(indirectmember);
+                                            db.Entry(exists).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                            db.SaveChanges();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        StateHasChanged();
+                    }
+                    MessageResponse = "VSLA Tracking Tool has been successfully uploaded";
+                    rownumber = null;
+                    await UploadingSpinner.HideAsync();
+                }
+            }
+            file.Stream.Close();
+        }
+        }
+        catch(Exception ex)
+        {
+             MessageError = $"an error ({ex.Message.ToString()}) occured while trying to read records on row {rownumber} and at column {columnnnumber}";
+        }
+        finally{
+            await UploadingSpinner.HideAsync();
+        }
+    }
+}

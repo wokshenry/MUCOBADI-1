@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace MUCOBADI.Models
+{
+    public partial class ViewADistrict
+    {
+        public int DistrictId { get; set; }
+        public string DistrictDescription { get; set; }
+        public string DistricCode { get; set; }
+        public int? RegionId { get; set; }
+        public string RegionDescription { get; set; }
+    }
+}

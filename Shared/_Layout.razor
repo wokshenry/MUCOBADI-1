@@ -1,0 +1,553 @@
+﻿@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using MUCOBADI.Models
+
+<style>
+    .blazored-toast-container {
+        z-index: 4000;
+    }
+
+    .e-toast-container {
+        z-index: 4000;
+    }
+</style>
+
+<AuthorizeView>
+    <Authorized>
+        @*<SfMenu Items="@menuItems" TValue="MenuItem" EnableScrolling="true" ShowItemOnClick="true"></SfMenu>*@
+        <SfMenu Items="@menuItems" HamburgerMode="true" TValue="MenuItem" EnableScrolling="true" ShowItemOnClick="true"></SfMenu>
+        <SfMenu Items="@menuItems" HamburgerMode="false" TValue="MenuItem" EnableScrolling="true" ShowItemOnClick="true"></SfMenu>
+    </Authorized>
+    <NotAuthorized>
+
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    public List<MenuItem> menuItems = new List<MenuItem>();
+    protected override void OnAfterRender(bool firstRender)
+    {
+        var isSignedIn = userManagement.IsSignedIn();
+        if (isSignedIn)
+        {
+            bool SuperAdministrator = false;
+            bool Administrator = false;
+            bool MonitoringandEvaluationOfficer = false;
+            bool CaseCareWorker = false;
+            bool Cdo = false;
+            bool FieldAssistant = false;
+            bool BusinessIncubationAssistant = false;
+            bool Cfpu = false;
+            bool Counsellor = false;
+            bool ArtIncharge = false;
+            bool Supervisor = false;
+            bool DataEntrant = false;
+            bool MELDirector = false;
+            bool MELManager = false;
+            bool ClusterManager = false;
+            bool ProgramSpecialist = false;
+            bool DatabaseOfficer = false;
+            bool Sheleads = false;
+            bool Globalfund = false;
+            bool Yaw = false;
+
+            using (var db = new MUCOBADIContext())
+            {
+                var data = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                if (data != null)
+                {
+                    if (data.RoleName.Contains("Super Administrator"))
+                    {
+                        SuperAdministrator = true;
+                    }
+                    else if (data.RoleName.Contains("Administrator"))
+                    {
+                        Administrator = true;
+                    }
+                    else if (data.RoleName.Contains("Monitoring & Evaluation Officer"))
+                    {
+                        MonitoringandEvaluationOfficer = true;
+                    }
+                    else if (data.RoleName.Contains("Case Care Worker"))
+                    {
+                        CaseCareWorker = true;
+                    }
+                    else if (data.RoleName.Contains("Cdo"))
+                    {
+                        Cdo = true;
+                    }
+                    else if (data.RoleName.Contains("Field Assistant"))
+                    {
+                        FieldAssistant = true;
+                    }                    
+                    else if (data.RoleName.Contains("Business Incubation Assistant"))
+                    {
+                        BusinessIncubationAssistant = true;
+                    }
+                    else if (data.RoleName.Contains("Cfpu"))
+                    {
+                        Cfpu = true;
+                    }
+                    else if (data.RoleName.Contains("Counsellor"))
+                    {
+                        Counsellor = true;
+                    }
+                    else if (data.RoleName.Contains("Art Incharge"))
+                    {
+                        ArtIncharge = true;
+                    }
+                    else if (data.RoleName.Contains("Supervisor"))
+                    {
+                        Supervisor = true;
+                    }
+                    else if (data.RoleName.Contains("DataEntrant"))
+                    {
+                        DataEntrant = true;
+                    }
+                    else if (data.RoleName.Contains("MEL Director"))
+                    {
+                        MELDirector = true;
+                    }
+                    else if (data.RoleName.Contains("MEL Manager"))
+                    {
+                        MELManager = true;
+                    }
+                    else if (data.RoleName.Contains("Cluster Manager"))
+                    {
+                        ClusterManager = true;
+                    }
+                    else if (data.RoleName.Contains("Program Specialist"))
+                    {
+                        ProgramSpecialist = true;
+                    }
+                    else if (data.RoleName.Contains("Database Officer"))
+                    {
+                        DatabaseOfficer = true;
+                    }                    
+                    else if (data.ServiceProviderId == 2)
+                    {
+                        Sheleads = true;
+                    }
+                    else if (data.ServiceProviderId == 3)
+                    {
+                        Globalfund = true;
+                    }
+                    else if (data.ServiceProviderId == 4)
+                    {
+                        Yaw = true;
+                    }
+                }
+            }
+
+
+            //menuItems.Add(new MenuItem { Text = "DASHBOARD", Url = "/DashboardPage", IconCss = "fa fa-pie-chart" });
+            //if (Operator == true || Administrator == true)
+            //{
+            if (SuperAdministrator == true || Administrator == true || 
+                MonitoringandEvaluationOfficer == true || CaseCareWorker == true || 
+                Cdo == true || FieldAssistant == true|| BusinessIncubationAssistant == true || 
+                Cfpu == true || Counsellor == true || ArtIncharge == true || Supervisor == true
+                || DataEntrant == true || MELDirector == true || MELManager == true || ClusterManager == true
+                || ProgramSpecialist == true || DatabaseOfficer == true)
+            {
+                menuItems.Add(
+                  new MenuItem
+                  {
+                      Text = "DASHBOARD",
+                      IconCss = "fa fa-cogs",
+                      Items = new List<MenuItem>
+                       {  
+                                      new MenuItem{ Text = "ICARE DASHBOARD", IconCss="fa fa-signal",  Url="/DashboardMaintenancePage" },
+                                      new MenuItem{ Separator=true},                
+                                      new MenuItem{ Text = "MUCOBADI DASHBOARD", IconCss="fa fa-signal",  Url="/StakeHoldersDashboardPage" },
+                                      new MenuItem{ Separator=true},   
+                                      new MenuItem{ Text = "PROJECT DATA ENTRY", IconCss="fa fa-bullseye",  Url="/StakeholderDataCapture" },
+                                      new MenuItem{ Separator=true},                                      
+                       }
+
+                  }
+                );  
+            menuItems.Add(
+                new MenuItem
+                    {
+                        Text = "DATA ENTRY TOOLS",
+                        Items = new List<MenuItem>
+                      {
+                      new MenuItem
+              {
+                  Text = "BENEFICIARY PROFILING TOOLS",
+                  Items = new List<MenuItem>
+                  {
+                      new MenuItem{ Text = "BENEFICIARY IDENTIFICATION REGISTER",  Url="/NewIdentificationRegisterPage",IconCss="fa fa-file-text"},
+                  }
+              },
+                      new MenuItem{ Separator=true},
+                     new MenuItem
+              {
+                  Text = "ASSESSMENT TOOLS",
+                  Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "HOUSEHOLD VULNERABILITY ASSESSMENT TOOL (HVAT) FOR CAREGIVERS",  Url="/HVATPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ADOLESCENT VULNERABILITY ASSESSMENT TOOL (AVAT)",  Url="/AVATPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "COMMUNITY TB SENSITIZATION",  Url="/TBSensitizationPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "HIV AND TB RISK ASSESSMENT TOOL",  Url="/HIVTBRiskAssessmentToolPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      //new MenuItem{ Text = "OVC HOUSEHOLD GRADUATION CHECKLIST",  Url="/GraduationCheckListPage",IconCss="fa fa-file-text"},
+                       new MenuItem{ Text = "HOUSEHOLD GRADUATION BENCHMARK ASSESSMENT TOOL",  Url="/GraduationBenchmarkPage",IconCss="fa fa-file-text"},
+                  }
+              } ,
+                      new MenuItem{ Separator=true},
+                      new MenuItem
+             {
+                 Text = "ENROLMENT TOOLS",
+                 Items = new List<MenuItem>
+                   {
+                      new MenuItem{ Text = "BENEFICIARY ENROLMENT REGISTER",  Url="/BeneficiaryEnrolmentRegisterPage",IconCss="fa fa-file-text"},
+                 }
+             },
+                      new MenuItem{ Separator=true},
+                      new MenuItem
+              {
+                  Text = "SERVICE DELIVERY TOOLS",
+                  Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "GENERAL SERVICE DELIVERY TOOL",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "HOME VISIT SERVICE REPORTING TOOL",  Url="/HomeVisitServiceReportingToolPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID",  Url="/HIV_TB_TrackingAndMonitoringToolPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "LINKAGE’S TOOL",  Url="/NewLinkageTrackingToolPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "REFERRAL FORM",  Url="/ReferralFormPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "OVC SCHOOL ATTANDACE & TRANSITION MONITORING TOOL",  Url="/SchoolAttendencyPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "CASE PLANNING TOOL",  Url="/CaseCarePage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "MONTHLY CASE TRACKING REGISTER",  Url="/CaseTrackingRegisterPage",IconCss="fa fa-file-text"},                      
+                  }
+                      },
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "PREVENTIVE CURRICULUM",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "GROUP/ASSOCIATION COMPOSITION",  Url="/GroupCompositionPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "SINOVUYO-PARENTING REGISTERS",  Url="/SINOParentingRegister",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ECD REGISTERS",  Url="/ECDRegisterPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "COMMUNITY TRAINING REGISTER",  Url="/CommunityTraingRegisterPage",IconCss="fa fa-file-text"},
+                      //new MenuItem{ Separator=true},
+                      //new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID",  Url="/HIV_TB_TrackingAndMonitoringToolPage",IconCss="fa fa-file-text"},
+                      //new MenuItem{ Separator=true},
+                      //new MenuItem{ Text = "BENEFICIARY ENROLMENT REGISTER",  Url="/BeneficiaryEnrolmentRegisterPage",IconCss="fa fa-file-text"},
+
+                  }
+                      },
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ECONOMIC EMPOWERMENT (VSLA TOOLS)",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "VSLA+ GROUP/ASSOCIATION COMPOSITION",  Url="/VSLAGroupCompositionPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "VSLA TRACKING TOOL",  Url="/VSLATrackingToolPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "VSLA GROUP SHARE-OUT TOOL",  Url="/VSLAShareOutPage",IconCss="fa fa-file-text"},
+                  }
+                      }
+                  }
+              },
+                      }
+                    }
+                );
+            menuItems.Add(new MenuItem { Text = "MAP", Url = "/MapsPage", IconCss = "fa fa-map-pin" });
+            menuItems.Add(new MenuItem { Text = "REPORTS", IconCss = "fa fa-file-excel-o",
+                    Items = new List<MenuItem>
+                  {
+                      new MenuItem
+              {
+                  Text = "SERVICE LAYERING REPORT",
+                  Url="/LayeringReportPage"
+              },
+                      new MenuItem{ Separator=true},
+                                new MenuItem
+              {
+                  Text = "BENEFICIARY IDENTIFICATION REGISTER REPORT",
+                  Url="/BeneficiaryIdentificationRegisterReport"
+              },
+                      new MenuItem{ Separator=true},
+                     new MenuItem
+              {
+                  Text = "ASSESSMENT TOOLS",
+                  Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "HOUSEHOLD VULNERABILITY ASSESSMENT TOOL (HVAT) FOR CAREGIVERS",  Url="/HVATReport",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ADOLESCENT VULNERABILITY ASSESSMENT TOOL (AVAT) REPORT",  Url="/AvatReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "COMMUNITY TB SENSITIZATION",  Url="/TBSensitizationPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "HIV AND TB RISK ASSESSMENT TOOL",  Url="/HIVTBRiskAssessmentToolReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "OVC HOUSEHOLD GRADUATION CHECKLIST",  Url="/GraduationCheckListReportPage",IconCss="fa fa-file-text"},
+                  }
+              } ,
+                      new MenuItem{ Separator=true},
+                      new MenuItem
+             {
+                 Text = "ENROLMENT TOOLS",
+                 Items = new List<MenuItem>
+                   {
+                      new MenuItem{ Text = "BENEFICIARY ENROLMENT REGISTER REPORT",  Url="/BeneficiaryEnrolmentRegisterReportPage",IconCss="fa fa-file-text"},
+                 }
+             },
+                      new MenuItem{ Separator=true},
+                      new MenuItem
+              {
+                  Text = "SERVICE DELIVERY TOOLS",
+                  Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "GENERAL SERVICE DELIVERY TOOL",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "HOME VISIT SERVICE REPORTING TOOL",  Url="/HomeVisitServiceReportingToolReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID REPORT",  Url="/HIV_TB_TrackingAndMonitoringToolReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "LINKAGE’S TOOL",  Url="/LinkageTrackingToolReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "REFERRAL FORM",  Url="/ReferralFormReport",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "OVC SCHOOL ATTANDACE & TRANSITION MONITORING TOOL",  Url="/SchoolAttendencyReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "CASE PLANNING TOOL",  Url="/CaseCareReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "MONTHLY CASE TRACKING REGISTER",  Url="/MonthlyCaseTrackingRegisterReportPage",IconCss="fa fa-file-text"},
+                  }
+                      },
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "PREVENTIVE CURRICULUM",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      new MenuItem{ Text = "VSLA+ GROUP/ASSOCIATION COMPOSITION",  Url="/GroupCompositionReportPageReport",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "SINOVUYO-PARENTING REGISTERS",  Url="/SINOParentingAttendenceRegisterReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ECD REGISTERS",  Url="/ECDAttendenceRegisterReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "COMMUNITY TRAINING REGISTER",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                      {
+                          new MenuItem{ Text = "FINANCIAL LITERACY",  Url="/CTRFinancialLiteracyReportPage",IconCss="fa fa-file-text"},
+                          new MenuItem{ Separator=true},
+                          new MenuItem{ Text = "JOURNEY'S PLUS",  Url="/JourneysPlusReportPage",IconCss="fa fa-file-text"},
+                          new MenuItem{ Separator=true},
+                          new MenuItem{ Text = "VSLA METHODOLOGY SESSION GUIDE",  Url="/VSLAMethodologyReportPage",IconCss="fa fa-file-text"},
+                          new MenuItem{ Separator=true},
+                          new MenuItem{ Text = "SELECTION, PLANNING AND MGT SESSION GUIDE",  Url="/SelectionPlanningReportPage",IconCss="fa fa-file-text"},
+                      }
+                      },
+                      //new MenuItem{ Separator=true},
+                      //new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID",  Url="/HIV_TB_TrackingAndMonitoringToolPage",IconCss="fa fa-file-text"},
+                      //new MenuItem{ Separator=true},
+                      //new MenuItem{ Text = "BENEFICIARY ENROLMENT REGISTER",  Url="/BeneficiaryEnrolmentRegisterPage",IconCss="fa fa-file-text"},
+
+                  }
+                      },
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "ECONOMIC EMPOWERMENT (VSLA TOOLS)",IconCss="fa fa-file-text",
+                      Items = new List<MenuItem>
+                    {
+                      //new MenuItem{ Text = "VSLA+ GROUP/ASSOCIATION COMPOSITION",  Url="/VSLAGroupCompositionPage",IconCss="fa fa-file-text"},
+                      //new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "VSLA TRACKING TOOL",  Url="/VSLATrackingToolReportPage",IconCss="fa fa-file-text"},
+                      new MenuItem{ Separator=true},
+                      new MenuItem{ Text = "VSLA GROUP SHARE-OUT TOOL",  Url="/VSLAGroupShareOutReportPage",IconCss="fa fa-file-text"},
+                  }
+                      }
+                  }
+              },
+                  }
+                });
+            
+                if (SuperAdministrator == true || Administrator == true)
+                {
+                    menuItems.Add(
+                      new MenuItem
+                          {
+                              Text = "DOWNLOAD TEMPLATES",
+                              IconCss = "fa fa-file-excel-o",
+                              Items = new List<MenuItem>
+                                {
+                              new MenuItem{ Text = "IP GRANULAR DATA DOWNLOAD TEMPLATE",  Url="/ExcelDownload/APIUploadSheet.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "VIRALLOAD TRACKER TOOL TEMPLATE",  Url="/ExcelDownload/ViralLoadTrackerTool.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "EID TEMPLATE",  Url="/ExcelDownload/EIDTool.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "ECD TEMPLATE",  Url="/ExcelDownload/ECDTool.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "HOME VISIT TOOL TEMPLATE",  Url="/ExcelDownload/Home-Visit.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "JOURNEYS PLUS TEMPLATE",  Url="/ExcelDownload/JourneysPlus.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "REFERRAL FORM TEMPLATE",  Url="/ExcelDownload/ReferralForm.xlsx",IconCss="fa fa-file-excel-o"},
+                              new MenuItem{ Separator=true},
+                              new MenuItem{ Text = "GROUP COMPOSITION TEMPLATE",  Url="/ExcelDownload/GRoupCompositionUpload.xlsx",IconCss="fa fa-file-excel-o"},
+                                }
+                          }
+                        );
+                }
+        }
+
+            if (SuperAdministrator == true || Administrator == true)
+            {
+                menuItems.Add(
+                  new MenuItem
+                  {
+                      Text = "UTILITIES",
+                      IconCss = "fa fa-cogs",
+                      Items = new List<MenuItem>
+                        {
+                                      new MenuItem{ Text = "PRIMARY DATA", IconCss="fa fa-cog",  Url="/PrimaryDataPage" },
+                                      new MenuItem{ Separator=true},                                      
+                                      //new MenuItem{ Text = "STAKEHOLDER TARGETS", IconCss="fa fa-bullseye",  Url="/targetstakeholdersPage" },
+                                      //new MenuItem{ Separator=true},                                      
+                                      new MenuItem { Text = "MANAGE USERS", IconCss="fa fa-users", Items= new List<MenuItem>()
+                                        {
+                                            new MenuItem { Text = "REGISTER SYSTEM USER", IconCss="fa fa-user-plus", Url = "/Account/RegisterUserPage" },
+                                            new MenuItem { Separator = true },
+                                            new MenuItem { Text = "MANAGE USER PASSWORDS",IconCss="fa fa-key", Url = "/Account/ChangeUserPasswordPage" },
+                                            new MenuItem { Separator = true },
+                                            new MenuItem { Text = "ACCOUNT MANAGEMENT",IconCss="fa fa-list", Url = "/Account/UserManagementPage" }
+                                        }
+
+                                      }
+                            }
+
+                  }
+                );
+                 menuItems.Add(new MenuItem { Text = "EXCEL UPLOAD", IconCss = "fa fa-file-excel-o",
+                    Items = new List<MenuItem>
+                      {
+                          new MenuItem
+                          {
+                              Text = "IP GRANULAR DATA",
+                              Url="/APIUploadPage"
+                              , IconCss = "fa fa-file-excel-o"
+                          },
+                          new MenuItem{ Separator=true},
+                           new MenuItem
+                          {
+                              Text = "GROUP COMPOSITION",
+                              Url="/GroupCompositionUploadPage"
+                              , IconCss = "fa fa-file-excel-o"
+                          },
+                          new MenuItem{ Separator=true},
+                          new MenuItem{ Text = "GENERAL SERVICE DELIVERY TOOL",IconCss="fa fa-file-excel-o",
+                              Items = new List<MenuItem>
+                              {
+                                  new MenuItem{ Text = "HOME VISIT SERVICE REPORTING TOOL",  Url="/HomeVisitUploadPage",IconCss="fa fa-file-excel-o"},
+                                  new MenuItem{ Separator=true},
+                                  new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID UPLOAD",  Url="/HIVTBTrackingFormUploadPage",IconCss="fa fa-file-excel-o"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "LINKAGE’S TOOL",  Url="/LinkageTrackingToolReportPage",IconCss="fa fa-file-text"},
+                                  new MenuItem{ Separator=true},
+                                  new MenuItem{ Text = "REFERRAL FORM",  Url="/ReferralUploadPage",IconCss="fa fa-file-excel-o"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "OVC SCHOOL ATTANDACE & TRANSITION MONITORING TOOL",  Url="/SchoolAttendencyReportPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "CASE PLANNING TOOL",  Url="/CaseCareReportPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "MONTHLY CASE TRACKING REGISTER",  Url="/MonthlyCaseTrackingRegisterReportPage",IconCss="fa fa-file-text"},
+                              }
+                          },
+                          new MenuItem{ Separator=true},
+                          new MenuItem{ Text = "PREVENTIVE CURRICULUM",IconCss="fa fa-file-text",
+                              Items = new List<MenuItem>
+                                {
+                                  //new MenuItem{ Text = "GROUP/ASSOCIATION COMPOSITION",  Url="/GroupCompositionPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  new MenuItem{ Text = "SINOVUYO-PARENTING REGISTERS",  Url="/SinovuyoUploadPage",IconCss="fa fa-file-excel-o"},
+                                  new MenuItem{ Separator=true},
+                                  new MenuItem{ Text = "ECD REGISTERS",  Url="/ECDUploadPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "COMMUNITY TRAINING REGISTER",  Url="/CommunityTraingRegisterPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "TRACKING FORM FOR MONITORING HIV, TB CARE AND EID",  Url="/HIV_TB_TrackingAndMonitoringToolPage",IconCss="fa fa-file-text"},
+                                  //new MenuItem{ Separator=true},
+                                  //new MenuItem{ Text = "BENEFICIARY ENROLMENT REGISTER",  Url="/BeneficiaryEnrolmentRegisterPage",IconCss="fa fa-file-text"},
+
+                              }
+                          },
+                          new MenuItem{ Separator=true},
+                          new MenuItem
+                          {
+                               Text = "VSLA"
+                              , IconCss = "fa fa-file-excel-o"
+                              , Items = new List<MenuItem>
+                            {
+                              new MenuItem{ Text = "VSLA TRACKING TOOL UPLOAD",  Url="/VSLATrackerUploadPage",IconCss="fa fa-file-excel-o"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "ORGANISATION STRUCTURE",  Url="/OrganisationalStructurePage",IconCss="fa fa-sitemap"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "NATIONALISATION PLAN",  Url="/NationalisationPlanPage",IconCss="fa fa-list-alt"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "DOCUMENT TYPE",  Url="/DocumentRequirementPage",IconCss="fa fa-file-text-o"},
+                            }
+                          },
+                   new MenuItem{ Separator=true},
+                                    new MenuItem
+                  {
+                      Text = "COMMUNITY TRAINING REGISTER",
+                       IconCss = "fa fa-file-excel-o",
+                     Items = new List<MenuItem>
+                            {
+                              new MenuItem{ Text = "JOURNEYS PLUS UPLOAD",  Url="/JourneysPlusDataUploadPage",IconCss="fa fa-file-excel-o"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "ORGANISATION STRUCTURE",  Url="/OrganisationalStructurePage",IconCss="fa fa-sitemap"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "NATIONALISATION PLAN",  Url="/NationalisationPlanPage",IconCss="fa fa-list-alt"},
+                              //new MenuItem{ Separator=true},
+                              //new MenuItem{ Text = "DOCUMENT TYPE",  Url="/DocumentRequirementPage",IconCss="fa fa-file-text-o"},
+                            }
+                  },
+                    
+                      }
+                });
+               
+            }
+           
+        if (Sheleads == true || Globalfund == true || Yaw == true)
+        {
+                menuItems.Add(new MenuItem { Text = "MUCOBADI DASHBOARD", Url = "/StakeHoldersDashboardPage", IconCss = "fa fa-signal" });
+                menuItems.Add(new MenuItem { Text = "PROJECT TARGET", Url = "/ProjectsTargetsPage", IconCss = "fa fa-bullseye" });
+                menuItems.Add(new MenuItem { Text = "PROJECT DATA ENTRY", Url = "/StakeholderDataCapture", IconCss = "fa fa-database" });
+        }
+
+            menuItems.Add(
+          new MenuItem
+          {
+              Text = "HELLO " + userManagement.GetStaffName().ToUpper() + " !",
+              IconCss = "fa fa-user",
+              Id = "LoginMenu",
+              Items = new List<MenuItem>
+    {
+                       new MenuItem{ Text = "CHANGE PASSWORD",  Url="/Account/ChangePasswordPage",IconCss="fa fa-key"},
+                       new MenuItem{ Separator=true},
+                       new MenuItem{ Text = "LOG OUT",  Url="/",IconCss="fa fa-sign-out"},
+                    }
+          }
+            );
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+}

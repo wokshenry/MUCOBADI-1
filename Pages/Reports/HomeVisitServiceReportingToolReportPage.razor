@@ -1,0 +1,2421 @@
+﻿@page "/HomeVisitServiceReportingToolReportPage"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject SPToCoreContext db;
+    <style>
+        h4 {
+            background-color: black;
+            color: whitesmoke;
+            padding: 10px;
+        }
+    </style>
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Home Visit Service Reporting Tool Report</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-12">
+        <EditForm Model="@InputModel" OnValidSubmit="@SearchRecords">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <p>District</p>
+                    <SfMultiSelect @bind-Value="@InputModel.DistrictId" Enabled="@isEnabled" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="OnDistrictChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Sub-County</p>
+                    <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Sub-county" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Parish</p>
+                    <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Parish" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                        <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Village</p>
+                    <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" AllowFiltering="true" Placeholder="Please select" Mode="@VisualMode.CheckBox" DataSource="@_VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Village" FloatLabelType="FloatLabelType.Never" PopupHeight="350px">
+                        <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+                    </SfMultiSelect>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Reporting Period Start date</p>
+                    <SfDatePicker @bind-Value="@InputModel.Startdate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+                 <div class="form-group col-md-3">
+                    <p>Reporting Period End date</p>
+                    <SfDatePicker @bind-Value="@InputModel.Enddate" TValue="DateTime?" Format="dd/MM/yyyy" Placeholder="Please select date" FloatLabelType="FloatLabelType.Never"></SfDatePicker>
+                </div>
+               @* <div class="form-group col-md-3">
+                    <p>Reporting Period</p>
+                    <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>
+                <div class="form-group col-md-3">
+                    <p>Financial Year</p>
+                    <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                        <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+                    </SfDropDownList>
+                </div>*@
+                <div class="form-group col-md-3">
+                    <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                    <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                </div>
+                <div class="form-group col-md-12">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                </div>
+                @if (!string.IsNullOrEmpty(outComeResult))
+                {
+                    <div class="form-group col-md-12">
+                        @if (outComeResult.Contains("No Record"))
+                        {
+                            <p class="alert alert-danger" style="padding:10px;">@outComeResult</p>
+                        }
+                        else if (outComeResult.Contains("Warning"))
+                        {
+                            <p class="alert alert-warning" style="padding:10px;">@outComeResult</p>
+                        }
+                        else
+                        {
+                            <p class="alert alert-success" style="padding:10px;">@outComeResult</p>
+                        }
+                    </div>
+                }
+                <div class="form-group col-md-12">
+                    <SfSpinner @ref="ReportSpinner" Label="downloading the report please wait..." Size="70" Visible="false"></SfSpinner>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+    private SearchPanel InputModel = new();
+    SfSpinner ReportSpinner;
+
+    List<AVillage> _VillageData { get; set; }
+    List<AParish> _ParishData { get; set; }
+    List<ASubcounty> _SubcountyData { get; set; }
+    List<ADistrict> _DistrictData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    bool isEnabled { get; set; } = false;
+    string outComeResult { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                FianacialYearData = new List<FianacialYear>();
+                _DistrictData = db.ADistrict.AsNoTracking().ToList();
+                //QuarterData = db.AQuarter.AsNoTracking().ToList();
+                //int current_year = DateTime.Now.Year;
+                //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o=> o.DateofIdentification.HasValue==true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                //if (firstHomeVisitdata != null)
+                //{
+                //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                //    for (int i = 0; i <= (current_year - firstyear); i++)
+                //    {
+
+                //        if ((current_year - (firstyear + i)) > 0)
+                //        {
+                //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString() });
+                //        }
+                //    }
+                //}
+                //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString() });
+                InputModel = new();
+                var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+                if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+                {
+                    var districtlist = userManagement.GetUserDistrict();
+                    if (districtlist != null && districtlist.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in districtlist)
+                        {
+                            m.Add(n);
+                        }
+
+                        InputModel.DistrictId = m.ToArray();
+                        _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+                    }
+                    var subcountyList = userManagement.GetUserSubcounty();
+                    if (subcountyList != null && subcountyList.Count > 0)
+                    {
+                        List<int?> m = new List<int?>();
+                        foreach (var n in subcountyList)
+                        {
+                            m.Add(n);
+                        }
+                        InputModel.SubcountyId = m.ToArray();
+                        _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+                    }
+                }
+                else
+                {
+                    isEnabled = true;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new();
+        var user = db.ViewUserManagement.FirstOrDefault(o => o.UserName == userManagement.GetUserName());
+        if (!user.RoleName.Contains("Super Administrator") && !user.RoleName.Contains("Administrator") && !user.RoleName.Contains("mel director") && !user.RoleName.Contains("mel manager") && !user.RoleName.Contains("cluster manager"))
+        {
+            var districtlist = userManagement.GetUserDistrict();
+            if (districtlist != null && districtlist.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in districtlist)
+                {
+                    m.Add(n);
+                }
+
+                InputModel.DistrictId = m.ToArray();
+                _SubcountyData = db.ASubcounty.AsNoTracking().ToList().Where(o => districtlist.Any(a => a == o.DistrictId)).ToList();
+            }
+            var subcountyList = userManagement.GetUserSubcounty();
+            if (subcountyList != null && subcountyList.Count > 0)
+            {
+                List<int?> m = new List<int?>();
+                foreach (var n in subcountyList)
+                {
+                    m.Add(n);
+                }
+                InputModel.SubcountyId = m.ToArray();
+                _ParishData = db.AParish.AsNoTracking().ToList().Where(o => subcountyList.Any(a => a == o.SubcountyId)).ToList();
+            }
+        }
+        else
+        {
+            isEnabled = true;
+        }
+    }
+
+
+    public void OnDistrictChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+        }
+    }
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            _VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+        }
+    }
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+
+    private async Task SearchRecords()
+    {
+        try
+        {
+            await ReportSpinner.ShowAsync();
+            outComeResult = null;
+            string district = null;
+            string Subcounty = null;
+            string parish = null;
+            string village = null;
+            if (InputModel.DistrictId != null)
+            {
+                district = string.Join(",", InputModel.DistrictId);
+            }
+            if (InputModel.SubcountyId != null)
+            {
+                Subcounty = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null)
+            {
+                parish = string.Join(",", InputModel.ParishId);
+            }
+            if (InputModel.VillageId != null)
+            {
+                village = string.Join(",", InputModel.VillageId);
+            }
+            //if (InputModel.QuarterId == null || InputModel.YearId == null)
+            //{
+            //    outComeResult = "Please select the reporting period and the financial year";
+            //}
+            if (InputModel.Startdate == null || InputModel.Enddate == null)
+            {
+                outComeResult = "Please select the reporting period (both start date & End date)";
+            }
+            else
+            {
+                DateTime? startdate = null;
+                DateTime? enddate = null;
+                //var quarter = QuarterData.FirstOrDefault(o => o.QuarterId == InputModel.QuarterId);
+                //if (quarter != null)
+                //{
+                //    startdate = new DateTime(InputModel.YearId.Value, quarter.StartMonthId.Value, 1);
+                //    if (quarter.EndMonthId < quarter.StartMonthId)
+                //    {
+                //        enddate = new DateTime((InputModel.YearId.Value + 1), quarter.EndMonthId.Value, DateTime.DaysInMonth((InputModel.YearId.Value + 1), quarter.EndMonthId.Value));
+                //    }
+                //    else
+                //    {
+                //        enddate = new DateTime(InputModel.YearId.Value, quarter.EndMonthId.Value, DateTime.DaysInMonth(InputModel.YearId.Value, quarter.EndMonthId.Value));
+                //    }
+                //}
+                var data = await db.spHomeVisitServiceReportingToolReportGetAllAsync(district, Subcounty, parish, village, null, InputModel.Startdate, InputModel.Enddate);
+                if (data.Count > 0)
+                {
+                    using (ExcelEngine excelEngine = new ExcelEngine())
+                    {
+                        IApplication application = excelEngine.Excel;
+                        application.DefaultVersion = ExcelVersion.Excel2013;
+                        IWorkbook workbook = application.Workbooks.Create(1);
+                        IWorksheet worksheet = workbook.Worksheets[0];
+                        worksheet.Name = "Home Visit Service Reporting Tool Report";
+
+                        #region Styles
+                        var headerStyle = workbook.Styles.Add("headerStyle");
+
+                        headerStyle.BeginUpdate();
+                        headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                        headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        headerStyle.Font.Bold = true;
+                        headerStyle.Font.FontName = "Arial";
+                        headerStyle.Font.Size = 8f;
+                        headerStyle.Font.Color = ExcelKnownColors.White;
+
+                        headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        headerStyle.Borders.Color = ExcelKnownColors.White;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                        headerStyle.WrapText = true;
+
+                        headerStyle.EndUpdate();
+
+                        var Style = workbook.Styles.Add("bodyStyle");
+
+                        Style.BeginUpdate();
+                        Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                        Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                        Style.Font.Bold = false;
+                        Style.Font.FontName = "Arial";
+                        Style.Font.Size = 8f;
+                        Style.Font.Color = ExcelKnownColors.Black;
+                        Style.WrapText = true;
+                        Style.Borders.Color = ExcelKnownColors.Black;
+                        Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        Style.EndUpdate();
+
+
+                        var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                        CategoryStyle.BeginUpdate();
+                        CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                        /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                        CategoryStyle.Font.Bold = true;
+                        CategoryStyle.Font.FontName = "Arial";
+                        CategoryStyle.Font.Size = 10f;
+                        CategoryStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryStyle.WrapText = true;
+                        CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryStyle.EndUpdate();
+
+                        var CategoryTotalStyle = workbook.Styles.Add("CategoryTotalStyle");
+
+                        CategoryTotalStyle.BeginUpdate();
+                        CategoryTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        CategoryTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        CategoryTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                        CategoryTotalStyle.Font.Bold = true;
+                        CategoryTotalStyle.Font.FontName = "Arial";
+                        CategoryTotalStyle.Font.Size = 8f;
+                        CategoryTotalStyle.Font.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.WrapText = true;
+                        CategoryTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        CategoryTotalStyle.EndUpdate();
+
+                        var DivisionStyle = workbook.Styles.Add("DivisionStyle");
+
+                        DivisionStyle.BeginUpdate();
+                        DivisionStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 0, 0); //RED
+                        DivisionStyle.Font.Bold = true;
+                        DivisionStyle.Font.FontName = "Arial";
+                        DivisionStyle.Font.Size = 8f;
+                        DivisionStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionStyle.WrapText = true;
+                        DivisionStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionStyle.EndUpdate();
+
+                        var DivisionTotalStyle = workbook.Styles.Add("DivisionTotalStyle");
+
+                        DivisionTotalStyle.BeginUpdate();
+                        DivisionTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        DivisionTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        DivisionTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                        DivisionTotalStyle.Font.Bold = true;
+                        DivisionTotalStyle.Font.FontName = "Arial";
+                        DivisionTotalStyle.Font.Size = 8f;
+                        DivisionTotalStyle.Font.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.WrapText = true;
+                        DivisionTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        DivisionTotalStyle.EndUpdate();
+
+
+                        var TopicStyle = workbook.Styles.Add("TopicStyle");
+
+                        TopicStyle.BeginUpdate();
+                        TopicStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88); //AUBERGINE
+                        TopicStyle.Font.Bold = true;
+                        TopicStyle.Font.FontName = "Arial";
+                        TopicStyle.Font.Size = 8f;
+                        TopicStyle.Font.Color = ExcelKnownColors.White;
+                        TopicStyle.WrapText = true;
+                        TopicStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicStyle.EndUpdate();
+
+                        var TopicTotalStyle = workbook.Styles.Add("TopicTotalStyle");
+
+                        TopicTotalStyle.BeginUpdate();
+                        TopicTotalStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        TopicTotalStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        TopicTotalStyle.Color = Syncfusion.Drawing.Color.Black;
+                        TopicTotalStyle.Font.Bold = true;
+                        TopicTotalStyle.Font.FontName = "Arial";
+                        TopicTotalStyle.Font.Size = 8f;
+                        TopicTotalStyle.Font.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.WrapText = true;
+                        TopicTotalStyle.Borders.Color = ExcelKnownColors.White;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                        TopicTotalStyle.EndUpdate();
+                        #endregion
+
+                        int row = 1;
+                        worksheet.Range["A" + row].Text = "Home Visit Service Reporting Tool Report";
+                        worksheet.Range["A" + row + ":AD" + row].CellStyle = CategoryStyle;
+                        worksheet.Range["A" + row + ":AD" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["A" + row + ":AD" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["A" + row].RowHeight = 30;
+                        worksheet.Range["A" + row + ":AD" + row].Merge();
+                        row++;
+                        row++;
+
+                        #region Services
+                        worksheet.Range["T" + row].Text = "(A) HVAT Gap/Need ";
+                        worksheet.Range["T" + row + ":CT" + row].Merge();
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(155, 194, 230);
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.Font.Size = 12f;
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.Font.Bold = true;
+                        worksheet.Range["T" + row + ":CT" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+
+                        worksheet.Range["CU" + row].Text = "(B) New/ Emerging Need from Home Visit or Facility (different from HVAT) ";
+                        worksheet.Range["CU" + row + ":FW" + row].Merge();
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 230, 153);
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.Font.Size = 12f;
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.Font.Bold = true;
+                        worksheet.Range["CU" + row + ":FW" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+
+                        worksheet.Range["FX" + row].Text = "(C) Service Received";
+                        worksheet.Range["FX" + row + ":IX" + row].Merge();
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(122, 48, 160);
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.Font.Size = 12f;
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.Font.Bold = true;
+                        worksheet.Range["FX" + row + ":IX" + row].CellStyle.Font.Color = ExcelKnownColors.White;
+
+                        worksheet.Range["IY" + row].Text = "(D) Follow-up/ Unmet Need";
+                        worksheet.Range["IY" + row + ":LX" + row].Merge();
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 255, 0);
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.Font.Size = 12f;
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.Font.Bold = true;
+                        worksheet.Range["IY" + row + ":LX" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+
+                        //worksheet.Range["BA" + row].Text = "Food security and Nutrition";
+                        //worksheet.Range["BA" + row + ":BK" + row].Merge();
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(217, 217, 217);
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.Font.Size = 12f;
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.Font.Bold = true;
+                        //worksheet.Range["BA" + row + ":BK" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+
+                        //worksheet.Range["BL" + row].Text = "HEALTH";
+                        //worksheet.Range["BL" + row + ":CR" + row].Merge();
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 192, 0);
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.Font.Size = 12f;
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.Font.Bold = true;
+                        //worksheet.Range["BL" + row + ":CR" + row].CellStyle.Font.Color = ExcelKnownColors.Black;
+                        #endregion end Services
+
+                        row++;
+                        #region Header row
+                        worksheet.Range["A" + row].Text = "HH UiD";
+                        worksheet.Range["A" + row].ColumnWidth = 20;
+
+                        worksheet.Range["B" + row].Text = "District";
+                        worksheet.Range["B" + row].ColumnWidth = 20;
+
+                        worksheet.Range["C" + row].Text = "Sub county";
+                        worksheet.Range["C" + row].ColumnWidth = 20;
+
+                        worksheet.Range["D" + row].Text = "Parish";
+                        worksheet.Range["D" + row].ColumnWidth = 20;
+
+                        worksheet.Range["E" + row].Text = "Village";
+                        worksheet.Range["E" + row].ColumnWidth = 20;
+
+                        worksheet.Range["F" + row].Text = "Date of Visit";
+                        worksheet.Range["F" + row].ColumnWidth = 20;
+
+                        worksheet.Range["G" + row].Text = "Persons Talked to During Visit";
+                        worksheet.Range["G" + row].ColumnWidth = 20;
+
+                        worksheet.Range["H" + row].Text = "Program Participation status of Enrilled HH";
+                        worksheet.Range["H" + row].ColumnWidth = 20;
+
+                        worksheet.Range["I" + row].Text = "Reason(s) for visit to Enrolled Household";
+                        worksheet.Range["I" + row].ColumnWidth = 20;
+
+                        worksheet.Range["J" + row].Text = "Other Reason for visit to Enrolled Household";
+                        worksheet.Range["J" + row].ColumnWidth = 20;
+
+                        worksheet.Range["K" + row].Text = "Household Member Code";
+                        worksheet.Range["K" + row].ColumnWidth = 20;
+
+                        worksheet.Range["L" + row].Text = "Name";
+                        worksheet.Range["L" + row].ColumnWidth = 20;
+
+                        worksheet.Range["M" + row].Text = "Date of birth";
+                        worksheet.Range["M" + row].ColumnWidth = 20;
+
+                        worksheet.Range["N" + row].Text = "Age";
+                        worksheet.Range["N" + row].ColumnWidth = 20;
+
+                        worksheet.Range["O" + row].Text = "Gender";
+                        worksheet.Range["O" + row].ColumnWidth = 20;
+
+                        worksheet.Range["P" + row].Text = "HIV Status";
+                        worksheet.Range["P" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Q" + row].Text = "Program Participation status";
+                        worksheet.Range["Q" + row].ColumnWidth = 20;
+                        worksheet.Range["R" + row].Text = "Latitudde";
+                        worksheet.Range["R" + row].ColumnWidth = 20;
+                        worksheet.Range["S" + row].Text = "Longitudde";
+                        worksheet.Range["S" + row].ColumnWidth = 20;
+
+
+                        //Hvat Gap
+                        //stable
+
+                        worksheet.Range["T" + row].Text = "1a. Cash transfer (project)";
+                        worksheet.Range["T" + row].ColumnWidth = 20;
+
+                        worksheet.Range["U" + row].Text = "1b. Emergency cash support (VSLA+)";
+                        worksheet.Range["U" + row].ColumnWidth = 20;
+
+                        worksheet.Range["V" + row].Text = "1c. Access to Saving & Credit (VSLA)";
+                        worksheet.Range["V" + row].ColumnWidth = 20;
+
+                        worksheet.Range["W" + row].Text = "1d. Supported to own & run an IGA";
+                        worksheet.Range["W" + row].ColumnWidth = 20;
+
+                        worksheet.Range["X" + row].Text = "1e. Received IGA training & boost";
+                        worksheet.Range["X" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Y" + row].Text = "1f. Received business skills training (F.L & SPM)";
+                        worksheet.Range["Y" + row].ColumnWidth = 20;
+
+                        worksheet.Range["Z" + row].Text = "1g. Apprenticeship attachment";
+                        worksheet.Range["Z" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AA" + row].Text = "1h. Received soft skill training (basket, briquette, jewelry, mats & brick making) ";
+                        worksheet.Range["AA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AB" + row].Text = "1i. Provided startup kit or capital";
+                        worksheet.Range["AB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AC" + row].Text = "1j. Referred to ES service";
+                        worksheet.Range["AC" + row].ColumnWidth = 20;
+
+                        //schooled
+
+                        worksheet.Range["AD" + row].Text = "4a. Supported to enroll/ re-enroll in school";
+                        worksheet.Range["AD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AE" + row].Text = "4b. Monitored for regular attendance";
+                        worksheet.Range["AE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AF" + row].Text = "4c. Provided school fees bursary";
+                        worksheet.Range["AF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AG" + row].Text = "4d. Provided school meals";
+                        worksheet.Range["AG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AH" + row].Text = "4e. Provided with school uniform";
+                        worksheet.Range["AH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AI" + row].Text = "4f. Provided scholastic / reading materials";
+                        worksheet.Range["AI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AJ" + row].Text = "4g. Provided vocational education";
+                        worksheet.Range["AJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AK" + row].Text = "4h. Caregiver received ECD training";
+                        worksheet.Range["AK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AL" + row].Text = "4i. Referred for E&D services";
+                        worksheet.Range["AL" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["AM" + row].Text = "5a. Provided Counselling & Guidance";
+                        worksheet.Range["AM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AN" + row].Text = "5b. Supported to access basic need";
+                        worksheet.Range["AN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AO" + row].Text = "5c. Supported to access to recreation activities";
+                        worksheet.Range["AO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AP" + row].Text = "5d. Provided palliative care for HIV positive";
+                        worksheet.Range["AP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AQ" + row].Text = "5e. Provided Post-violence trauma-informed counselling";
+                        worksheet.Range["AQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AR" + row].Text = "5f. Provided Clothing & Beddings";
+                        worksheet.Range["AR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AS" + row].Text = "5g. Referred to access other PSS services";
+                        worksheet.Range["AS" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["AT" + row].Text = "6a. Legal support for GBV victims";
+                        worksheet.Range["AT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AU" + row].Text = "6b. Provided Positive Parenting training";
+                        worksheet.Range["AU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AV" + row].Text = "6c. Supported to handle child neglect & abusive";
+                        worksheet.Range["AV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AW" + row].Text = "6d. Supported to register birth";
+                        worksheet.Range["AW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AX" + row].Text = "6e. Participated in community sensitization on CP";
+                        worksheet.Range["AX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AY" + row].Text = "6f. Supported to withdraw from child labour";
+                        worksheet.Range["AY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["AZ" + row].Text = "6g. Supported Child re-integration with Family";
+                        worksheet.Range["AZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BA" + row].Text = "6h. Provided SBCC on violence prevention & reporting (GBV, SVAC).";
+                        worksheet.Range["BA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BB" + row].Text = "6i. Referred to access other Protection services";
+                        worksheet.Range["BB" + row].ColumnWidth = 20;
+
+                        //HEALTH food security
+
+                        worksheet.Range["BC" + row].Text = "2a. Nutrition Education & Counselling(HomeVisits)";
+                        worksheet.Range["BC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BD" + row].Text = "2b. Food Relief/ Supplement Assistance";
+                        worksheet.Range["BD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BE" + row].Text = "2c. Trained on good agronomic practices";
+                        worksheet.Range["BE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BF" + row].Text = "2d. Received Farming Inputs";
+                        worksheet.Range["BF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BG" + row].Text = "2e. Received Agric. Advisory Services";
+                        worksheet.Range["BG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BH" + row].Text = "2f. Supported to access output markets";
+                        worksheet.Range["BH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BI" + row].Text = "2g. Supported to access Post-Harvest handling";
+                        worksheet.Range["BI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BJ" + row].Text = "2h. Provided Nutrition Assessment (MUAC)";
+                        worksheet.Range["BJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BK" + row].Text = "2i. Supported to setup Vegetable/ Backyard gardening ";
+                        worksheet.Range["BK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BL" + row].Text = "2j. Beneficiary supported to access Farmer field schools";
+                        worksheet.Range["BL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BM" + row].Text = "2k. Referred to access other FSN services";
+                        worksheet.Range["BM" + row].ColumnWidth = 20;
+
+                        //health
+
+                        worksheet.Range["BN" + row].Text = "3a. Assisted to access safe water";
+                        worksheet.Range["BN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BO" + row].Text = "3b. Provided with stable shelter";
+                        worksheet.Range["BO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BP" + row].Text = "3c. Supported to access a pit latrine";
+                        worksheet.Range["BP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BQ" + row].Text = "3d. Supported to maintain a standard hand washing facility";
+                        worksheet.Range["BQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BR" + row].Text = "3e. Provided/ supported to access ITNs";
+                        worksheet.Range["BR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BS" + row].Text = "3f. Provided SBCC on WASH";
+                        worksheet.Range["BS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BT" + row].Text = "3g. Supported to access immunization";
+                        worksheet.Range["BT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BU" + row].Text = "3h. Supported to access antenatal care";
+                        worksheet.Range["BU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BV" + row].Text = "3i. Supported to access youth friendly services";
+                        worksheet.Range["BV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BW" + row].Text = "3j. Provided SBCC on Malaria Prevention";
+                        worksheet.Range["BW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BX" + row].Text = "3k. Supported to access IPT for Pregnant Mothers";
+                        worksheet.Range["BX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BY" + row].Text = "3l. HH supported to access IRS for Malaria Prevention";
+                        worksheet.Range["BY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["BZ" + row].Text = "3m. Supported to access Family Planning services";
+                        worksheet.Range["BZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CA" + row].Text = "3n. Referred to access other family health services ";
+                        worksheet.Range["CA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CB" + row].Text = "7a. HIV risk assessment & HIV pre-test counselling";
+                        worksheet.Range["CB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CC" + row].Text = "7b. Supported to test for HIV and receive HIV results";
+                        worksheet.Range["CC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CD" + row].Text = "7c. Provided HIV post-test counseling ";
+                        worksheet.Range["CD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CE" + row].Text = "7d. Supported to disclose HIV status to family";
+                        worksheet.Range["CE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CF" + row].Text = "7e. Supported to enroll on ART";
+                        worksheet.Range["CF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CG" + row].Text = "7f. Supported to access ART refills";
+                        worksheet.Range["CG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CH" + row].Text = "7g. Provided  ART adherence support";
+                        worksheet.Range["CH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CI" + row].Text = "7h. Supported to test for VL";
+                        worksheet.Range["CI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CJ" + row].Text = "7i. Supported to receive VL results";
+                        worksheet.Range["CJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CK" + row].Text = "7j. Provided IAC for Non-Suppression";
+                        worksheet.Range["CK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CL" + row].Text = "7k. Referred for HIV TCT Services";
+                        worksheet.Range["CL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CM" + row].Text = "8a. Provided eMTCT services";
+                        worksheet.Range["CM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CN" + row].Text = "8b. Supported to access PrEP";
+                        worksheet.Range["CN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CO" + row].Text = "8c. Provided condoms";
+                        worksheet.Range["CO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CP" + row].Text = "8d. Supported to access VMMC/ SMC";
+                        worksheet.Range["CP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CQ" + row].Text = "8e. Provided SBCC on HIV prevention & education";
+                        worksheet.Range["CQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CR" + row].Text = "8f. Supported to access PEP";
+                        worksheet.Range["CR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CS" + row].Text = "8g. Provided with Self-Awareness Knowledge on HIV prevention";
+                        worksheet.Range["CS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CT" + row].Text = "8h. Referred to access other HIV prevention services";
+                        worksheet.Range["CT" + row].ColumnWidth = 20;
+
+
+                        //Emerging
+
+                        //stable
+
+                        worksheet.Range["CU" + row].Text = "1a. Cash transfer (project)";
+                        worksheet.Range["CU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CV" + row].Text = "1b. Emergency cash support (VSLA+)";
+                        worksheet.Range["CV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CW" + row].Text = "1c. Access to Saving & Credit (VSLA)";
+                        worksheet.Range["CW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CX" + row].Text = "1d. Supported to own & run an IGA";
+                        worksheet.Range["CX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CY" + row].Text = "1e. Received IGA training & boost";
+                        worksheet.Range["CY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["CZ" + row].Text = "1f. Received business skills training (F.L & SPM)";
+                        worksheet.Range["CZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DA" + row].Text = "1g. Apprenticeship attachment";
+                        worksheet.Range["DA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DB" + row].Text = "1h. Received soft skill training (basket, briquette, jewelry, mats & brick making) ";
+                        worksheet.Range["DB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DC" + row].Text = "1i. Provided startup kit or capital";
+                        worksheet.Range["DC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DD" + row].Text = "1j. Referred to ES service";
+                        worksheet.Range["DD" + row].ColumnWidth = 20;
+
+                        //schooled
+
+                        worksheet.Range["DE" + row].Text = "4a. Supported to enroll/ re-enroll in school";
+                        worksheet.Range["DE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DF" + row].Text = "4b. Monitored for regular attendance";
+                        worksheet.Range["DF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DG" + row].Text = "4c. Provided school fees bursary";
+                        worksheet.Range["DG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DH" + row].Text = "4d. Provided school meals";
+                        worksheet.Range["DH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DI" + row].Text = "4e. Provided with school uniform";
+                        worksheet.Range["DI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DJ" + row].Text = "4f. Provided scholastic / reading materials";
+                        worksheet.Range["DJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DK" + row].Text = "4g. Provided vocational education";
+                        worksheet.Range["DK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DL" + row].Text = "4h. Caregiver received ECD training";
+                        worksheet.Range["DL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DM" + row].Text = "4i. Referred for E&D services";
+                        worksheet.Range["DM" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["DN" + row].Text = "5a. Provided Counselling & Guidance";
+                        worksheet.Range["DN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DO" + row].Text = "5b. Supported to access basic need";
+                        worksheet.Range["DO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DP" + row].Text = "5c. Supported to access to recreation activities";
+                        worksheet.Range["DP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DQ" + row].Text = "5d. Provided palliative care for HIV positive";
+                        worksheet.Range["DQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DR" + row].Text = "5e. Provided Post-violence trauma-informed counselling";
+                        worksheet.Range["DR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DS" + row].Text = "5f. Provided Clothing & Beddings";
+                        worksheet.Range["DS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DT" + row].Text = "5g. Referred to access other PSS services";
+                        worksheet.Range["DT" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["DU" + row].Text = "6a. Legal support for GBV victims";
+                        worksheet.Range["DU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DV" + row].Text = "6b. Provided Positive Parenting training";
+                        worksheet.Range["DV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DW" + row].Text = "6c. Supported to handle child neglect & abusive";
+                        worksheet.Range["DW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DX" + row].Text = "6d. Supported to register birth";
+                        worksheet.Range["DX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DY" + row].Text = "6e. Participated in community sensitization on CP";
+                        worksheet.Range["DY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["DZ" + row].Text = "6f. Supported to withdraw from child labour";
+                        worksheet.Range["DZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EA" + row].Text = "6g. Supported Child re-integration with Family";
+                        worksheet.Range["EA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EB" + row].Text = "6h. Provided SBCC on violence prevention & reporting (GBV, SVAC).";
+                        worksheet.Range["EB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EC" + row].Text = "6i. Referred to access other Protection services";
+                        worksheet.Range["EC" + row].ColumnWidth = 20;
+
+                        //HEALTH food security
+
+                        worksheet.Range["ED" + row].Text = "2a. Nutrition Education & Counselling(HomeVisits)";
+                        worksheet.Range["ED" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EF" + row].Text = "2b. Food Relief/ Supplement Assistance";
+                        worksheet.Range["EF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EG" + row].Text = "2c. Trained on good agronomic practices";
+                        worksheet.Range["EG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EH" + row].Text = "2d. Received Farming Inputs";
+                        worksheet.Range["EH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EI" + row].Text = "2e. Received Agric. Advisory Services";
+                        worksheet.Range["EI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EJ" + row].Text = "2f. Supported to access output markets";
+                        worksheet.Range["EJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EK" + row].Text = "2g. Supported to access Post-Harvest handling";
+                        worksheet.Range["EK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EL" + row].Text = "2h. Provided Nutrition Assessment (MUAC)";
+                        worksheet.Range["EL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EM" + row].Text = "2i. Supported to setup Vegetable/ Backyard gardening ";
+                        worksheet.Range["EM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EN" + row].Text = "2j. Beneficiary supported to access Farmer field schools";
+                        worksheet.Range["EN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EO" + row].Text = "2k. Referred to access other FSN services";
+                        worksheet.Range["EO" + row].ColumnWidth = 20;
+
+                        //health
+
+                        worksheet.Range["EP" + row].Text = "3a. Assisted to access safe water";
+                        worksheet.Range["EP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EQ" + row].Text = "3b. Provided with stable shelter";
+                        worksheet.Range["EQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["ER" + row].Text = "3c. Supported to access a pit latrine";
+                        worksheet.Range["ER" + row].ColumnWidth = 20;
+
+                        worksheet.Range["ES" + row].Text = "3d. Supported to maintain a standard hand washing facility";
+                        worksheet.Range["ES" + row].ColumnWidth = 20;
+
+                        worksheet.Range["ET" + row].Text = "3e. Provided/ supported to access ITNs";
+                        worksheet.Range["ET" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EU" + row].Text = "3f. Provided SBCC on WASH";
+                        worksheet.Range["EU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EV" + row].Text = "3g. Supported to access immunization";
+                        worksheet.Range["EV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EW" + row].Text = "3h. Supported to access antenatal care";
+                        worksheet.Range["EW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EX" + row].Text = "3i. Supported to access youth friendly services";
+                        worksheet.Range["EX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EY" + row].Text = "3j. Provided SBCC on Malaria Prevention";
+                        worksheet.Range["EY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["EZ" + row].Text = "3k. Supported to access IPT for Pregnant Mothers";
+                        worksheet.Range["EZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FA" + row].Text = "3l. HH supported to access IRS for Malaria Prevention";
+                        worksheet.Range["FA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FB" + row].Text = "3m. Supported to access Family Planning services";
+                        worksheet.Range["FB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FC" + row].Text = "3n. Referred to access other family health services ";
+                        worksheet.Range["FC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FD" + row].Text = "7a. HIV risk assessment & HIV pre-test counselling";
+                        worksheet.Range["FD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FE" + row].Text = "7b. Supported to test for HIV and receive HIV results";
+                        worksheet.Range["FE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FF" + row].Text = "7c. Provided HIV post-test counseling ";
+                        worksheet.Range["FF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FG" + row].Text = "7d. Supported to disclose HIV status to family";
+                        worksheet.Range["FG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FH" + row].Text = "7e. Supported to enroll on ART";
+                        worksheet.Range["FH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FI" + row].Text = "7f. Supported to access ART refills";
+                        worksheet.Range["FI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FJ" + row].Text = "7g. Provided  ART adherence support";
+                        worksheet.Range["FJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FK" + row].Text = "7h. Supported to test for VL";
+                        worksheet.Range["FK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FL" + row].Text = "7i. Supported to receive VL results";
+                        worksheet.Range["FL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FM" + row].Text = "7j. Provided IAC for Non-Suppression";
+                        worksheet.Range["FM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FN" + row].Text = "7k. Referred for HIV TCT Services";
+                        worksheet.Range["FN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FO" + row].Text = "8a. Provided eMTCT services";
+                        worksheet.Range["FO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FP" + row].Text = "8b. Supported to access PrEP";
+                        worksheet.Range["FP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FQ" + row].Text = "8c. Provided condoms";
+                        worksheet.Range["FQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FR" + row].Text = "8d. Supported to access VMMC/ SMC";
+                        worksheet.Range["FR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FS" + row].Text = "8e. Provided SBCC on HIV prevention & education";
+                        worksheet.Range["FS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FU" + row].Text = "8f. Supported to access PEP";
+                        worksheet.Range["FU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FV" + row].Text = "8g. Provided with Self-Awareness Knowledge on HIV prevention";
+                        worksheet.Range["FV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FW" + row].Text = "8h. Referred to access other HIV prevention services";
+                        worksheet.Range["FW" + row].ColumnWidth = 20;
+
+
+                        //Normal
+                        //stable
+
+                        worksheet.Range["FX" + row].Text = "1a. Cash transfer (project)";
+                        worksheet.Range["FX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FY" + row].Text = "1b. Emergency cash support (VSLA+)";
+                        worksheet.Range["FY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["FZ" + row].Text = "1c. Access to Saving & Credit (VSLA)";
+                        worksheet.Range["FZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GA" + row].Text = "1d. Supported to own & run an IGA";
+                        worksheet.Range["GA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GB" + row].Text = "1e. Received IGA training & boost";
+                        worksheet.Range["GB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GC" + row].Text = "1f. Received business skills training (F.L & SPM)";
+                        worksheet.Range["GC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GD" + row].Text = "1g. Apprenticeship attachment";
+                        worksheet.Range["GD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GE" + row].Text = "1h. Received soft skill training (basket, briquette, jewelry, mats & brick making) ";
+                        worksheet.Range["GE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GF" + row].Text = "1i. Provided startup kit or capital";
+                        worksheet.Range["GF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GG" + row].Text = "1j. Referred to ES service";
+                        worksheet.Range["GG" + row].ColumnWidth = 20;
+
+                        //schooled
+
+                        worksheet.Range["GH" + row].Text = "4a. Supported to enroll/ re-enroll in school";
+                        worksheet.Range["GH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GI" + row].Text = "4b. Monitored for regular attendance";
+                        worksheet.Range["GI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GJ" + row].Text = "4c. Provided school fees bursary";
+                        worksheet.Range["GJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GK" + row].Text = "4d. Provided school meals";
+                        worksheet.Range["GK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GL" + row].Text = "4e. Provided with school uniform";
+                        worksheet.Range["GL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GM" + row].Text = "4f. Provided scholastic / reading materials";
+                        worksheet.Range["GM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GN" + row].Text = "4g. Provided vocational education";
+                        worksheet.Range["GN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GO" + row].Text = "4h. Caregiver received ECD training";
+                        worksheet.Range["GO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GP" + row].Text = "4i. Referred for E&D services";
+                        worksheet.Range["GP" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["GQ" + row].Text = "5a. Provided Counselling & Guidance";
+                        worksheet.Range["GQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GR" + row].Text = "5b. Supported to access basic need";
+                        worksheet.Range["GR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GS" + row].Text = "5c. Supported to access to recreation activities";
+                        worksheet.Range["GS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GT" + row].Text = "5d. Provided palliative care for HIV positive";
+                        worksheet.Range["GT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GU" + row].Text = "5e. Provided Post-violence trauma-informed counselling";
+                        worksheet.Range["GU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GV" + row].Text = "5f. Provided Clothing & Beddings";
+                        worksheet.Range["GV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GW" + row].Text = "5g. Referred to access other PSS services";
+                        worksheet.Range["GW" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["GX" + row].Text = "6a. Legal support for GBV victims";
+                        worksheet.Range["GX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GY" + row].Text = "6b. Provided Positive Parenting training";
+                        worksheet.Range["GY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["GZ" + row].Text = "6c. Supported to handle child neglect & abusive";
+                        worksheet.Range["GZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HA" + row].Text = "6d. Supported to register birth";
+                        worksheet.Range["HA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HB" + row].Text = "6e. Participated in community sensitization on CP";
+                        worksheet.Range["HB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HC" + row].Text = "6f. Supported to withdraw from child labour";
+                        worksheet.Range["HC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HD" + row].Text = "6g. Supported Child re-integration with Family";
+                        worksheet.Range["HD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HE" + row].Text = "6h. Provided SBCC on violence prevention & reporting (GBV, SVAC).";
+                        worksheet.Range["HE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HF" + row].Text = "6i. Referred to access other Protection services";
+                        worksheet.Range["HF" + row].ColumnWidth = 20;
+
+                        //HEALTH food security
+
+                        worksheet.Range["HG" + row].Text = "2a. Nutrition Education & Counselling(HomeVisits)";
+                        worksheet.Range["HG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HH" + row].Text = "2b. Food Relief/ Supplement Assistance";
+                        worksheet.Range["HH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HI" + row].Text = "2c. Trained on good agronomic practices";
+                        worksheet.Range["HI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HJ" + row].Text = "2d. Received Farming Inputs";
+                        worksheet.Range["HJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HK" + row].Text = "2e. Received Agric. Advisory Services";
+                        worksheet.Range["HK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HL" + row].Text = "2f. Supported to access output markets";
+                        worksheet.Range["HL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HM" + row].Text = "2g. Supported to access Post-Harvest handling";
+                        worksheet.Range["HM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HN" + row].Text = "2h. Provided Nutrition Assessment (MUAC)";
+                        worksheet.Range["HN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HO" + row].Text = "2i. Supported to setup Vegetable/ Backyard gardening ";
+                        worksheet.Range["HO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HP" + row].Text = "2j. Beneficiary supported to access Farmer field schools";
+                        worksheet.Range["HP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HQ" + row].Text = "2k. Referred to access other FSN services";
+                        worksheet.Range["HQ" + row].ColumnWidth = 20;
+
+                        //health
+
+                        worksheet.Range["HR" + row].Text = "3a. Assisted to access safe water";
+                        worksheet.Range["HR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HS" + row].Text = "3b. Provided with stable shelter";
+                        worksheet.Range["HS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HT" + row].Text = "3c. Supported to access a pit latrine";
+                        worksheet.Range["HT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HU" + row].Text = "3d. Supported to maintain a standard hand washing facility";
+                        worksheet.Range["HU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HV" + row].Text = "3e. Provided/ supported to access ITNs";
+                        worksheet.Range["HV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HW" + row].Text = "3f. Provided SBCC on WASH";
+                        worksheet.Range["HW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HX" + row].Text = "3g. Supported to access immunization";
+                        worksheet.Range["HX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HY" + row].Text = "3h. Supported to access antenatal care";
+                        worksheet.Range["HY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["HZ" + row].Text = "3i. Supported to access youth friendly services";
+                        worksheet.Range["HZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IA" + row].Text = "3j. Provided SBCC on Malaria Prevention";
+                        worksheet.Range["IA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IB" + row].Text = "3k. Supported to access IPT for Pregnant Mothers";
+                        worksheet.Range["IB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IC" + row].Text = "3l. HH supported to access IRS for Malaria Prevention";
+                        worksheet.Range["IC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["ID" + row].Text = "3m. Supported to access Family Planning services";
+                        worksheet.Range["ID" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IE" + row].Text = "3n. Referred to access other family health services ";
+                        worksheet.Range["IE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IF" + row].Text = "7a. HIV risk assessment & HIV pre-test counselling";
+                        worksheet.Range["IF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IG" + row].Text = "7b. Supported to test for HIV and receive HIV results";
+                        worksheet.Range["IG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IH" + row].Text = "7c. Provided HIV post-test counseling ";
+                        worksheet.Range["IH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["II" + row].Text = "7d. Supported to disclose HIV status to family";
+                        worksheet.Range["II" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IJ" + row].Text = "7e. Supported to enroll on ART";
+                        worksheet.Range["IJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IK" + row].Text = "7f. Supported to access ART refills";
+                        worksheet.Range["IK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IL" + row].Text = "7g. Provided  ART adherence support";
+                        worksheet.Range["IL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IM" + row].Text = "7h. Supported to test for VL";
+                        worksheet.Range["IM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IN" + row].Text = "7i. Supported to receive VL results";
+                        worksheet.Range["IN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IO" + row].Text = "7j. Provided IAC for Non-Suppression";
+                        worksheet.Range["IO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IP" + row].Text = "7k. Referred for HIV TCT Services";
+                        worksheet.Range["IP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IQ" + row].Text = "8a. Provided eMTCT services";
+                        worksheet.Range["IQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IR" + row].Text = "8b. Supported to access PrEP";
+                        worksheet.Range["IR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IS" + row].Text = "8c. Provided condoms";
+                        worksheet.Range["IS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IT" + row].Text = "8d. Supported to access VMMC/ SMC";
+                        worksheet.Range["IT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IU" + row].Text = "8e. Provided SBCC on HIV prevention & education";
+                        worksheet.Range["IU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IV" + row].Text = "8f. Supported to access PEP";
+                        worksheet.Range["IV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IW" + row].Text = "8g. Provided with Self-Awareness Knowledge on HIV prevention";
+                        worksheet.Range["IW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IX" + row].Text = "8h. Referred to access other HIV prevention services";
+                        worksheet.Range["IX" + row].ColumnWidth = 20;
+
+
+                        ///Un met
+
+                        //stable
+
+                        worksheet.Range["IY" + row].Text = "1a. Cash transfer (project)";
+                        worksheet.Range["IY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["IZ" + row].Text = "1b. Emergency cash support (VSLA+)";
+                        worksheet.Range["IZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JA" + row].Text = "1c. Access to Saving & Credit (VSLA)";
+                        worksheet.Range["JA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JB" + row].Text = "1d. Supported to own & run an IGA";
+                        worksheet.Range["JB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JC" + row].Text = "1e. Received IGA training & boost";
+                        worksheet.Range["JC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JD" + row].Text = "1f. Received business skills training (F.L & SPM)";
+                        worksheet.Range["JD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JE" + row].Text = "1g. Apprenticeship attachment";
+                        worksheet.Range["JE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JF" + row].Text = "1h. Received soft skill training (basket, briquette, jewelry, mats & brick making) ";
+                        worksheet.Range["JF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JG" + row].Text = "1i. Provided startup kit or capital";
+                        worksheet.Range["JG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JH" + row].Text = "1j. Referred to ES service";
+                        worksheet.Range["JH" + row].ColumnWidth = 20;
+
+                        //schooled
+
+                        worksheet.Range["JI" + row].Text = "4a. Supported to enroll/ re-enroll in school";
+                        worksheet.Range["JI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JJ" + row].Text = "4b. Monitored for regular attendance";
+                        worksheet.Range["JJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JK" + row].Text = "4c. Provided school fees bursary";
+                        worksheet.Range["JK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JL" + row].Text = "4d. Provided school meals";
+                        worksheet.Range["JL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JM" + row].Text = "4e. Provided with school uniform";
+                        worksheet.Range["JM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JN" + row].Text = "4f. Provided scholastic / reading materials";
+                        worksheet.Range["JN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JO" + row].Text = "4g. Provided vocational education";
+                        worksheet.Range["JO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JP" + row].Text = "4h. Caregiver received ECD training";
+                        worksheet.Range["JP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JQ" + row].Text = "4i. Referred for E&D services";
+                        worksheet.Range["JQ" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["JR" + row].Text = "5a. Provided Counselling & Guidance";
+                        worksheet.Range["JR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JS" + row].Text = "5b. Supported to access basic need";
+                        worksheet.Range["JS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JT" + row].Text = "5c. Supported to access to recreation activities";
+                        worksheet.Range["JT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JU" + row].Text = "5d. Provided palliative care for HIV positive";
+                        worksheet.Range["JU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JV" + row].Text = "5e. Provided Post-violence trauma-informed counselling";
+                        worksheet.Range["JV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JW" + row].Text = "5f. Provided Clothing & Beddings";
+                        worksheet.Range["JW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JX" + row].Text = "5g. Referred to access other PSS services";
+                        worksheet.Range["JX" + row].ColumnWidth = 20;
+
+                        //safe - protection
+
+                        worksheet.Range["JY" + row].Text = "6a. Legal support for GBV victims";
+                        worksheet.Range["JY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["JZ" + row].Text = "6b. Provided Positive Parenting training";
+                        worksheet.Range["JZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KA" + row].Text = "6c. Supported to handle child neglect & abusive";
+                        worksheet.Range["KA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KB" + row].Text = "6d. Supported to register birth";
+                        worksheet.Range["KB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KC" + row].Text = "6e. Participated in community sensitization on CP";
+                        worksheet.Range["KC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KD" + row].Text = "6f. Supported to withdraw from child labour";
+                        worksheet.Range["KD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KE" + row].Text = "6g. Supported Child re-integration with Family";
+                        worksheet.Range["KE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KF" + row].Text = "6h. Provided SBCC on violence prevention & reporting (GBV, SVAC).";
+                        worksheet.Range["KF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KG" + row].Text = "6i. Referred to access other Protection services";
+                        worksheet.Range["KG" + row].ColumnWidth = 20;
+
+                        //HEALTH food security
+
+                        worksheet.Range["KH" + row].Text = "2a. Nutrition Education & Counselling(HomeVisits)";
+                        worksheet.Range["KH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KI" + row].Text = "2b. Food Relief/ Supplement Assistance";
+                        worksheet.Range["KI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KJ" + row].Text = "2c. Trained on good agronomic practices";
+                        worksheet.Range["KJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KK" + row].Text = "2d. Received Farming Inputs";
+                        worksheet.Range["KK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KL" + row].Text = "2e. Received Agric. Advisory Services";
+                        worksheet.Range["KL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KM" + row].Text = "2f. Supported to access output markets";
+                        worksheet.Range["KM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KN" + row].Text = "2g. Supported to access Post-Harvest handling";
+                        worksheet.Range["KN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KO" + row].Text = "2h. Provided Nutrition Assessment (MUAC)";
+                        worksheet.Range["KO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KP" + row].Text = "2i. Supported to setup Vegetable/ Backyard gardening ";
+                        worksheet.Range["KP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KQ" + row].Text = "2j. Beneficiary supported to access Farmer field schools";
+                        worksheet.Range["KQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KR" + row].Text = "2k. Referred to access other FSN services";
+                        worksheet.Range["KR" + row].ColumnWidth = 20;
+
+                        //health
+
+                        worksheet.Range["KS" + row].Text = "3a. Assisted to access safe water";
+                        worksheet.Range["KS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KT" + row].Text = "3b. Provided with stable shelter";
+                        worksheet.Range["KT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KU" + row].Text = "3c. Supported to access a pit latrine";
+                        worksheet.Range["KU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KV" + row].Text = "3d. Supported to maintain a standard hand washing facility";
+                        worksheet.Range["KV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KW" + row].Text = "3e. Provided/ supported to access ITNs";
+                        worksheet.Range["KW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KX" + row].Text = "3f. Provided SBCC on WASH";
+                        worksheet.Range["KX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KY" + row].Text = "3g. Supported to access immunization";
+                        worksheet.Range["KY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["KZ" + row].Text = "3h. Supported to access antenatal care";
+                        worksheet.Range["KZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LA" + row].Text = "3i. Supported to access youth friendly services";
+                        worksheet.Range["LA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LB" + row].Text = "3j. Provided SBCC on Malaria Prevention";
+                        worksheet.Range["LB" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LC" + row].Text = "3k. Supported to access IPT for Pregnant Mothers";
+                        worksheet.Range["LC" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LD" + row].Text = "3l. HH supported to access IRS for Malaria Prevention";
+                        worksheet.Range["LD" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LE" + row].Text = "3m. Supported to access Family Planning services";
+                        worksheet.Range["LE" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LF" + row].Text = "3n. Referred to access other family health services ";
+                        worksheet.Range["LF" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LG" + row].Text = "7a. HIV risk assessment & HIV pre-test counselling";
+                        worksheet.Range["LG" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LH" + row].Text = "7b. Supported to test for HIV and receive HIV results";
+                        worksheet.Range["LH" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LI" + row].Text = "7c. Provided HIV post-test counseling ";
+                        worksheet.Range["LI" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LJ" + row].Text = "7d. Supported to disclose HIV status to family";
+                        worksheet.Range["LJ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LK" + row].Text = "7e. Supported to enroll on ART";
+                        worksheet.Range["LK" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LL" + row].Text = "7f. Supported to access ART refills";
+                        worksheet.Range["LL" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LM" + row].Text = "7g. Provided  ART adherence support";
+                        worksheet.Range["LM" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LN" + row].Text = "7h. Supported to test for VL";
+                        worksheet.Range["LN" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LO" + row].Text = "7i. Supported to receive VL results";
+                        worksheet.Range["LO" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LP" + row].Text = "7j. Provided IAC for Non-Suppression";
+                        worksheet.Range["LP" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LQ" + row].Text = "7k. Referred for HIV TCT Services";
+                        worksheet.Range["LQ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LR" + row].Text = "8a. Provided eMTCT services";
+                        worksheet.Range["LR" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LS" + row].Text = "8b. Supported to access PrEP";
+                        worksheet.Range["LS" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LT" + row].Text = "8c. Provided condoms";
+                        worksheet.Range["LT" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LU" + row].Text = "8d. Supported to access VMMC/ SMC";
+                        worksheet.Range["LU" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LV" + row].Text = "8e. Provided SBCC on HIV prevention & education";
+                        worksheet.Range["LV" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LW" + row].Text = "8f. Supported to access PEP";
+                        worksheet.Range["LW" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LX" + row].Text = "8g. Provided with Self-Awareness Knowledge on HIV prevention";
+                        worksheet.Range["LX" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LY" + row].Text = "8h. Referred to access other HIV prevention services";
+                        worksheet.Range["LY" + row].ColumnWidth = 20;
+
+                        worksheet.Range["LZ" + row].Text = "Name of Home visitor";
+                        worksheet.Range["LZ" + row].ColumnWidth = 20;
+
+                        worksheet.Range["MA" + row].Text = "Title of Home visitor";
+                        worksheet.Range["MA" + row].ColumnWidth = 20;
+
+                        worksheet.Range["MB" + row].Text = "Name of the Reviewer";
+                        worksheet.Range["MB" + row].ColumnWidth = 20;
+
+
+
+                        worksheet.Range["MC" + row].Text = "Title of the reviewer";
+                        worksheet.Range["MC" + row].ColumnWidth = 20;
+
+
+                        worksheet.Range["MD" + row].Text = "Review Date";
+                        worksheet.Range["MD" + row].ColumnWidth = 20;
+                        worksheet.Range["A" + row + ":MD" + row].CellStyle = headerStyle;
+                        row++;
+                        #endregion Header row
+
+                        foreach (var n in data)
+                        {
+                            worksheet.Range["A" + row].Text = n.HouseHoldCode;
+
+                            worksheet.Range["B" + row].Text = n.DistrictDescription;
+
+                            worksheet.Range["C" + row].Text = n.SubcountyDescription;
+
+                            worksheet.Range["D" + row].Text = n.ParishDescription;
+
+                            worksheet.Range["E" + row].Text = n.VillageDescription;
+
+                            if (n.VisitationDate.HasValue)
+                            {
+                                worksheet.Range["F" + row].Text = n.VisitationDate.Value.ToString("dd/MM/yyyy");
+                            }
+
+                            worksheet.Range["G" + row].Text = n.HouseHoldMembersTalkedToDesc;
+
+                            worksheet.Range["H" + row].Text = n.HHProgramParticipationDescription;
+
+                            worksheet.Range["I" + row].Text = n.HomeVisitReasonDesc;
+
+                            worksheet.Range["J" + row].Text = n.HomeVisitReasonOther;
+
+                            worksheet.Range["K" + row].Text = n.HouseHoldMemberCode;
+
+                            worksheet.Range["L" + row].Text = n.FullName;
+
+                            if (n.DoB.HasValue)
+                            {
+                                worksheet.Range["M" + row].Text = n.DoB.Value.ToString("dd/MM/yyyy");
+                            }
+
+                            if (n.Age.HasValue)
+                            {
+                                worksheet.Range["N" + row].Number = n.Age.Value;
+                            }
+
+                            worksheet.Range["O" + row].Text = n.GenderDescription;
+
+                            worksheet.Range["P" + row].Text = n.HIVStatusDescription;
+
+                            worksheet.Range["Q" + row].Text = n.ProgramParticipationDescription;
+
+                            if (n.Latitudde.HasValue)
+                            {
+                                worksheet.Range["R" + row].Text = n.Latitudde.Value.ToString("dd/MM/yyyy");
+                            }
+
+                            if (n.Longitudde.HasValue)
+                            {
+                                worksheet.Range["S" + row].Number = n.Longitudde.Value;
+                            }
+
+                            //stable
+
+                            worksheet.Range["T" + row].Number = n.Gap_Needed_Cash_transfer;
+
+                            worksheet.Range["U" + row].Number = n.Gap_Needed_Emergency_cash_support;
+
+                            worksheet.Range["V" + row].Number = n.Gap_Needed_Access_to_Saving_Credit;
+
+                            worksheet.Range["W" + row].Number = n.Gap_Needed_Supported_to_own_run;
+
+                            worksheet.Range["X" + row].Number = n.Gap_Needed_Received_IGA_training_boost;
+
+                            worksheet.Range["Y" + row].Number = n.Gap_Needed_Received_business_skills_training;
+
+                            worksheet.Range["Z" + row].Number = n.Gap_Needed_Apprenticeship_attachment;
+
+                            worksheet.Range["AA" + row].Number = n.Gap_Needed_Received_soft_skill_training;
+
+                            worksheet.Range["AB" + row].Number = n.Gap_Needed_Provided_startup_kit_or_capital;
+
+                            worksheet.Range["AC" + row].Number = n.Gap_Needed_Referred_to_ES_service;
+
+                            //schooled
+
+                            worksheet.Range["AD" + row].Number = n.Gap_Needed_Supported_to_enroll;
+
+                            worksheet.Range["AE" + row].Number = n.Gap_Needed_Monitored_for_regular_attendance;
+
+                            worksheet.Range["AF" + row].Number = n.Gap_Needed_Provided_school_fees_bursary;
+
+                            worksheet.Range["AG" + row].Number = n.Gap_Needed_Provided_school_meals;
+
+                            worksheet.Range["AH" + row].Number = n.Gap_Needed_Provided_with_school_uniform;
+
+                            worksheet.Range["AI" + row].Number = n.Gap_Needed_Provided_scholastic;
+
+                            worksheet.Range["AJ" + row].Number = n.Gap_Needed_Provided_vocational_education;
+
+                            worksheet.Range["AK" + row].Number = n.Gap_Needed_Caregiver_received_ECD_training;
+
+                            worksheet.Range["AL" + row].Number = n.Gap_Needed_Referred_for_ED_services;
+
+                            //safe - protection
+
+                            worksheet.Range["AM" + row].Number = n.Gap_Needed_Provided_Counselling_Guidance;
+
+                            worksheet.Range["AN" + row].Number = n.Gap_Needed_Supported_to_access_basic_needs;
+
+                            worksheet.Range["AO" + row].Number = n.Gap_Needed_Supported_access_recreation_activities;
+
+                            worksheet.Range["AP" + row].Number = n.Gap_Needed_Provided_palliative_care;
+
+                            worksheet.Range["AQ" + row].Number = n.Gap_Needed_Provided_Post_violence_trauma_informed;
+
+                            worksheet.Range["AR" + row].Number = n.Gap_Needed_Provided_Clothing;
+
+                            worksheet.Range["AS" + row].Number = n.Gap_Needed_Referred_to_access_other_PSS_services;
+
+                            //safe - protection
+
+                            worksheet.Range["AT" + row].Number = n.Gap_Needed_Legal_support_for_GBV;
+
+                            worksheet.Range["AU" + row].Number = n.Gap_Needed_Provided_Positive_Parenting_training;
+
+                            worksheet.Range["AV" + row].Number = n.Gap_Needed_Supported_handle_child_neglect_abusive;
+
+                            worksheet.Range["AW" + row].Number = n.Gap_Needed_Supported_register_birth;
+
+                            worksheet.Range["AX" + row].Number = n.Gap_Needed_Participated_community_sensitization_CP;
+
+                            worksheet.Range["AY" + row].Number = n.Gap_Needed_Supported_withdraw_from_child_labour;
+
+                            worksheet.Range["AZ" + row].Number = n.Gap_Needed_Supported_Child_reintegration_with_Family;
+
+                            worksheet.Range["BA" + row].Number = n.Gap_Needed_Provided_SBCC_violence_prevention;
+
+                            worksheet.Range["BB" + row].Number = n.Gap_Needed_Referred_access_other_Protection_services;
+
+                            //HEALTH food security
+
+                            worksheet.Range["BC" + row].Number = n.Gap_Needed_Nutrition_Education_Counselling;
+
+                            worksheet.Range["BD" + row].Number = n.Gap_Needed_Food_Relief_Supplement_Assistance;
+
+                            worksheet.Range["BE" + row].Number = n.Gap_Needed_Received_GAP_training;
+
+                            worksheet.Range["BF" + row].Number = n.Gap_Needed_Received_Farming_Inputs;
+
+                            worksheet.Range["BG" + row].Number = n.Gap_Needed_Received_Agric_Advisory_Services;
+
+                            worksheet.Range["BH" + row].Number = n.Gap_Needed_Supported_access_output_markets;
+
+                            worksheet.Range["BI" + row].Number = n.Gap_Needed_Supported_access_Post_Harvest_handling;
+
+                            worksheet.Range["BJ" + row].Number = n.Gap_Needed_Provided_Nutrition_Assessment;
+
+                            worksheet.Range["BK" + row].Number = n.Gap_Needed_Supported_setup_Vegetable;
+
+                            worksheet.Range["BL" + row].Number = n.Gap_Needed_supported_access_Farmer_field_schools;
+
+                            worksheet.Range["BM" + row].Number = n.Gap_Needed_Referred_access_other_FSN_services;
+
+                            //health
+
+                            worksheet.Range["BN" + row].Number = n.Gap_Needed_Assisted_access_safe_water;
+
+                            worksheet.Range["BO" + row].Number = n.Gap_Needed_Provided_with_stable_shelter;
+
+                            worksheet.Range["BP" + row].Number = n.Gap_Needed_Supported_access_pit_latrine;
+
+                            worksheet.Range["BQ" + row].Number = n.Gap_Needed_Supported_maintain_standard_Hand_washing_facility;
+
+                            worksheet.Range["BR" + row].Number = n.Gap_Needed_Supported_access_ITNs;
+
+                            worksheet.Range["BS" + row].Number = n.Gap_Needed_Provided_SBCC_on_WASH;
+
+                            worksheet.Range["BT" + row].Number = n.Gap_Needed_Supported_access_immunization;
+
+                            worksheet.Range["BU" + row].Number = n.Gap_Needed_Supported_access_antenatal_care;
+
+                            worksheet.Range["BV" + row].Number = n.Gap_Needed_Supported_access_youth_friendly_services;
+
+                            worksheet.Range["BW" + row].Number = n.Gap_Needed_Provided_SBCC_Malaria_Prevention;
+
+                            worksheet.Range["BX" + row].Number = n.Gap_Needed_Supported_access_IPT_Referral_Pregnant_Mothers;
+
+                            worksheet.Range["BY" + row].Number = n.Gap_Needed_supported_access_IRS_for_Malaria_Prevention;
+
+                            worksheet.Range["BZ" + row].Number = n.Gap_Needed_Supported_access_Family_Planning_services;
+
+                            worksheet.Range["CA" + row].Number = n.Gap_Needed_Referred_access_other_HWSS;
+
+                            worksheet.Range["CB" + row].Number = n.Gap_Needed_HIV_risk_assessment_pre_test_counselling;
+
+                            worksheet.Range["CC" + row].Number = n.Gap_Needed_Supported_test_HIV;
+
+                            worksheet.Range["CD" + row].Number = n.Gap_Needed_provided_HIV_post_test_counseling;
+
+                            worksheet.Range["CE" + row].Number = n.Gap_Needed_Supported_Disclose_HIV_status_Family;
+
+                            worksheet.Range["CF" + row].Number = n.Gap_Needed_Supported_Enroll_ART;
+
+                            worksheet.Range["CG" + row].Number = n.Gap_Needed_Supported_access_ART_refills;
+
+                            worksheet.Range["CH" + row].Number = n.Gap_Needed_Provided_with_ART_adherence_support;
+
+                            worksheet.Range["CI" + row].Number = n.Gap_Needed_Supported_to_test_for_VL;
+
+                            worksheet.Range["CJ" + row].Number = n.Gap_Needed_Supported_to_receive_VL_results;
+
+                            worksheet.Range["CK" + row].Number = n.Gap_Needed_Provided_IAC_for_Non_Suppression;
+
+                            worksheet.Range["CL" + row].Number = n.Gap_Needed_Referred_for_HIV_TCT_Services;
+
+                            worksheet.Range["CM" + row].Number = n.Gap_Needed_Provided_eMTCT_services;
+
+                            worksheet.Range["CN" + row].Number = n.Gap_Needed_Supported_to_access_PrEP;
+
+                            worksheet.Range["CO" + row].Number = n.Gap_Needed_Provided_with_condoms;
+
+                            worksheet.Range["CP" + row].Number = n.Gap_Needed_Supported_to_access_VMMC_for_male;
+
+                            worksheet.Range["CQ" + row].Number = n.Gap_Needed_Provided_SBCC_on_HIV_prevention;
+
+                            worksheet.Range["CR" + row].Number = n.Gap_Needed_Supported_to_access_PEP;
+
+                            worksheet.Range["CS" + row].Number = n.Gap_Needed_Provided_with_Self_Awareness_Knowledge;
+
+                            worksheet.Range["CT" + row].Number = n.Gap_Needed_Referred_access_other_HIV_prevention_services;
+
+
+
+                            //Emergency
+                            //stable
+
+                            worksheet.Range["CU" + row].Number = n.Emerging_Need_Cash_transfer;
+
+                            worksheet.Range["CV" + row].Number = n.Emerging_Need_Emergency_cash_support;
+
+                            worksheet.Range["CW" + row].Number = n.Emerging_Need_Access_to_Saving_Credit;
+
+                            worksheet.Range["CX" + row].Number = n.Emerging_Need_Supported_to_own_run;
+
+                            worksheet.Range["CY" + row].Number = n.Emerging_Need_Received_IGA_training_boost;
+
+                            worksheet.Range["CZ" + row].Number = n.Emerging_Need_Received_business_skills_training;
+
+                            worksheet.Range["DA" + row].Number = n.Emerging_Need_Apprenticeship_attachment;
+
+                            worksheet.Range["DB" + row].Number = n.Emerging_Need_Received_soft_skill_training;
+
+                            worksheet.Range["DC" + row].Number = n.Emerging_Need_Provided_startup_kit_or_capital;
+
+                            worksheet.Range["DD" + row].Number = n.Emerging_Need_Referred_to_ES_service;
+
+                            //schooled
+
+                            worksheet.Range["DE" + row].Number = n.Emerging_Need_Supported_to_enroll;
+
+                            worksheet.Range["DF" + row].Number = n.Emerging_Need_Monitored_for_regular_attendance;
+
+                            worksheet.Range["DG" + row].Number = n.Emerging_Need_Provided_school_fees_bursary;
+
+                            worksheet.Range["DH" + row].Number = n.Emerging_Need_Provided_school_meals;
+
+                            worksheet.Range["DI" + row].Number = n.Emerging_Need_Provided_with_school_uniform;
+
+                            worksheet.Range["DJ" + row].Number = n.Emerging_Need_Provided_scholastic;
+
+                            worksheet.Range["DK" + row].Number = n.Emerging_Need_Provided_vocational_education;
+
+                            worksheet.Range["DL" + row].Number = n.Emerging_Need_Caregiver_received_ECD_training;
+
+                            worksheet.Range["DM" + row].Number = n.Emerging_Need_Referred_for_ED_services;
+
+                            //safe - protection
+
+                            worksheet.Range["DN" + row].Number = n.Emerging_Need_Provided_Counselling_Guidance;
+
+                            worksheet.Range["DO" + row].Number = n.Emerging_Need_Supported_to_access_basic_needs;
+
+                            worksheet.Range["DP" + row].Number = n.Emerging_Need_Supported_access_recreation_activities;
+
+                            worksheet.Range["DQ" + row].Number = n.Emerging_Need_Provided_palliative_care;
+
+                            worksheet.Range["DR" + row].Number = n.Emerging_Need_Provided_Post_violence_trauma_informed;
+
+                            worksheet.Range["DS" + row].Number = n.Emerging_Need_Provided_Clothing;
+
+                            worksheet.Range["DT" + row].Number = n.Emerging_Need_Referred_to_access_other_PSS_services;
+
+                            //safe - protection
+
+                            worksheet.Range["DU" + row].Number = n.Emerging_Need_Legal_support_for_GBV;
+
+                            worksheet.Range["DV" + row].Number = n.Emerging_Need_Provided_Positive_Parenting_training;
+
+                            worksheet.Range["DW" + row].Number = n.Emerging_Need_Supported_handle_child_neglect_abusive;
+
+                            worksheet.Range["DX" + row].Number = n.Emerging_Need_Supported_register_birth;
+
+                            worksheet.Range["DY" + row].Number = n.Emerging_Need_Participated_community_sensitization_CP;
+
+                            worksheet.Range["DZ" + row].Number = n.Emerging_Need_Supported_withdraw_from_child_labour;
+
+                            worksheet.Range["EA" + row].Number = n.Emerging_Need_Supported_Child_reintegration_with_Family;
+
+                            worksheet.Range["EB" + row].Number = n.Emerging_Need_Provided_SBCC_violence_prevention;
+
+                            worksheet.Range["EC" + row].Number = n.Emerging_Need_Referred_access_other_Protection_services;
+
+                            //HEALTH food security
+
+                            worksheet.Range["ED" + row].Number = n.Emerging_Need_Nutrition_Education_Counselling;
+
+                            worksheet.Range["EE" + row].Number = n.Emerging_Need_Food_Relief_Supplement_Assistance;
+
+                            worksheet.Range["EF" + row].Number = n.Emerging_Need_Received_GAP_training;
+
+                            worksheet.Range["EG" + row].Number = n.Emerging_Need_Received_Farming_Inputs;
+
+                            worksheet.Range["EH" + row].Number = n.Emerging_Need_Received_Agric_Advisory_Services;
+
+                            worksheet.Range["EI" + row].Number = n.Emerging_Need_Supported_access_output_markets;
+
+                            worksheet.Range["EJ" + row].Number = n.Emerging_Need_Supported_access_Post_Harvest_handling;
+
+                            worksheet.Range["EK" + row].Number = n.Emerging_Need_Provided_Nutrition_Assessment;
+
+                            worksheet.Range["EL" + row].Number = n.Emerging_Need_Supported_setup_Vegetable;
+
+                            worksheet.Range["EM" + row].Number = n.Emerging_Need_supported_access_Farmer_field_schools;
+
+                            worksheet.Range["EN" + row].Number = n.Emerging_Need_Referred_access_other_FSN_services;
+
+                            //health
+
+                            worksheet.Range["EO" + row].Number = n.Emerging_Need_Assisted_access_safe_water;
+
+                            worksheet.Range["EP" + row].Number = n.Emerging_Need_Provided_with_stable_shelter;
+
+                            worksheet.Range["EQ" + row].Number = n.Emerging_Need_Supported_access_pit_latrine;
+
+                            worksheet.Range["ER" + row].Number = n.Emerging_Need_Supported_maintain_standard_Hand_washing_facility;
+
+                            worksheet.Range["ES" + row].Number = n.Emerging_Need_Supported_access_ITNs;
+
+                            worksheet.Range["ET" + row].Number = n.Emerging_Need_Provided_SBCC_on_WASH;
+
+                            worksheet.Range["EU" + row].Number = n.Emerging_Need_Supported_access_immunization;
+
+                            worksheet.Range["EV" + row].Number = n.Emerging_Need_Supported_access_antenatal_care;
+
+                            worksheet.Range["EW" + row].Number = n.Emerging_Need_Supported_access_youth_friendly_services;
+
+                            worksheet.Range["EX" + row].Number = n.Emerging_Need_Provided_SBCC_Malaria_Prevention;
+
+                            worksheet.Range["EY" + row].Number = n.Emerging_Need_Supported_access_IPT_Referral_Pregnant_Mothers;
+
+                            worksheet.Range["EZ" + row].Number = n.Emerging_Need_supported_access_IRS_for_Malaria_Prevention;
+
+                            worksheet.Range["FA" + row].Number = n.Emerging_Need_Supported_access_Family_Planning_services;
+
+                            worksheet.Range["FB" + row].Number = n.Emerging_Need_Referred_access_other_HWSS;
+
+                            worksheet.Range["FC" + row].Number = n.Emerging_Need_HIV_risk_assessment_pre_test_counselling;
+
+                            worksheet.Range["FD" + row].Number = n.Emerging_Need_Supported_test_HIV;
+
+                            worksheet.Range["FE" + row].Number = n.Emerging_Need_provided_HIV_post_test_counseling;
+
+                            worksheet.Range["FF" + row].Number = n.Emerging_Need_Supported_Disclose_HIV_status_Family;
+
+                            worksheet.Range["FG" + row].Number = n.Emerging_Need_Supported_Enroll_ART;
+
+                            worksheet.Range["FH" + row].Number = n.Emerging_Need_Supported_access_ART_refills;
+
+                            worksheet.Range["FI" + row].Number = n.Emerging_Need_Provided_with_ART_adherence_support;
+
+                            worksheet.Range["FJ" + row].Number = n.Emerging_Need_Supported_to_test_for_VL;
+
+                            worksheet.Range["FK" + row].Number = n.Emerging_Need_Supported_to_receive_VL_results;
+
+                            worksheet.Range["FL" + row].Number = n.Emerging_Need_Provided_IAC_for_Non_Suppression;
+
+                            worksheet.Range["FM" + row].Number = n.Emerging_Need_Referred_for_HIV_TCT_Services;
+
+                            worksheet.Range["FN" + row].Number = n.Emerging_Need_Provided_eMTCT_services;
+
+                            worksheet.Range["FO" + row].Number = n.Emerging_Need_Supported_to_access_PrEP;
+
+                            worksheet.Range["FP" + row].Number = n.Emerging_Need_Provided_with_condoms;
+
+                            worksheet.Range["FQ" + row].Number = n.Emerging_Need_Supported_to_access_VMMC_for_male;
+
+                            worksheet.Range["FR" + row].Number = n.Emerging_Need_Provided_SBCC_on_HIV_prevention;
+
+                            worksheet.Range["FS" + row].Number = n.Emerging_Need_Supported_to_access_PEP;
+
+                            worksheet.Range["FT" + row].Number = n.Emerging_Need_Provided_with_Self_Awareness_Knowledge;
+
+                            worksheet.Range["FU" + row].Number = n.Emerging_Need_Referred_access_other_HIV_prevention_services;
+
+
+                            ///Service Received
+                            //stable
+
+                            worksheet.Range["FV" + row].Number = n.Cash_transfer;
+
+                            worksheet.Range["FW" + row].Number = n.Emergency_cash_support;
+
+                            worksheet.Range["FX" + row].Number = n.Access_to_Saving_Credit;
+
+                            worksheet.Range["FY" + row].Number = n.Supported_to_own_run;
+
+                            worksheet.Range["FZ" + row].Number = n.Received_IGA_training_boost;
+
+                            worksheet.Range["GA" + row].Number = n.Received_business_skills_training;
+
+                            worksheet.Range["GB" + row].Number = n.Apprenticeship_attachment;
+
+                            worksheet.Range["GC" + row].Number = n.Received_soft_skill_training;
+
+                            worksheet.Range["GD" + row].Number = n.Provided_startup_kit_or_capital;
+
+                            worksheet.Range["GE" + row].Number = n.Referred_to_ES_service;
+
+                            //schooled
+
+                            worksheet.Range["GF" + row].Number = n.Supported_to_enroll;
+
+                            worksheet.Range["GG" + row].Number = n.Monitored_for_regular_attendance;
+
+                            worksheet.Range["GH" + row].Number = n.Provided_school_fees_bursary;
+
+                            worksheet.Range["GI" + row].Number = n.Provided_school_meals;
+
+                            worksheet.Range["GJ" + row].Number = n.Provided_with_school_uniform;
+
+                            worksheet.Range["GK" + row].Number = n.Provided_scholastic;
+
+                            worksheet.Range["GL" + row].Number = n.Provided_vocational_education;
+
+                            worksheet.Range["GM" + row].Number = n.Caregiver_received_ECD_training;
+
+                            worksheet.Range["GN" + row].Number = n.Referred_for_ED_services;
+
+                            //safe - protection
+
+                            worksheet.Range["GO" + row].Number = n.Provided_Counselling_Guidance;
+
+                            worksheet.Range["GP" + row].Number = n.Supported_to_access_basic_needs;
+
+                            worksheet.Range["GQ" + row].Number = n.Supported_access_recreation_activities;
+
+                            worksheet.Range["GR" + row].Number = n.Provided_palliative_care;
+
+                            worksheet.Range["GS" + row].Number = n.Provided_Post_violence_trauma_informed;
+
+                            worksheet.Range["GT" + row].Number = n.Provided_Clothing;
+
+                            worksheet.Range["GU" + row].Number = n.Referred_to_access_other_PSS_services;
+
+                            //safe - protection
+
+                            worksheet.Range["GV" + row].Number = n.Legal_support_for_GBV;
+
+                            worksheet.Range["GW" + row].Number = n.Provided_Positive_Parenting_training;
+
+                            worksheet.Range["GX" + row].Number = n.Supported_handle_child_neglect_abusive;
+
+                            worksheet.Range["GY" + row].Number = n.Supported_register_birth;
+
+                            worksheet.Range["GZ" + row].Number = n.Participated_community_sensitization_CP;
+
+                            worksheet.Range["HA" + row].Number = n.Supported_withdraw_from_child_labour;
+
+                            worksheet.Range["HB" + row].Number = n.Supported_Child_reintegration_with_Family;
+
+                            worksheet.Range["HC" + row].Number = n.Provided_SBCC_violence_prevention;
+
+                            worksheet.Range["HD" + row].Number = n.Referred_access_other_Protection_services;
+
+                            //HEALTH food security
+
+                            worksheet.Range["HE" + row].Number = n.Nutrition_Education_Counselling;
+
+                            worksheet.Range["HF" + row].Number = n.Food_Relief_Supplement_Assistance;
+
+                            worksheet.Range["HG" + row].Number = n.Received_GAP_training;
+
+                            worksheet.Range["HH" + row].Number = n.Received_Farming_Inputs;
+
+                            worksheet.Range["HI" + row].Number = n.Received_Agric_Advisory_Services;
+
+                            worksheet.Range["HJ" + row].Number = n.Supported_access_output_markets;
+
+                            worksheet.Range["HK" + row].Number = n.Supported_access_Post_Harvest_handling;
+
+                            worksheet.Range["HL" + row].Number = n.Provided_Nutrition_Assessment;
+
+                            worksheet.Range["HM" + row].Number = n.Supported_setup_Vegetable;
+
+                            worksheet.Range["HN" + row].Number = n.supported_access_Farmer_field_schools;
+
+                            worksheet.Range["HO" + row].Number = n.Referred_access_other_FSN_services;
+
+                            //health
+
+                            worksheet.Range["HP" + row].Number = n.Assisted_access_safe_water;
+
+                            worksheet.Range["HQ" + row].Number = n.Provided_with_stable_shelter;
+
+                            worksheet.Range["HR" + row].Number = n.Supported_access_pit_latrine;
+
+                            worksheet.Range["HT" + row].Number = n.Supported_maintain_standard_Hand_washing_facility;
+
+                            worksheet.Range["HU" + row].Number = n.Supported_access_ITNs;
+
+                            worksheet.Range["HV" + row].Number = n.Provided_SBCC_on_WASH;
+
+                            worksheet.Range["HW" + row].Number = n.Supported_access_immunization;
+
+                            worksheet.Range["HX" + row].Number = n.Supported_access_antenatal_care;
+
+                            worksheet.Range["HY" + row].Number = n.Supported_access_youth_friendly_services;
+
+                            worksheet.Range["HZ" + row].Number = n.Provided_SBCC_Malaria_Prevention;
+
+                            worksheet.Range["IA" + row].Number = n.Supported_access_IPT_Referral_Pregnant_Mothers;
+
+                            worksheet.Range["IB" + row].Number = n.supported_access_IRS_for_Malaria_Prevention;
+
+                            worksheet.Range["IC" + row].Number = n.Supported_access_Family_Planning_services;
+
+                            worksheet.Range["ID" + row].Number = n.Referred_access_other_HWSS;
+
+                            worksheet.Range["IE" + row].Number = n.HIV_risk_assessment_pre_test_counselling;
+
+                            worksheet.Range["IF" + row].Number = n.Supported_test_HIV;
+
+                            worksheet.Range["IG" + row].Number = n.provided_HIV_post_test_counseling;
+
+                            worksheet.Range["IH" + row].Number = n.Supported_Disclose_HIV_status_Family;
+
+                            worksheet.Range["II" + row].Number = n.Supported_Enroll_ART;
+
+                            worksheet.Range["IJ" + row].Number = n.Supported_access_ART_refills;
+
+                            worksheet.Range["IK" + row].Number = n.Provided_with_ART_adherence_support;
+
+                            worksheet.Range["IL" + row].Number = n.Supported_to_test_for_VL;
+
+                            worksheet.Range["IM" + row].Number = n.Supported_to_receive_VL_results;
+
+                            worksheet.Range["IN" + row].Number = n.Provided_IAC_for_Non_Suppression;
+
+                            worksheet.Range["IO" + row].Number = n.Referred_for_HIV_TCT_Services;
+
+                            worksheet.Range["IP" + row].Number = n.Provided_eMTCT_services;
+
+                            worksheet.Range["IQ" + row].Number = n.Supported_to_access_PrEP;
+
+                            worksheet.Range["IR" + row].Number = n.Provided_with_condoms;
+
+                            worksheet.Range["IS" + row].Number = n.Supported_to_access_VMMC_for_male;
+
+                            worksheet.Range["IT" + row].Number = n.Provided_SBCC_on_HIV_prevention;
+
+                            worksheet.Range["IU" + row].Number = n.Supported_to_access_PEP;
+
+                            worksheet.Range["IV" + row].Number = n.Provided_with_Self_Awareness_Knowledge;
+
+                            worksheet.Range["IW" + row].Number = n.Referred_access_other_HIV_prevention_services;
+
+                            ///Follow-up/ Unmet Need
+                            //stable
+
+                            worksheet.Range["IX" + row].Number = n.Unmet_Need_Cash_transfer;
+
+                            worksheet.Range["IY" + row].Number = n.Unmet_Need_Emergency_cash_support;
+
+                            worksheet.Range["IZ" + row].Number = n.Unmet_Need_Access_to_Saving_Credit;
+
+                            worksheet.Range["JA" + row].Number = n.Unmet_Need_Supported_to_own_run;
+
+                            worksheet.Range["JB" + row].Number = n.Unmet_Need_Received_IGA_training_boost;
+
+                            worksheet.Range["JC" + row].Number = n.Unmet_Need_Received_business_skills_training;
+
+                            worksheet.Range["JD" + row].Number = n.Unmet_Need_Apprenticeship_attachment;
+
+                            worksheet.Range["JE" + row].Number = n.Unmet_Need_Received_soft_skill_training;
+
+                            worksheet.Range["JF" + row].Number = n.Unmet_Need_Provided_startup_kit_or_capital;
+
+                            worksheet.Range["JG" + row].Number = n.Unmet_Need_Referred_to_ES_service;
+
+                            //schooled
+
+                            worksheet.Range["JH" + row].Number = n.Unmet_Need_Supported_to_enroll;
+
+                            worksheet.Range["JI" + row].Number = n.Unmet_Need_Monitored_for_regular_attendance;
+
+                            worksheet.Range["JJ" + row].Number = n.Unmet_Need_Provided_school_fees_bursary;
+
+                            worksheet.Range["JK" + row].Number = n.Unmet_Need_Provided_school_meals;
+
+                            worksheet.Range["JL" + row].Number = n.Unmet_Need_Provided_with_school_uniform;
+
+                            worksheet.Range["JM" + row].Number = n.Unmet_Need_Provided_scholastic;
+
+                            worksheet.Range["JN" + row].Number = n.Unmet_Need_Provided_vocational_education;
+
+                            worksheet.Range["JO" + row].Number = n.Unmet_Need_Caregiver_received_ECD_training;
+
+                            worksheet.Range["JP" + row].Number = n.Unmet_Need_Referred_for_ED_services;
+
+                            //safe - protection
+
+                            worksheet.Range["JQ" + row].Number = n.Unmet_Need_Provided_Counselling_Guidance;
+
+                            worksheet.Range["JR" + row].Number = n.Unmet_Need_Supported_to_access_basic_needs;
+
+                            worksheet.Range["JS" + row].Number = n.Unmet_Need_Supported_access_recreation_activities;
+
+                            worksheet.Range["JT" + row].Number = n.Unmet_Need_Provided_palliative_care;
+
+                            worksheet.Range["JU" + row].Number = n.Unmet_Need_Provided_Post_violence_trauma_informed;
+
+                            worksheet.Range["JV" + row].Number = n.Unmet_Need_Provided_Clothing;
+
+                            worksheet.Range["JW" + row].Number = n.Unmet_Need_Referred_to_access_other_PSS_services;
+
+                            //safe - protection
+
+                            worksheet.Range["JX" + row].Number = n.Unmet_Need_Legal_support_for_GBV;
+
+                            worksheet.Range["JY" + row].Number = n.Unmet_Need_Provided_Positive_Parenting_training;
+
+                            worksheet.Range["JZ" + row].Number = n.Unmet_Need_Supported_handle_child_neglect_abusive;
+
+                            worksheet.Range["KA" + row].Number = n.Unmet_Need_Supported_register_birth;
+
+                            worksheet.Range["KB" + row].Number = n.Unmet_Need_Participated_community_sensitization_CP;
+
+                            worksheet.Range["KC" + row].Number = n.Unmet_Need_Supported_withdraw_from_child_labour;
+
+                            worksheet.Range["KD" + row].Number = n.Unmet_Need_Supported_Child_reintegration_with_Family;
+
+                            worksheet.Range["KE" + row].Number = n.Unmet_Need_Provided_SBCC_violence_prevention;
+
+                            worksheet.Range["KF" + row].Number = n.Unmet_Need_Referred_access_other_Protection_services;
+
+                            //HEALTH food security
+
+                            worksheet.Range["KG" + row].Number = n.Unmet_Need_Nutrition_Education_Counselling;
+
+                            worksheet.Range["KH" + row].Number = n.Unmet_Need_Food_Relief_Supplement_Assistance;
+
+                            worksheet.Range["KI" + row].Number = n.Unmet_Need_Received_GAP_training;
+
+                            worksheet.Range["KJ" + row].Number = n.Unmet_Need_Received_Farming_Inputs;
+
+                            worksheet.Range["KK" + row].Number = n.Unmet_Need_Received_Agric_Advisory_Services;
+
+                            worksheet.Range["KL" + row].Number = n.Unmet_Need_Supported_access_output_markets;
+
+                            worksheet.Range["KM" + row].Number = n.Unmet_Need_Supported_access_Post_Harvest_handling;
+
+                            worksheet.Range["KN" + row].Number = n.Unmet_Need_Provided_Nutrition_Assessment;
+
+                            worksheet.Range["KO" + row].Number = n.Unmet_Need_Supported_setup_Vegetable;
+
+                            worksheet.Range["KP" + row].Number = n.Unmet_Need_supported_access_Farmer_field_schools;
+
+                            worksheet.Range["KQ" + row].Number = n.Unmet_Need_Referred_access_other_FSN_services;
+
+                            //health
+
+                            worksheet.Range["KR" + row].Number = n.Unmet_Need_Assisted_access_safe_water;
+
+                            worksheet.Range["KS" + row].Number = n.Unmet_Need_Provided_with_stable_shelter;
+
+                            worksheet.Range["KT" + row].Number = n.Unmet_Need_Supported_access_pit_latrine;
+
+                            worksheet.Range["KU" + row].Number = n.Unmet_Need_Supported_maintain_standard_Hand_washing_facility;
+
+                            worksheet.Range["KV" + row].Number = n.Unmet_Need_Supported_access_ITNs;
+
+                            worksheet.Range["KW" + row].Number = n.Unmet_Need_Provided_SBCC_on_WASH;
+
+                            worksheet.Range["KX" + row].Number = n.Unmet_Need_Supported_access_immunization;
+
+                            worksheet.Range["KY" + row].Number = n.Unmet_Need_Supported_access_antenatal_care;
+
+                            worksheet.Range["KZ" + row].Number = n.Unmet_Need_Supported_access_youth_friendly_services;
+
+                            worksheet.Range["LA" + row].Number = n.Unmet_Need_Provided_SBCC_Malaria_Prevention;
+
+                            worksheet.Range["LB" + row].Number = n.Unmet_Need_Supported_access_IPT_Referral_Pregnant_Mothers;
+
+                            worksheet.Range["LC" + row].Number = n.Unmet_Need_supported_access_IRS_for_Malaria_Prevention;
+
+                            worksheet.Range["LD" + row].Number = n.Unmet_Need_Supported_access_Family_Planning_services;
+
+                            worksheet.Range["LE" + row].Number = n.Unmet_Need_Referred_access_other_HWSS;
+
+                            worksheet.Range["LF" + row].Number = n.Unmet_Need_HIV_risk_assessment_pre_test_counselling;
+
+                            worksheet.Range["LG" + row].Number = n.Unmet_Need_Supported_test_HIV;
+
+                            worksheet.Range["LH" + row].Number = n.Unmet_Need_provided_HIV_post_test_counseling;
+
+                            worksheet.Range["LI" + row].Number = n.Unmet_Need_Supported_Disclose_HIV_status_Family;
+
+                            worksheet.Range["LJ" + row].Number = n.Unmet_Need_Supported_Enroll_ART;
+
+                            worksheet.Range["LK" + row].Number = n.Unmet_Need_Supported_access_ART_refills;
+
+                            worksheet.Range["LL" + row].Number = n.Unmet_Need_Provided_with_ART_adherence_support;
+
+                            worksheet.Range["LM" + row].Number = n.Unmet_Need_Supported_to_test_for_VL;
+
+                            worksheet.Range["LN" + row].Number = n.Unmet_Need_Supported_to_receive_VL_results;
+
+                            worksheet.Range["LO" + row].Number = n.Unmet_Need_Provided_IAC_for_Non_Suppression;
+
+                            worksheet.Range["LP" + row].Number = n.Unmet_Need_Referred_for_HIV_TCT_Services;
+
+                            worksheet.Range["LQ" + row].Number = n.Unmet_Need_Provided_eMTCT_services;
+
+                            worksheet.Range["LR" + row].Number = n.Unmet_Need_Supported_to_access_PrEP;
+
+                            worksheet.Range["LS" + row].Number = n.Unmet_Need_Provided_with_condoms;
+
+                            worksheet.Range["LT" + row].Number = n.Unmet_Need_Supported_to_access_VMMC_for_male;
+
+                            worksheet.Range["LU" + row].Number = n.Unmet_Need_Provided_SBCC_on_HIV_prevention;
+
+                            worksheet.Range["LV" + row].Number = n.Unmet_Need_Supported_to_access_PEP;
+
+                            worksheet.Range["LW" + row].Number = n.Unmet_Need_Provided_with_Self_Awareness_Knowledge;
+
+                            worksheet.Range["LX" + row].Number = n.Unmet_Need_Referred_access_other_HIV_prevention_services;
+
+
+                            worksheet.Range["LY" + row].Text = n.HomeVisitorName;
+
+                            worksheet.Range["LZ" + row].Text = n.VisitorTitle;
+
+                            worksheet.Range["MA" + row].Text = n.ReviewerName;
+
+                            worksheet.Range["MB" + row].Text = n.ReviewerTitle;
+
+                            if (n.ReviewDate.HasValue)
+                            {
+                                worksheet.Range["MC" + row].Text = n.ReviewDate.Value.ToString("dd/MM/yyyy");
+                            }
+
+
+                            worksheet.Range["A" + row + ":MC" + row].CellStyle = Style;
+                            row++;
+                        }
+                        MemoryStream ms = new MemoryStream();
+                        // Save and close the document.
+                        workbook.SaveAs(ms);
+                        //Reset the memory stream position.
+                        ms.Position = 0;
+                        await JS.SaveAs("Home Visit Service Reporting Tool Report.xlsx", ms.ToArray());
+                        ms.Dispose();
+                        workbook.Close();
+                        //excelEngine.Dispose();
+                        outComeResult = "Success:- The report was successfully downloaded.";
+                    }
+                }
+                else
+                {
+                    outComeResult = "No Record:- There were no records found for this search";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await ReportSpinner.HideAsync();
+        }
+    }
+}

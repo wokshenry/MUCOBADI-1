@@ -1,0 +1,662 @@
+﻿@page "/HIVTBTrackingFormEIDUploadPage"
+@using Syncfusion.Blazor.Inputs
+@using System.IO;
+@using System.ComponentModel.DataAnnotations
+@using Syncfusion.XlsIO
+@using MUCOBADI.Models
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+
+<style>
+
+        h3 {
+            color: red;
+            text-align: center;
+            font-family: Cambria, Cochin, Georgia, Times, Times New Roman, serif
+        }
+</style>
+
+@*<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="width: 100%; background-color: bisque; color: brown; font-family: Cambria; padding: 5px; font: bolder;"> <strong> EID UPLOAD PAGE </strong></li>
+</ol>*@
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<div class="form-row">
+    <h3>Click on Button Below to Upload the File (Use the Template From the System)</h3>
+    <div class="form-group col-md-12">
+        <SfUploader @ref="UploadObj" ID="UploadFiles" ShowFileList="false">
+            <UploaderEvents ValueChange="OnUploadChange"></UploaderEvents>
+        </SfUploader>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(rownumber))
+        {
+            <p style="color:#28a745;">Uploading Record @rownumber of @usedRows Please wait ........ </p>
+        }
+    </div>
+    <div class="form-group col-md-12">
+        <SfSpinner @ref="UploadingSpinner" Label="Uploading records please wait....." Size="50"></SfSpinner>
+    </div>
+    <div class="form-group col-md-12">
+        @if (!string.IsNullOrEmpty(MessageResponse))
+        {
+            if (MessageResponse.Contains("error") || MessageResponse.Contains("Failure"))
+            {
+                <p class="badge-danger" style="padding:10px">
+                    @MessageResponse
+                </p>
+            }
+            else if (MessageResponse.Contains("success"))
+            {
+                <p class="badge-success" style="padding:10px">
+                    @MessageResponse
+                </p>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    SfUploader UploadObj;
+    SfSpinner UploadingSpinner;
+    SfGrid<Apiupload> ApiuploadGrid;
+    string MessageResponse { get; set; }
+    SfGrid<Apiupload> UploadGrid;
+    public Query ChildQuery = new Query();
+    private APISearchPanel InputModel = new APISearchPanel();
+    List<Apiupload> DistrictData { get; set; }
+    List<string> DistinctDistrictData { get; set; } 
+    private List<Apiupload> SubcountyData { get; set; }
+    List<string> DistinctSubcountyData { get; set; } 
+    private List<Apiupload> FinancialYearData { get; set; }
+    List<string> DistinctFinancialYearData { get; set; } 
+    private List<Apiupload> ReportingPeriodData { get; set; }
+    List<string> DistinctReportingPeriodData { get; set; } 
+    bool DistrictEnabled { get; set; } = true;
+    bool isSubcountyEnabled { get; set; } = false;
+    SfMultiSelect<string[], string> DropdownObj;
+
+    string _rownumber;
+    string _columnnnumber;
+    string rownumber { get { return _rownumber; } set { if (value != null && value != _rownumber)
+            {
+                _rownumber = value;
+                StateHasChanged();
+            } } }
+    string columnnnumber { get { return _columnnnumber; } set { if (value != null && value != _columnnnumber)
+            {
+                _columnnnumber = value;
+                StateHasChanged();
+            } } }
+    string usedRows { get; set; }
+
+    public async Task OnUploadChange(UploadChangeEventArgs args)
+    {
+        try
+        {
+            MessageResponse = null;
+            await UploadingSpinner.ShowAsync();
+            foreach (var file in args.Files)
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+
+                    //Instantiate the Excel application object
+                    IApplication application = excelEngine.Excel;
+
+                    file.Stream.Position = 0;
+                    //Set the default application version
+                    application.DefaultVersion = ExcelVersion.Xlsx;
+                    IWorkbook workbook = excelEngine.Excel.Workbooks.Open(file.Stream);
+
+                    //Get the first worksheet in the workbook into IWorksheet
+                    IWorksheet worksheet = workbook.Worksheets[0];
+                    if (worksheet.Range["A1"].Value.Contains("District") && worksheet.Range["B1"].Value.Contains("Sub")
+                        && worksheet.Range["C1"].Value.Contains("Parish"))
+                    {
+                        HivTbTrackingFormExposedInfants apiuploadata = new HivTbTrackingFormExposedInfants();
+
+                        using (var db = new MUCOBADIContext())
+                        {
+                            var hh = db.ViewUploadHivTbTrackingForm.AsNoTracking().ToList();
+                            var beneficiary = db.BeneficiaryIdentificationRegister.ToList();
+                            var hhmembers = db.HouseHoldMembers.AsNoTracking().ToList();
+                            var fac = db.AFacility.AsNoTracking().ToList();
+                            var reg = db.ARegimen.AsNoTracking().ToList();
+                            var sub = db.ASubcounty.AsNoTracking().ToList();
+                            var dist = db.ADistrict.AsNoTracking().ToList();
+
+                            HouseHoldMembers _hhcode1 = new HouseHoldMembers();
+                            HivTbTrackingForm _hhtbform1 = new HivTbTrackingForm();
+                            string mothertrackingformId = string.Empty;
+                            int hhid=0;
+
+                            for (int row = 2; row <= worksheet.UsedRange.LastRow; row++)
+                            {
+                                usedRows = worksheet.UsedRange.LastRow.ToString();
+
+                                apiuploadata = new HivTbTrackingFormExposedInfants();
+                                _hhcode1 = new HouseHoldMembers();
+                                _hhtbform1 = new HivTbTrackingForm();
+
+                                if (worksheet.IsRowVisible(row))
+                                {
+                                    rownumber = row.ToString();
+                                    await Task.Delay(10);
+
+                                    //HouseHoldId
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,6].Value.Trim()) &&
+                                    (worksheet.Range[row,6].Value.Trim() != ""))
+                                    {
+                                        string apiid = worksheet.Range[row,6].Value.Trim(); 
+                                        var _hhcode = beneficiary.FirstOrDefault(o => o.HouseHoldCode == apiid);
+                                        if (_hhcode!=null)
+                                        {
+                                            _hhcode1.HouseHoldId = _hhcode.HouseHoldId;
+                                            hhid = _hhcode.HouseHoldId; 
+                                        }                                        
+                                    }
+
+                                    //HouseHoldMemberCode
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,8].Value.Trim()) &&
+                                    (worksheet.Range[row,8].Value.Trim() != ""))
+                                    {
+                                        string apiid = worksheet.Range[row,8].Value.Trim();
+                                        var _hhcode = hh.FirstOrDefault(o => o.HouseHoldMemberCode == apiid);
+                                        if (_hhcode != null)
+                                        {
+                                            apiuploadata.HivTbTrackingFormId = Convert.ToInt32(_hhcode.HivTbTrackingFormId);
+                                            apiuploadata.HouseHoldMemberId = Convert.ToInt32(_hhcode.HouseHoldMemberId);
+                                            mothertrackingformId = apiid;
+                                        }
+                                    }
+
+                                    //MotherCurrentlyonArt
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,9].Value.Trim()) &&
+                                    (worksheet.Range[row,9].Value.Trim() != ""))
+                                    {
+                                        string onart = worksheet.Range[row,9].Value.ToString();
+                                        if (onart.Contains("Yes"))
+                                        {
+                                            apiuploadata.IsEnrolledOnArt = 1;
+                                        }
+                                        else if (onart.Contains("No"))
+                                        {
+                                            apiuploadata.IsEnrolledOnArt = 2;
+                                        }
+                                        else
+                                        {
+                                            apiuploadata.IsEnrolledOnArt = 3;
+                                        }
+                                    }
+
+                                    //MotherArtNumber
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,10].Value.Trim()) &&
+                                    (worksheet.Range[row,10].Value.Trim() != ""))
+                                    {
+                                        string onart = worksheet.Range[row,10].Value.ToString();
+                                        _hhcode1.Artnumber = onart;
+                                    }
+
+                                    //ExposedInfantsNo
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,11].Value.Trim()) &&
+                                    (worksheet.Range[row,11].Value.Trim() != ""))
+                                    {
+                                        string onart = worksheet.Range[row,11].Value.ToString();
+                                        apiuploadata.ExposedInfantsNo = onart;
+                                    }
+
+                                    //Name of HEI
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,12].Value.Trim()) &&
+                                    (worksheet.Range[row,12].Value.Trim() != ""))
+                                    {
+                                        string apiid = worksheet.Range[row,12].Value.Trim().ToLower();
+                                        var _hhcode = hhmembers.FirstOrDefault(o => (o.Surname+o.Givenname).Trim().ToLower() == apiid);
+                                        if (_hhcode == null)
+                                        {
+                                            //Split Full Name
+                                            var splitnames = apiid.Split(' ');
+                                            string firstName = string.Empty;
+                                            string lastName = string.Empty;
+                                            //string firstName = splitnames[1];
+                                            //string lastName = splitnames[0];
+
+                                            if (splitnames.Length > 1)
+                                            {
+                                                firstName = splitnames[1];
+                                                lastName = splitnames[0];
+                                            }
+                                            else
+                                            {
+                                                firstName = "Not Provided";
+                                                lastName = splitnames[0];;
+                                            }
+                                            _hhcode1.Surname = lastName;
+                                            _hhcode1.Givenname = firstName;
+                                        }
+                                    }
+
+                                    //Age of HEI
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,13].Value.Trim()) &&
+                                    (worksheet.Range[row,13].Value.Trim() != ""))
+                                    {
+                                        double ee=0;
+                                        double final=0;
+                                        string onart = worksheet.Range[row,13].Value.ToString();
+                                        if (onart.All(Char.IsDigit))
+                                        {
+                                            ee = Convert.ToDouble(onart);
+                                            final = Math.Ceiling(ee);
+                                            _hhcode1.Age = Convert.ToInt32(final);
+                                            _hhcode1.DoB = DateTime.Now.AddMonths(-Convert.ToInt32(final));
+                                        }                                        
+                                    }
+
+                                    //Gender
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,14].Value.Trim()) &&
+                                    (worksheet.Range[row,14].Value.Trim() != ""))
+                                    {
+                                            string onart = worksheet.Range[row,14].Value.ToString();
+                                                        if (onart.Contains("F"))
+                                                        {
+                                                            _hhcode1.GenderId = "F";
+                                                        }
+                                                        else if (onart.Contains("M"))
+                                                        {
+                                                            _hhcode1.GenderId = "M";
+                                                        }
+                                    }
+
+                                    //RegistrationDate
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,16].Value.Trim()) &&
+                                    (worksheet.Range[row,16].Value.Trim() != ""))
+                                    {
+                                      if (worksheet.Range[row,16].HasDateTime)
+                                      {
+                                                var date = worksheet.Range[row,16].DateTime;
+                                                apiuploadata.RegistrationDate = date;
+                                      }
+                                    }
+
+                                    //RegistrationStatus
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,17].Value.Trim()) &&
+                                    (worksheet.Range[row,17].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,17].Value.Trim();
+                                                    if (apiid.Contains("Active"))
+                                                    {
+                                                        apiuploadata.RegistrationStatusId = 1;
+                                                    }
+                                                    else if (apiid.Contains("Graduated"))
+                                                    {
+                                                        apiuploadata.RegistrationStatusId = 2;
+                                                    }
+                                                    else if (apiid.Contains("Lost"))
+                                                    {
+                                                        apiuploadata.RegistrationStatusId = 3;
+                                                    }
+                                                    else if (apiid.Contains("Died"))
+                                                    {
+                                                        apiuploadata.RegistrationStatusId = 4;
+                                                    }
+                                    }
+
+                                    //AdheretoPMTCT
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,18].Value.Trim()) &&
+                                    (worksheet.Range[row,18].Value.Trim() != ""))
+                                    {
+                                       string onart = worksheet.Range[row,18].Value.Trim();
+                                                    if (onart.Contains("Yes"))
+                                                    {
+                                                        apiuploadata.SupportedToEnrollAndAdhereToPmtct = 1;
+                                                    }
+                                                    else if (onart.Contains("No"))
+                                                    {
+                                                        apiuploadata.SupportedToEnrollAndAdhereToPmtct = 2;
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.SupportedToEnrollAndAdhereToPmtct = 3;
+                                                    }
+                                    }
+
+                                    //PCRTest1
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,19].Value.Trim()) &&
+                                    (worksheet.Range[row,19].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,19].Value.Trim();
+                                                    if (apiid.Contains("1st"))
+                                                    {
+                                                        apiuploadata.PcrTestId = "1";
+                                                    }        
+                                    }
+
+                                    //PCRTest2
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,20].Value.Trim()) &&
+                                    (worksheet.Range[row,20].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,20].Value.Trim();
+                                                    if (!string.IsNullOrEmpty(apiuploadata.PcrTestId))
+                                                    {
+                                                        apiuploadata.PcrTestId += ",2";
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.PcrTestId = "2";
+                                                    }         
+                                    }
+
+                                    //PCRTest3
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,21].Value.Trim()) &&
+                                    (worksheet.Range[row,21].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,21].Value.Trim();
+                                                    if (!string.IsNullOrEmpty(apiuploadata.PcrTestId))
+                                                    {
+                                                        apiuploadata.PcrTestId += ",3";
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.PcrTestId = "3";
+                                                    }        
+                                    }
+
+                                    //TreatmentLiteracy
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,22].Value.Trim()) &&
+                                    (worksheet.Range[row,22].Value.Trim() != ""))
+                                    {
+                                       string onart = worksheet.Range[row,22].Value.Trim();
+                                                    if (onart.Contains("Yes"))
+                                                    {
+                                                        apiuploadata.PmtctmotherProvidedWithTreatmentLiteracy = 1;
+                                                    }
+                                                    else if (onart.Contains("No"))
+                                                    {
+                                                        apiuploadata.PmtctmotherProvidedWithTreatmentLiteracy = 2;
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.PmtctmotherProvidedWithTreatmentLiteracy = 3;
+                                                    }
+                                    }
+
+                                    //EIDCascade
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,23].Value.Trim()) &&
+                                    (worksheet.Range[row,23].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,23].Value.Trim();
+                                                    if (apiid.Contains("Neg"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 1;
+                                                    }
+                                                    else if (apiid.Contains("Pos"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 2;
+                                                    }
+                                                    else if (apiid.Contains("Lost"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 3;
+                                                    } 
+                                                    else if (apiid.Contains("Died"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 4;
+                                                    }   
+                                                    else if (apiid.Contains("Under"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 5;
+                                                    }  
+                                                    else if (apiid.Contains("Transfer"))
+                                                    {
+                                                        apiuploadata.EidCascadeId = 6;
+                                                    }  
+                                    }
+
+                                    //IsEnrolledOnArt
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,24].Value.Trim()) &&
+                                    (worksheet.Range[row,24].Value.Trim() != ""))
+                                    {
+                                       string onart = worksheet.Range[row,24].Value.Trim();
+                                                    if (onart.Contains("Yes"))
+                                                    {
+                                                        apiuploadata.IsEnrolledOnArt = 1;
+                                                        _hhcode1.HivstatusId = 1;
+                                                    }
+                                                    else if (onart.Contains("No"))
+                                                    {
+                                                        apiuploadata.IsEnrolledOnArt = 2;
+                                                        _hhcode1.HivstatusId = 2;
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.IsEnrolledOnArt = 3;
+                                                        _hhcode1.HivstatusId = 3;
+                                                    }
+                                    }
+
+                                    //ChildArtNumber
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,25].Value.Trim()) &&
+                                    (worksheet.Range[row,25].Value.Trim() != ""))
+                                    {
+                                       string onart = worksheet.Range[row,25].Value.ToString();
+                                       apiuploadata.ArtNumber = onart;
+                                    }
+
+                                    //IsTrackedAndReturnedToCare
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,26].Value.Trim()) &&
+                                    (worksheet.Range[row,26].Value.Trim() != ""))
+                                    {
+                                       string onart = worksheet.Range[row,26].Value.Trim();
+                                                    if (onart.Contains("Yes"))
+                                                    {
+                                                        apiuploadata.IsTrackedAndReturnedToCare = 1;
+                                                    }
+                                                    else if (onart.Contains("No"))
+                                                    {
+                                                        apiuploadata.IsTrackedAndReturnedToCare = 2;
+                                                    }
+                                                    else
+                                                    {
+                                                        apiuploadata.IsTrackedAndReturnedToCare = 3;
+                                                    }
+                                    }
+
+                                    //FeedingStatus
+                                    if (!string.IsNullOrEmpty(worksheet.Range[row,27].Value.Trim()) &&
+                                    (worksheet.Range[row,27].Value.Trim() != ""))
+                                    {
+                                       string apiid = worksheet.Range[row,27].Value.Trim();
+                                                    if (apiid.Contains("EBF"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 1;
+                                                    }
+                                                    else if (apiid.Contains("RF"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 2;
+                                                    }
+                                                    else if (apiid.Contains("MF"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 3;
+                                                    } 
+                                                    else if (apiid.Contains("CF"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 4;
+                                                    }   
+                                                    else if (apiid.Contains("Weaning"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 5;
+                                                    }  
+                                                    else if (apiid.Contains("NLB"))
+                                                    {
+                                                        apiuploadata.FeedingStatusId = 6;
+                                                    }  
+                                    }
+
+
+                                    
+                                    //save household members table
+                                    if (!string.IsNullOrEmpty(_hhcode1.Surname) || !string.IsNullOrEmpty(_hhcode1.Givenname))
+                                    {
+                                        HouseHoldMembers _tablehhmembers = db.HouseHoldMembers.FirstOrDefault(o => o.HouseHoldId == _hhcode1.HouseHoldId && ((o.Surname + o.Givenname == _hhcode1.Surname +_hhcode1.Givenname) ||
+                                    (o.Givenname + o.Surname == _hhcode1.Givenname +_hhcode1.Surname)));
+
+                                    if (_tablehhmembers == null)
+                                    {
+                                        try
+                                        {
+                                            using(var dbcontext = new SPToCoreContext())
+                                            {
+                                                var lastmember = await dbcontext.spLastMemberNumberGetAllAsync(241);
+
+                                                int lastcode = (lastmember[0].LastMemberNumber + 1).Value;
+                                                string _HouseHoldMembers = lastmember[0].HouseHoldMemberCode.Substring(0, 10)+"-" + lastcode.ToString("D2");
+                                                _hhcode1.HouseHoldMemberCode = _HouseHoldMembers;
+                                                int id = 1;
+                                                var last = db.HouseHoldMembers.OrderBy(o => o.HouseHoldMemberId).ToList().LastOrDefault();
+                                                if (last != null)
+                                                {
+                                                    id = (last.HouseHoldMemberId + 1);
+                                                }
+                                                _hhcode1.HouseHoldMemberId = id;
+                                                _hhcode1.KnownRiskFactorId=10;
+
+                                                db.HouseHoldMembers.Add(_hhcode1);
+                                                db.SaveChanges();
+                                            }
+
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+
+                                    }
+
+                                    else if (_tablehhmembers != null)
+                                    {
+                                        try
+                                        {
+                                            using(var dbcontext = new SPToCoreContext())
+                                            {
+                                                _hhcode1.HouseHoldMemberId = _tablehhmembers.HouseHoldMemberId;
+                                                _hhcode1.HouseHoldMemberCode = _tablehhmembers.HouseHoldMemberCode;
+                                                _hhcode1.KnownRiskFactorId=10;
+                                                db.Entry(_tablehhmembers).CurrentValues.SetValues(_hhcode1);
+                                                db.Entry(_tablehhmembers).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                                                db.SaveChanges();
+                                            }                                            
+                                        }
+
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+
+                                    //Check for Mother HIV_TB_TrackingFormId in that table
+                                    if (!string.IsNullOrEmpty(mothertrackingformId))
+                                    {
+                                      var _hhcodee = hh.FirstOrDefault(o => o.HouseHoldMemberCode == mothertrackingformId);
+                                      int track = _hhcodee.HivTbTrackingFormId;
+
+                                    HivTbTrackingFormExposedInfants _table = db.HivTbTrackingFormExposedInfants.FirstOrDefault(o => o.HouseHoldMemberId == _hhcode1.HouseHoldMemberId/* && o.FollowUpDate == apiuploadata.FollowUpDate*/);
+
+                                    if (_table != null)
+                                    {
+                                        try
+                                        {
+                                            apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;
+                                            apiuploadata.HivTbTrackingFormExposedInfantsId = _table.HivTbTrackingFormExposedInfantsId;
+                                            apiuploadata.HivTbTrackingFormId = track;
+                                            //apiuploadata.LastUploadDate = DateTime.Now;
+                                            db.Entry(_table).CurrentValues.SetValues(apiuploadata);
+                                            db.Entry(_table).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
+                                            db.SaveChanges();
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }
+                                    else
+                                    {
+                                     try
+                                     {
+                                      apiuploadata.HouseHoldMemberId = _hhcode1.HouseHoldMemberId;                                      
+                                      int idinfant=1;
+                                      var lastinfant = db.HivTbTrackingFormExposedInfants.OrderBy(o => o.HivTbTrackingFormExposedInfantsId).ToList().LastOrDefault();
+                                      if (lastinfant != null)
+                                        {
+                                            idinfant = (lastinfant.HivTbTrackingFormExposedInfantsId + 1);
+                                        }
+                                      apiuploadata.HivTbTrackingFormExposedInfantsId = idinfant;
+                                      apiuploadata.HivTbTrackingFormId = track;
+                                      db.HivTbTrackingFormExposedInfants.Add(apiuploadata);
+                                      db.SaveChanges();                                     
+                                            
+                                      }
+                                        catch (Exception ex)
+                                        {
+                                            throw ex;
+                                        }
+                                    }  
+                                    }
+                                    } 
+                                }                            
+                            }
+                        }
+                    }
+
+                    else
+                    {
+                        if (string.IsNullOrEmpty(MessageResponse))
+                        {
+                            MessageResponse = "Failure: You are uploading a wrong file. Please refresh the page to upload the right file again";
+                        }
+                    }
+                    file.Stream.Close();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageResponse = "error: " + ex.Message.ToString();
+        }
+        finally
+        {
+            if (string.IsNullOrEmpty(MessageResponse))
+            {
+                MessageResponse = "Success: All the records were uploaded successfully. Please refresh the page to upload again";
+            }
+            await UploadingSpinner.HideAsync();
+            await Task.CompletedTask;
+            //UploadGrid.Refresh();
+            StateHasChanged();
+        }
+    }
+}

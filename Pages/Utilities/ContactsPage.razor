@@ -1,0 +1,561 @@
+﻿@page "/ContactsPage"
+@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+@inject IToastService toastService;
+
+<style>
+    /*Increase font size for Multi Line Text Box Place Holder*/
+    .e-multi-line-input label.e-float-text {
+        font-size: 17px !important;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Contact Persons</strong></li>
+</ol>
+
+<SfGrid @ref="ContactsGrid" TValue="AContacts"
+        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="true" ShowColumnChooser="true" AllowTextWrap="true"
+        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+    <SfDataManager AdaptorInstance="@typeof(ContactsAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+    <GridEvents OnActionBegin="OnContactsActionBegin" OnActionComplete="ActionComplete" TValue="AContacts"></GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+        <HeaderTemplate>
+            @{
+                var text = GetContactsHeader((context as AContacts));
+                <div class="headerbandimg" />
+
+                <span>@text</span>
+            }
+        </HeaderTemplate>
+        <Template Context="ContactsContext">
+            @{
+                ContactsData = (ContactsContext as AContacts);
+                <div style="padding:15px;">
+                    <div class="form-row">
+                        <div class="form-group col-md-3" hidden>
+                            <SfNumericTextBox ID="ContactId" @bind-Value="@(ContactsData.ContactId)" Enabled="false" Placeholder="Contact Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <p>First Name:<span style="color:red;">*</span></p>
+                            <SfTextBox Multiline="true" ID="ContactFirstName" @bind-Value="@(ContactsData.ContactFirstName)" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                        <p>Middle Name:</p>
+                            <SfTextBox Multiline="true" ID="ContactMiddleName" @bind-Value="@(ContactsData.ContactMiddleName)" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                        <p>Last Name:<span style="color:red;">*</span></p>
+                            <SfTextBox Multiline="true" ID="ContactLastName" @bind-Value="@(ContactsData.ContactLastName)"  FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                        <p>Email:<span style="color:red;">*</span></p>
+                            <SfTextBox Multiline="true" ID="ContactEmail" @bind-Value="@(ContactsData.ContactEmail)" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                        <p>Phone Number:<span style="color:red;">*</span></p>
+                            <SfTextBox Multiline="true" ID="ContactPhoneNumber" @bind-Value="@(ContactsData.ContactPhoneNumber)" FloatLabelType="FloatLabelType.Never"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-3">
+                        <p>Country:<span style="color:red;">*</span></p>
+                            <SfDropDownList @bind-Value="@(ContactsData.CountryId)"
+                                    Enabled="false" TItem="ACountry" TValue="int?"
+                                    DataSource="@CountryData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                            <DropDownListFieldSettings Value="@nameof(ACountry.CountryId)"
+                                                   Text="@nameof(ACountry.CountryDesc)">
+                                        </DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </div>
+
+                         <div class="form-group col-md-3">
+                            <p><h7>District</h7></p>
+                            <SfMultiSelect @ref="@DistrictDatasourceObj" TValue="int[]" TItem="ADistrict" AllowFiltering="true" Enabled="@DistrictBool" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search District" FloatLabelType="FloatLabelType.Always"
+                                       FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" PopupHeight="350px">
+                                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                                <MultiSelectEvents TValue="int[]" TItem="ADistrict" ValueChange="OnDistrictDatasourceChange" DataBound="OnDistrictDatasourceBound"></MultiSelectEvents>
+                            </SfMultiSelect>
+                         </div>
+
+                        <div class="form-group col-md-3">
+                        <p><h7>Subcounty</h7></p>
+                            <SfMultiSelect @ref="@SubcountyDatasourceObj" Query="SubCountyQuery" TValue="int[]" TItem="ASubcounty" AllowFiltering="true" Enabled="@isSubcountyEnabled" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Search Subcounty" FloatLabelType="FloatLabelType.Always"
+                                                   FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" PopupHeight="350px">
+                                            <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                                            <MultiSelectEvents TValue="int[]" TItem="ASubcounty" ValueChange="OnSubcountyDatasourceChange" DataBound="OnSubcountyDatasourceBound"></MultiSelectEvents>
+                            </SfMultiSelect>
+                        </div>
+
+                        <div class="form-group col-md-3">
+                        <p>Facility</p>
+                            <SfDropDownList @bind-Value="@(ContactsData.FacilityId)"
+                                    Enabled="true" TItem="AFacility" TValue="int?"
+                                    DataSource="@FacilityData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                            <DropDownListFieldSettings Value="@nameof(AFacility.FacilityId)"
+                                                   Text="@nameof(AFacility.FacilityName)">
+                                        </DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </div>
+
+                        <div class="form-group col-md-3">
+                        <p>Service Provider:<span style="color:red;">*</span></p>
+                            <SfDropDownList @bind-Value="@(ContactsData.ServiceProviderId)"
+                                                Enabled="true" TItem="AServiceProvider" TValue="int?"
+                                                DataSource="@ServiceProviderData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                                        <DropDownListFieldSettings Value="@nameof(AServiceProvider.ServiceProviderId)"
+                                                Text="@nameof(AServiceProvider.ServiceProviderDesc)">
+                                        </DropDownListFieldSettings>
+                            </SfDropDownList>
+                        </div>
+                        @if(ContactsData.ServiceProviderId == 1)
+                        {
+
+                            <div class="form-group col-md-3">
+                                <p>Position</p>
+                                <SfDropDownList @bind-Value="@(ContactsData.PositionId)"
+                                                Enabled="true" TItem="APosition" TValue="int?"
+                                                DataSource="@PositionData" Placeholder="Please select"
+                                                FloatLabelType="FloatLabelType.Never" AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                                    <DropDownListFieldSettings Value="@nameof(APosition.PositionId)"
+                                                               Text="@nameof(APosition.PositionDesc)">
+                                    </DropDownListFieldSettings>
+                                </SfDropDownList>
+                            </div>
+                        }
+                        
+                    </div>
+                </div>
+            }
+        </Template>
+    </GridEditSettings>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+    <GridPageSettings PageSize="20"></GridPageSettings>
+    <GridColumns>
+        <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+        <GridColumn Field=@nameof(AContacts.ContactId) HeaderText="Contact Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+        <GridColumn Field=@nameof(AContacts.ContactFirstName) HeaderText="First Name" Width="80"></GridColumn>
+        <GridColumn Field=@nameof(AContacts.ContactMiddleName) HeaderText="Middle Name" Width="80"></GridColumn>
+        <GridColumn Field=@nameof(AContacts.ContactLastName) HeaderText="Last Name" Width="80"></GridColumn>
+        <GridForeignColumn Field=@nameof(AContacts.ServiceProviderId)
+                           Visible="true"
+                           HeaderText="Service Provider"
+                           Width="80"
+                           ForeignKeyField="@nameof(AServiceProvider.ServiceProviderId)"
+                           ForeignKeyValue="@nameof(AServiceProvider.ServiceProviderDesc)"
+                           ForeignDataSource="@ServiceProviderData"
+                           AllowEditing="false">
+        </GridForeignColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    private SfGrid<AContacts> ContactsGrid;
+    private static AContacts ContactsData { get; set; }
+    List<AServiceProvider> ServiceProviderData { get; set; }
+    List<AGender> GenderData { get; set; }
+    List<ACountry> CountryData { get; set; }
+    List<ADistrict> DistrictData { get; set; }
+    List<ASubcounty> SubcountyData { get; set; }
+    List<AFacility> FacilityData { get; set; }
+    List<APosition> PositionData { get; set; }
+    private SfMultiSelect<int[],ADistrict> DistrictDatasourceObj;
+    private SfMultiSelect<int[],ASubcounty> SubcountyDatasourceObj;
+    bool DistrictBool = true;
+    bool isSubcountyEnabled { get; set; } = false;
+    Query? SubCountyQuery { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+            ServiceProviderData = _context.AServiceProvider.ToList();
+            GenderData = _context.AGender.ToList();
+            CountryData = _context.ACountry.ToList();
+            DistrictData = _context.ADistrict.ToList();
+            SubcountyData = _context.ASubcounty.ToList();
+            FacilityData = _context.AFacility.ToList();
+            PositionData = _context.APosition.ToList();
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowWarning(ex.Message.ToString());
+        }
+    }
+
+    #region Contacts
+    public class ContactsAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public ContactsAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<AContacts>();
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    data = await dbContext
+                    .AContacts.OrderByDescending(o => o.ContactId)
+                    .ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<AContacts>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AContacts);
+                    AContacts cont = new AContacts();
+                    var exists = dbContext.AContacts.FirstOrDefault(o => o.ContactId == val.ContactId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.AContacts.OrderBy(o => o.ContactId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.ContactId + 1);
+                        }
+                        cont.ContactId = id;
+                        cont.ContactFirstName = val.ContactFirstName;
+                        cont.ContactMiddleName = val.ContactMiddleName;
+                        cont.ContactLastName = val.ContactLastName;
+                        cont.GenderId = val.GenderId;
+                        cont.ContactEmail = val.ContactEmail;
+                        cont.ContactPhoneNumber = val.ContactPhoneNumber;
+                        cont.CountryId = val.CountryId;
+                        cont.OperationDistrict = val.OperationDistrict;
+                        cont.OperationSubCounty = val.OperationSubCounty;
+                        cont.FacilityId = val.FacilityId;;
+                        cont.ServiceProviderId = val.ServiceProviderId;
+                        cont.PositionId = val.PositionId;
+                        cont.AddedBy = _userManagement.GetUserName();
+                        cont.AddedDate = DateTime.Now;
+
+                        dbContext.AContacts.Add(cont);
+                        dbContext.SaveChanges();
+                        toastService.ShowSuccess("Record saved successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.AContacts.FirstOrDefault(o => o.ContactId == data);
+                    if (exists != null)
+                    {
+                        dbContext.AContacts.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AContacts);
+                    AContacts cont = new AContacts();
+                    var exists = dbContext.AContacts.FirstOrDefault(o => o.ContactId == val.ContactId);
+                    if (exists != null)
+                    {
+                        cont.ContactFirstName = val.ContactFirstName;
+                        cont.ContactMiddleName = val.ContactMiddleName;
+                        cont.ContactLastName = val.ContactLastName;
+                        cont.GenderId = val.GenderId;
+                        cont.ContactEmail = val.ContactEmail;
+                        cont.ContactPhoneNumber = val.ContactPhoneNumber;
+                        cont.CountryId = val.CountryId;
+                        cont.OperationDistrict = val.OperationDistrict;
+                        cont.OperationSubCounty = val.OperationSubCounty;
+                        cont.FacilityId = val.FacilityId;;
+                        cont.ServiceProviderId = val.ServiceProviderId;
+                        cont.PositionId = val.PositionId;
+
+                        dbContext.Entry(exists).CurrentValues.SetValues(val);
+                        dbContext.Entry(exists).State = EntityState.Modified;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    string result = "Record Updated Successfully";
+                    toastService.ShowInfo(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+
+    public void ActionComplete(ActionEventArgs<AContacts> args)
+    {
+        if (args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Add) ||
+        args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.BeginEdit))
+        {
+            ContactsGrid.PreventRender(false);
+        }
+    }
+
+    public void OnContactsActionBegin(ActionEventArgs<AContacts> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+            isSubcountyEnabled = true;
+
+            if (!string.IsNullOrEmpty(args.RowData.OperationDistrict))
+            {
+                List<WhereFilter> filterList = new List<WhereFilter>();
+                foreach (var item in args.RowData.OperationDistrict)
+                {
+                    filterList.Add(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = item, IgnoreCase = true });
+                }
+
+                var orWhere = WhereFilter.Or(filterList);
+                SubCountyQuery = new Query().Where(orWhere);
+            }
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+            args.Data.CountryId = 259;
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (string.IsNullOrEmpty(args.Data.ContactFirstName))
+            {
+                toastService.ShowWarning("Please enter the first name");
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.ContactLastName))
+            {
+                toastService.ShowWarning("Please enter the last name");
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.ContactEmail))
+            {
+                toastService.ShowWarning("Please enter the email");
+                args.Cancel = true;
+            }
+            else if (string.IsNullOrEmpty(args.Data.ContactPhoneNumber))
+            {
+                toastService.ShowWarning("Please enter the phone number");
+                args.Cancel = true;
+            }
+            else if (args.Data.CountryId == null)
+            {
+                toastService.ShowWarning("Please choose the country");
+                args.Cancel = true;
+            }
+            else if (args.Data.ServiceProviderId == null)
+            {
+                toastService.ShowWarning("Please choose the service provider");
+                args.Cancel = true;
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.AContacts.FirstOrDefault(o => (o.ContactEmail.ToLower() == args.Data.ContactEmail.ToLower()));
+                    if (exists != null)
+                    {
+                        toastService.ShowWarning("Person with a similar email has arleady been registered");
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetContactsHeader(AContacts Value)
+    {
+        if (Value.ContactId == 0)
+        {
+            return "Add a new Contact";
+        }
+        else
+        {          
+            return "Edit Details for " + Value.ContactFirstName + Value.ContactMiddleName + Value.ContactLastName;
+        }
+    }
+
+    public void OnDistrictDatasourceBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(ContactsData.OperationDistrict))
+        {
+            var a = ContactsData.OperationDistrict.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            DistrictDatasourceObj.Value = c.ToArray();
+        }
+    }
+
+    public void OnDistrictDatasourceChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            ContactsData.OperationDistrict = string.Join(",", args.Value);
+            isSubcountyEnabled = true;
+            List<WhereFilter> filterList = new List<WhereFilter>();
+            foreach (var item in args.Value)
+            {
+                filterList.Add(new WhereFilter() { Field = "DistrictId", Operator = "equal", value = item, IgnoreCase = true });
+            }
+
+            var orWhere = WhereFilter.Or(filterList);
+            SubCountyQuery = new Query().Where(orWhere);
+        }
+        else
+        {
+            SubCountyQuery = new Query();
+        }
+    }
+
+    //public void OnDistrictDatasourceChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]?> args)
+    //{
+    //    if (args.Value != null)
+    //    {
+    //        ContactsData.OperationDistrict = string.Join(",", args.Value);
+
+    //        //SubcountyData = _context.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).ToList();
+    //        //isSubcountyEnabled = true;
+    //    }
+    //    else
+    //    {
+    //        ContactsData.OperationDistrict = null;
+    //    }
+    //}
+
+    public void OnSubcountyDatasourceBound(Syncfusion.Blazor.DropDowns.DataBoundEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(ContactsData.OperationSubCounty))
+        {
+            var a = ContactsData.OperationSubCounty.Split(',');
+            List<int> c = new List<int>();
+            foreach (var n in a)
+            {
+                int b = Convert.ToInt32(n.Trim());
+                c.Add(b);
+            }
+            SubcountyDatasourceObj.Value = c.ToArray();
+        }
+    }
+    public void OnSubcountyDatasourceChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int[]> args)
+    {
+        if (args.Value != null)
+        {
+            ContactsData.OperationSubCounty = string.Join(",", args.Value);
+        }
+        else
+        {
+            ContactsData.OperationSubCounty = null;
+        }
+    }
+
+
+    #endregion Contacts
+
+}

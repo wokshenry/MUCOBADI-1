@@ -1,0 +1,370 @@
+﻿@page "/"
+@using MUCOBADI.Data;
+@using MUCOBADI.Interfaces;
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@using MUCOBADI.Models;
+@using Microsoft.Extensions.Logging;
+@inject NavigationManager NavManager;
+@inject IJSRuntime JS;
+@inject SignInManager<IdentityUser> _signInManager;
+@inject UserManager<IdentityUser> _userManager;
+@inject ILogger<LoginPage> _logger;
+@inject UserManagement userManagement;
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+@inject IHttpClientFactory ClientFactory
+<style>
+    body {
+        margin: 0px;
+        padding: 0px;
+        background: url(../Login/images/LoginBackground.PNG);
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position-y: -68px;
+        height: 100%;
+        background-color: #000 !important;
+        font-family: 'Roboto', 'Roboto Condensed' !important;
+        width: 100%;
+        overflow-x: hidden !important;
+    }
+
+    .centerImage {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        /*width: 50%;*/
+    }
+    .LeftImage {
+        display: block;
+        margin-left: 10px;
+        margin-right: auto;
+        /*width: 50%;*/
+    }
+    .RightImage {
+        display: block;
+        margin-left: auto;
+        margin-right: 10px;
+        /*float: right;*/
+        /*width: 50%;*/
+    }
+
+    h4 {
+        color: #96CFF0;
+    }
+
+    h3 {
+        /*color: ghostwhite;*/
+        color: black;
+        margin: 10px;
+        text-shadow: 0 1px 3px #000;
+    }
+
+    p {
+        font-family: 'Roboto', 'Roboto Condensed' !important;
+        font-size: 18px;
+        color: white;
+    }
+
+    .e-checkbox-wrapper .e-frame + .e-label, .e-css.e-checkbox-wrapper .e-frame + .e-label {
+        margin-left: 10px;
+        color: #AB47BC;
+        font-weight:bolder;
+    }
+
+    .e-checkbox-wrapper .e-frame.e-check, .e-css.e-checkbox-wrapper .e-frame.e-check {
+        background-color: #AB47BC;
+        border-color: transparent;
+        color: #fff;
+    }
+
+    .MainLogin {
+        max-width: 75%;
+        margin-top: 3vh;
+        margin-right: auto;
+        margin-left: auto;
+        -webkit-box-pack: center !important;
+        -ms-flex-pack: center !important;
+        justify-content: center !important;
+        background-color: rgba(255,255,255,0.5);
+    }
+    .fg-btn, .rg-btn {
+        background: rgba(0,0,0,.66);
+        color: #fff;
+        border: 1px solid rgba(0,0,0,.66) !important;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-drag: none;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+        box-shadow: 0 3px 1px -2px rgb(0 0 0 / 20%), 0 2px 2px 0 rgb(0 0 0 / 14%), 0 1px 5px 0 rgb(0 0 0 / 12%);
+        padding: 30px;
+        box-sizing: border-box;
+        position: relative;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        cursor: pointer;
+        outline: 0;
+        border: none;
+        -webkit-tap-highlight-color: transparent;
+        display: inline-block;
+        white-space: nowrap;
+        text-decoration: none;
+        vertical-align: baseline;
+        text-align: center;
+        margin: 0;
+        min-width: 88px;
+        line-height: 36px;
+        padding: 0 16px;
+        border-radius: 2px;
+        overflow: visible;
+        transform: translate3d(0,0,0);
+        transition: background .4s cubic-bezier(.25,.8,.25,1),box-shadow 280ms cubic-bezier(.4,0,.2,1);
+    }
+
+    a {
+        color: ghostwhite;
+    }
+</style>
+<img src="/Login/images/USAIDlogo.png" width="260" height="80" class="LeftImage" />
+<img src="/Login/images/MucobadiLogo2.png" width="180" height="80" style="margin-top:-80px;" class="RightImage" />
+<div class="MainLogin">
+    <div class="form-row">
+        <div class="form-group col-md-7">
+            <h3 style="text-align: left; margin-bottom: 50px; margin-top:70px;">ICARE Management Information Systems (MIS) </h3>
+            @*<p style="margin-bottom:50px;">
+                The e-WPRS is an online system to facilitate the recommendation of work permits in the Oil & Gas industry.
+            </p>
+            <p style="margin-bottom:120px;">For enquires and support please contact us on <a href="mailto:ewprs@pau.go.ug" trget="_blank" style="color: #08abdc !important;">ewprs@pau.go.ug</a></p>*@
+            @*<div class="form-row">
+                <div class="form-group col-md-6">
+                    <h4>Head Office</h4>
+                    <p><span class="fa fa-location-arrow"></span> Plot 34-36, Lugard Avenue, Entebbe <br />P.O. Box 833 Entebbe, Uganda <br /><span class="fa fa-phone"></span> +256 414 320 423</p>
+
+                </div>
+                <div class="form-group col-md-6">
+                    <h4>Liaison Office</h4>
+                    <p><span class="fa fa-location-arrow"></span> Plot 29-33, Kampala Road | Amber House, 4th Floor, Block B <br /><span class="fa fa-phone"></span> +256 414 231 924</p>
+                </div>
+                <div class="form-group col-md-6">
+                <p><span class="fa fa-fax"></span> Fax: +256 414 420 459</p>
+                </div>
+                <div class="form-group col-md-6">
+                    <p><span class="fa fa-mobile"></span>  +256-782-283-285</p>
+                </div>
+            </div>*@
+            @*<p style="    color: ghostwhite;"><a style="    color: ghostwhite;" href="https://www.pau.go.ug/"><span class="fa fa-internet-explorer"></span> www.pau.go.ug</a> | <a style="    color: ghostwhite;" href="https://twitter.com/PAU_Uganda"><span class="fa fa-twitter"></span> @@PAU_Uganda</a> | <a style="    color: ghostwhite;" href="https://facebook.com/PetroleumAuthorityUganda/"><span class="fa fa-facebook"></span> PetroleumAuthorityUganda</a></p>*@
+        </div>
+        <div class="form-group col-md-5" style="padding:5%;">
+            <div class="form-group d-md-flex">
+                <h3 class="mb-4">Sign In</h3>
+            </div>
+            <EditForm Model="@InputModel" class="signin-form" style="margin-left:10px;" OnValidSubmit="@LoginUser">
+                <div class="form-group mb-3">
+                    <label class="label" for="Email" style="color: #AB47BC; ">Username</label>
+                    <input type="text" @bind-value="@InputModel.Email" class="form-control" placeholder="Username" required>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="label" for="password" style="color: #AB47BC; ">Password</label>
+                    <input type="password" @bind-value="@InputModel.Password" class="form-control" placeholder="Password" required>
+                </div>
+                <div class="form-group mb-3">
+                    <SfCheckBox @bind-Checked="@InputModel.RememberMe" Label="Remember Me" />
+                    @*<label class="checkbox-wrap checkbox-primary mb-0">
+                        Remember Me
+                        <input type="checkbox" @bind-value="@InputModel.RememberMe">
+                        <span class="checkmark"></span>
+                    </label>*@
+                </div>
+                <div class="form-group">
+                    <SfSpinner Size="40" @ref="LoginSpinner" Label="Logging you in please wait..." Type="SpinnerType.Material" @bind-Visible="@InputModel.Isbusy" CssClass="e-customClass"></SfSpinner>
+                </div>
+                <div class="form-group">
+                    @if (InputModel.Isbusy == false)
+                    {
+                        <button type="submit" class="form-control btn btn-primary rounded submit px-3">Sign In</button>
+                    }
+                    else
+                    {
+                        <button type="submit" disabled class="form-control btn btn-primary rounded submit px-3">Sign In</button>
+                    }
+
+                </div>
+
+                @if (!string.IsNullOrEmpty(Errormsg))
+                {
+                    <p class="badge badge-danger" style="margin:10px;">@Errormsg</p>
+                }
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+            </EditForm>
+            <div class="form-group d-md-flex" style="margin-left:8px;">
+                <div class="w-50 text-left">
+                    <button class="fg-btn" @onclick="@ForgotPasswordclick">Forgot Password?</button>
+                </div>
+                <div class="w-50 text-md-right">
+                    <button class="fg-btn" @onclick="@signUpclick"><i class="fa fa-pie-chart"></i> View Dashboards</button>
+                </div>
+            </div>
+        </div>
+
+        <SfDialog @ref="@ConfirmationDialogue" Width="400px" Target=".mainbody" ShowCloseIcon="false" Visible="false" IsModal="true">
+            <DialogTemplates>
+                <Content>
+                    @((MarkupString)@ConfirmationText)
+                </Content>
+            </DialogTemplates>
+            <DialogButtons>
+                <DialogButton Content="Close" OnClick="@ComfirmationNo" />
+            </DialogButtons>
+        </SfDialog>
+    </div>
+</div>
+@code {
+    SfDialog ConfirmationDialogue;
+    string ConfirmationText { get; set; }
+    SfSpinner LoginSpinner;
+
+    string Errormsg { get; set; }
+    private LoginViewModel InputModel = new LoginViewModel();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Errormsg = string.Empty;
+            if (userManagement.IsSignedIn())
+            {
+                string currentUrl = NavManager.Uri + "api/LoginAPI";
+                var text = await JS.InvokeAsync<string>("Logout", currentUrl);
+            }
+            InputModel.Isbusy = false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation("Login Error:-" + ex.Message.ToString());
+            Errormsg = ex.Message;
+        }
+    }
+    private async Task LoginUser()
+    {
+        try
+        {
+            await LoginSpinner.ShowAsync();
+            InputModel.Isbusy = true;
+            Errormsg = string.Empty;
+            string email = string.Empty;
+            int? SvcPvdrId = 0;
+            using (var dbContext = new MUCOBADIContext())
+            {
+                var exist = dbContext.AspNetUsers.FirstOrDefault(o => o.Email == InputModel.Email || o.UserName == InputModel.Email);
+                var userdetails = dbContext.ViewUserManagement.FirstOrDefault(o => o.Email == InputModel.Email || o.UserName == InputModel.Email);
+                if (exist != null)
+                {
+                    if (exist.LockoutEnabled)
+                    {
+                        //Errormsg = "This account has been locked out, Please contact your administrator for re-activation.";
+                        ConfirmationText = "This account is not activated, Please contact your system administrator for activation.";
+                        InputModel.Isbusy = false;
+                        await ConfirmationDialogue.Show();
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        email = exist.UserName;
+                        InputModel.Email = exist.UserName;
+                        if (userdetails!=null)
+                        {
+                            SvcPvdrId = userdetails.ServiceProviderId;
+                        }
+                        
+                        //LoginModel x = new LoginModel();
+                        //x.Email = InputModel.Email;
+                        //x.Password = InputModel.Password;
+                        //x.RememberMe = InputModel.RememberMe;
+                        string currentUrl = NavManager.Uri + "api/LoginAPI";
+                        // This doesn't count login failures towards account lockout
+                        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                        //var result = await _signInManager.PasswordSignInAsync(InputModel.Email, InputModel.Password, InputModel.RememberMe, lockoutOnFailure: false);
+                        var result = await JS.InvokeAsync<Microsoft.AspNetCore.Identity.SignInResult>("Login", InputModel.Email, InputModel.Password, InputModel.RememberMe, currentUrl, SvcPvdrId);
+                        //string currentUrl = NavManager.Uri + "api/LoginAPI";
+                        //var request = new HttpRequestMessage(HttpMethod.Get, currentUrl);
+                        //request.Headers.Add("Accept", "application/json");
+                        //// request.Headers.Add("User-Agent", "HttpClientFactory-Sample");
+                        ////HttpContent content = new
+                        //var client = ClientFactory.CreateClient();
+
+                        //string json = System.Text.Json.JsonSerializer.Serialize(x);
+
+                        //StringContent httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+                        //var response = await client.PostAsync(currentUrl, httpContent);
+
+
+                        //if (response.IsSuccessStatusCode)
+                        //{
+                        //    //succeeded:true,isLockedOut:false,isNotAllowed:false,requiresTwoFactor:false
+                        //    var _responseStream = await response.Content.ReadAsStringAsync();
+                        //    _responseStream = _responseStream.Replace("{", "").Replace("}", "").Replace("\"","");
+                        //    var a = _responseStream.Split(",");
+                        //    foreach(var n in a)
+                        //    {
+                        //        if (n.Contains("succeeded:true"))
+                        //        {
+                        //            NavManager.NavigateTo("/Index", true);
+                        //            //break;
+                        //        }
+                        //        else if (n.Contains("isLockedOut:true"))
+                        //        {
+                        //            NavManager.NavigateTo("/Account/LockOutPage", true);
+                        //            break;
+                        //        }
+                        //        else if (n.Contains("isNotAllowed:true"))
+                        //        {
+                        //            NavManager.NavigateTo("/Account/EmailNotComfirmedPage", true);
+                        //            break;
+                        //        }
+                        //        else if (n.Contains("requiresTwoFactor:true"))
+                        //        {
+                        //            //NavManager.NavigateTo("/", true);
+                        //            break;
+                        //        }
+                        //    }
+                        //    Errormsg = "Email address or password are incorrect.";
+                        //}
+                        //else
+                        //{
+                        //    Errormsg = await response.Content.ReadAsStringAsync();
+                        //}
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation("Login Error:-" + ex.Message.ToString());
+            Errormsg = ex.Message;
+        }
+        finally
+        {
+            await LoginSpinner.HideAsync();
+            InputModel.Isbusy = false;
+            StateHasChanged();
+        }
+    }
+    private void signUpclick()
+    {
+        NavManager.NavigateTo("DashboardMaintenancePage", true);
+        //NavManager.NavigateTo("DashboardPage", true);
+    }
+    private void ForgotPasswordclick()
+    {
+        NavManager.NavigateTo("ForgotPasswordPage", true);
+    }
+    private void ComfirmationNo()
+    {
+        ConfirmationDialogue.Hide();
+    }
+}

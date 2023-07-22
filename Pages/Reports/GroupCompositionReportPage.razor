@@ -1,0 +1,928 @@
+﻿@page "/GroupCompositionReportPageReport"
+@using System.Collections.ObjectModel
+@using MUCOBADI.Models;
+@using MUCOBADI.Data;
+@using System.IO;
+@using Microsoft.EntityFrameworkCore;
+@using System.Collections;
+@inject UserManagement userManagement;
+@inject NavigationManager Navigation;
+@using Syncfusion.XlsIO;
+@using Syncfusion.XlsIO.Implementation;
+@using Syncfusion.XlsIORenderer;
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>GROUP ASSOCIATION  COMPOSITION REPORT</strong></li>
+</ol>
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+
+<EditForm Model="@InputModel" OnValidSubmit="@OnSearchSubmit">
+    <DataAnnotationsValidator />
+    <div class="row" style="margin-bottom:10px;">
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.GroupId" TValue="int?[]" TItem="AGroups" AllowFiltering="true" Placeholder="Group" Mode="@VisualMode.CheckBox" DataSource="@GroupData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Group" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AGroups.GroupId)" Text="@nameof(AGroups.GroupName)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.GroupTypeId" TValue="int?[]" TItem="AGroupType" AllowFiltering="true" Placeholder="Group Type" Mode="@VisualMode.CheckBox" DataSource="@GroupTypeData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Group Type" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AGroupType.GroupTypeId)" Text="@nameof(AGroupType.GroupTypeDesc)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.DistrictId" TValue="int?[]" TItem="ADistrict" AllowFiltering="true" Placeholder="District" Mode="@VisualMode.CheckBox" DataSource="@DistrictData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="District" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ADistrict.DistrictId)" Text="@nameof(ADistrict.DistrictDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ADistrict" ValueChange="ChangeDistrict"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.SubcountyId" TValue="int?[]" TItem="ASubcounty" Enabled="@EnableSubcountyDropDown" AllowFiltering="true" Placeholder="Subcounty" Mode="@VisualMode.CheckBox" DataSource="@SubcountyData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Subcounty" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(ASubcounty.SubcountyId)" Text="@nameof(ASubcounty.SubcountyDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="ASubcounty" ValueChange="OnSubcountyChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.ParishId" TValue="int?[]" TItem="AParish" Enabled="@EnableParishDropDown" AllowFiltering="true" Placeholder="Parish" Mode="@VisualMode.CheckBox" DataSource="@ParishData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Parish" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AParish.ParishId)" Text="@nameof(AParish.ParishDescription)"></MultiSelectFieldSettings>
+                <MultiSelectEvents TValue="int?[]" TItem="AParish" ValueChange="OnParishChange"></MultiSelectEvents>
+            </SfMultiSelect>
+        </div>
+        <div class="col col-md-3">
+            <SfMultiSelect @bind-Value="@InputModel.VillageId" TValue="int?[]" TItem="AVillage" Enabled="@EnableVillageDropDown" AllowFiltering="true" Placeholder="Village" Mode="@VisualMode.CheckBox" DataSource="@VillageData" ShowSelectAll="true" EnableSelectionOrder="true" ShowDropDownIcon="true" FilterBarPlaceholder="Village" FloatLabelType="FloatLabelType.Always" PopupHeight="350px">
+                <MultiSelectFieldSettings Value="@nameof(AVillage.VillageId)" Text="@nameof(AVillage.VillageDescription)"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+        </div>
+
+        @*<div class="form-group col-md-3">
+            <p>Reporting Period</p>
+            <SfDropDownList @bind-Value="@(InputModel.QuarterId)" Enabled="true" TItem="AQuarter" TValue="int?" DataSource="@QuarterData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                <DropDownListFieldSettings Value="@nameof(AQuarter.QuarterId)" Text="@nameof(AQuarter.QuarterName)"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>
+        <div class="form-group col-md-3">
+            <p>Financial Year</p>
+            <SfDropDownList @bind-Value="@(InputModel.YearId)" Enabled="true" TItem="FianacialYear" TValue="int?" DataSource="@FianacialYearData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                <DropDownListFieldSettings Value="@nameof(FianacialYear.FinancialYear)" Text="@nameof(FianacialYear.FinancialYearDesc)"></DropDownListFieldSettings>
+            </SfDropDownList>
+        </div>*@
+
+
+        @if (Downloadreport == false)
+        {
+            <div class="col col-md-3">
+                <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Download Report</BSButton>
+                <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+            </div>
+
+        }
+
+        @if (!string.IsNullOrEmpty(Response))
+        {
+            <div class="form-group col-md-12">
+                @if (Response.Contains("No Record"))
+                {
+                    <p class="alert alert-danger" style="padding:10px;">@Response</p>
+                }
+                else
+                {
+                    <p class="alert alert-success" style="padding:10px;">@Response</p>
+                }
+            </div>
+        }
+
+
+        <div class="form-group col-md-12">
+            <SfSpinner @ref="DownloadingSpinner" Label="Downloading Report Please Wait....." Size="50"></SfSpinner>
+        </div>
+
+    </div>
+    <ValidationSummary />
+</EditForm>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private BeneficiaryRegisterSearch InputModel = new BeneficiaryRegisterSearch();
+    private List<AGroups> GroupData { get; set; }
+    private List<AGroupType> GroupTypeData { get; set; }
+    private List<ADistrict> DistrictData { get; set; }
+    private List<ASubcounty> SubcountyData { get; set; }
+    private List<AParish> ParishData { get; set; }
+    private List<AVillage> VillageData { get; set; }
+    List<AQuarter> QuarterData { get; set; }
+    List<FianacialYear> FianacialYearData { get; set; }
+    public bool EnableSubcountyDropDown = false;
+    public bool EnableParishDropDown = false;
+    public bool EnableVillageDropDown = false;
+    public Query DistricttQuery { get; set; } = null;
+    string Response { get; set; }
+    SfSpinner DownloadingSpinner;
+    bool Downloadreport { get; set; } = false;
+
+    public class FianacialYear
+    {
+        public int FinancialYear { get; set; }
+        public string FinancialYearDesc { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                InputModel = new BeneficiaryRegisterSearch();
+                using (var db = new SPToCoreContext())
+                {
+                    FianacialYearData = new List<FianacialYear>();
+                    DistrictData = db.ADistrict.AsNoTracking().ToList();
+                    SubcountyData = db.ASubcounty.AsNoTracking().ToList();
+                    ParishData = db.AParish.AsNoTracking().ToList();
+                    VillageData = db.AVillage.AsNoTracking().ToList();
+                    GroupData = db.AGroups.AsNoTracking().ToList();
+                    GroupTypeData = db.AGroupType.AsNoTracking().ToList();
+                    //QuarterData = db.AQuarter.AsNoTracking().ToList();
+
+                    //int current_year = DateTime.Now.Year;
+                    //var firstHomeVisitdata = db.BeneficiaryIdentificationRegister.Where(o=> o.DateofIdentification.HasValue==true).OrderBy(o => o.DateofIdentification).AsNoTracking().ToList().FirstOrDefault();
+                    //if (firstHomeVisitdata != null)
+                    //{
+                    //    int firstyear = firstHomeVisitdata.DateofIdentification.Value.Year;
+                    //    for (int i = 0; i <= (current_year - firstyear); i++)
+                    //    {
+
+                    //        if ((current_year - (firstyear + i)) > 0)
+                    //        {
+                    //            FianacialYearData.Add(new FianacialYear { FinancialYear = (firstyear + i), FinancialYearDesc = (firstyear + i).ToString()});
+                    //        }
+                    //    }
+                    //}
+                    //FianacialYearData.Add(new FianacialYear { FinancialYear = current_year, FinancialYearDesc = current_year.ToString()});
+                    InputModel = new();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    private void ClearSearchBtnClick()
+    {
+        InputModel = new BeneficiaryRegisterSearch();
+    }
+
+    public void ChangeDistrict(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableSubcountyDropDown = true;
+                SubcountyData = db.ASubcounty.Where(o => args.Value.Any(a => a == o.DistrictId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    public void OnSubcountyChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableParishDropDown = true;
+                ParishData = db.AParish.Where(o => args.Value.Any(a => a == o.SubcountyId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    public void OnParishChange(Syncfusion.Blazor.DropDowns.MultiSelectChangeEventArgs<int?[]> args)
+    {
+        if (args.Value != null)
+        {
+            using (var db = new MUCOBADIContext())
+            {
+                this.EnableVillageDropDown = true;
+                VillageData = db.AVillage.Where(o => args.Value.Any(a => a == o.ParishId) == true).AsNoTracking().ToList();
+            }
+        }
+    }
+
+    private async Task OnSearchSubmit()
+    {
+        try
+        {
+            Downloadreport = true;
+            await DownloadingSpinner.ShowAsync();
+            Response = null;
+            string GroupId = null;
+            string GroupTypeId = null;
+            string SubcountyId = null;
+            string ParishId = null;
+
+            if (InputModel.GroupId != null && InputModel.GroupId.Length > 0)
+            {
+                GroupId = string.Join(",", InputModel.GroupId);
+            }
+            if (InputModel.GroupTypeId != null && InputModel.GroupTypeId.Length > 0)
+            {
+                GroupTypeId = string.Join(",", InputModel.GroupTypeId);
+            }
+            if (InputModel.SubcountyId != null && InputModel.SubcountyId.Length > 0)
+            {
+                SubcountyId = string.Join(",", InputModel.SubcountyId);
+            }
+            if (InputModel.ParishId != null && InputModel.ParishId.Length > 0)
+            {
+                ParishId = string.Join(",", InputModel.ParishId);
+            }
+            //if (InputModel.QuarterId == null || InputModel.YearId == null)
+            //{
+            //    Response = "Please select the reporting period and the financial year";
+            //}
+            //else
+            {
+                //DateTime? startdate = null;
+                //DateTime? enddate = null;
+                //var quarter = QuarterData.FirstOrDefault(o => o.QuarterId == InputModel.QuarterId);
+                //if (quarter != null)
+                //{
+                //    startdate = new DateTime(InputModel.YearId.Value, quarter.StartMonthId.Value, 1);
+                //    if (quarter.EndMonthId < quarter.StartMonthId)
+                //    {
+                //        enddate = new DateTime((InputModel.YearId.Value + 1), quarter.EndMonthId.Value, DateTime.DaysInMonth((InputModel.YearId.Value + 1), quarter.EndMonthId.Value));
+                //    }
+                //    else
+                //    {
+                //        enddate = new DateTime(InputModel.YearId.Value, quarter.EndMonthId.Value, DateTime.DaysInMonth(InputModel.YearId.Value, quarter.EndMonthId.Value));
+                //    }
+
+
+                //}
+                using (var db = new SPToCoreContext())
+                {
+                    var dataDirectMembers = await db.spViewVSLAGroupCompositiondDirectMembersReportAsync(GroupId, GroupTypeId, null, null, SubcountyId, ParishId);
+                    var dataIndirectMembers = await db.spViewVSLAGroupCompositiondIndirectMembersReportAsync(GroupId, GroupTypeId, null, null, SubcountyId, ParishId);
+                    var dataGroupCommittee = await db.spViewVSLAGroupCompositiondGroupCommitteeReportAsync(GroupId, GroupTypeId, null, null, SubcountyId, ParishId);
+
+                    if (dataDirectMembers.Count > 0)
+                    {
+                        using (ExcelEngine excelEngine = new ExcelEngine())
+                        {
+                            IApplication application = excelEngine.Excel;
+                            application.DefaultVersion = ExcelVersion.Excel2013;
+                            IWorkbook workbook = application.Workbooks.Create(1);
+                            IWorksheet worksheet = workbook.Worksheets[0];
+                            worksheet.Name = "GROUP ASSOCIATION  COMPOSITION";
+
+                            #region Styles
+                            var headerStyle = workbook.Styles.Add("headerStyle");
+
+                            headerStyle.BeginUpdate();
+                            headerStyle.Color = Syncfusion.Drawing.Color.Black; //Syncfusion.Drawing.Color.FromArgb(255, 0, 0);
+                            headerStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            headerStyle.Font.Bold = true;
+                            headerStyle.Font.FontName = "Arial";
+                            headerStyle.Font.Size = 8f;
+                            headerStyle.Font.Color = ExcelKnownColors.White;
+
+                            headerStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            headerStyle.Borders.Color = ExcelKnownColors.White;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            headerStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            //headerStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thick;
+
+                            headerStyle.WrapText = true;
+
+                            headerStyle.EndUpdate();
+
+                            var Style = workbook.Styles.Add("bodyStyle");
+
+                            Style.BeginUpdate();
+                            Style.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            Style.VerticalAlignment = ExcelVAlign.VAlignTop;
+                            Style.Font.Bold = false;
+                            Style.Font.FontName = "Arial";
+                            Style.Font.Size = 8f;
+                            Style.Font.Color = ExcelKnownColors.Black;
+                            Style.WrapText = true;
+                            Style.Borders.Color = ExcelKnownColors.Black;
+                            Style.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            Style.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            Style.EndUpdate();
+
+
+                            var CategoryStyle = workbook.Styles.Add("CategoryStyle");
+
+                            CategoryStyle.BeginUpdate();
+                            CategoryStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(255, 195, 0);
+                            /*CategoryStyle.Color = Syncfusion.Drawing.Color.FromArgb(105, 59, 88);*/ //AUBERGINE
+                            CategoryStyle.Font.Bold = true;
+                            CategoryStyle.Font.FontName = "Arial";
+                            CategoryStyle.Font.Size = 12f;
+                            CategoryStyle.Font.Color = ExcelKnownColors.White;
+                            CategoryStyle.WrapText = true;
+                            CategoryStyle.Borders.Color = ExcelKnownColors.White;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            CategoryStyle.EndUpdate();
+
+                            var HHHeadStyle = workbook.Styles.Add("HHHeadStyle");
+
+                            HHHeadStyle.BeginUpdate();
+                            HHHeadStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            HHHeadStyle.Color = Syncfusion.Drawing.Color.FromArgb(140, 152, 152); //ASBESTOS
+                            HHHeadStyle.Font.Bold = true;
+                            HHHeadStyle.Font.FontName = "Arial";
+                            HHHeadStyle.Font.Size = 12f;
+                            HHHeadStyle.Font.Color = ExcelKnownColors.White;
+                            HHHeadStyle.WrapText = true;
+                            HHHeadStyle.Borders.Color = ExcelKnownColors.White;
+                            HHHeadStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            HHHeadStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            HHHeadStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            HHHeadStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            HHHeadStyle.EndUpdate();
+
+                            var HHMembersStyle = workbook.Styles.Add("HHMembersStyle");
+
+                            HHMembersStyle.BeginUpdate();
+                            HHMembersStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            HHMembersStyle.Color = Syncfusion.Drawing.Color.FromArgb(237, 145, 33); // CARROT ORANGE
+                            HHMembersStyle.Font.Bold = true;
+                            HHMembersStyle.Font.FontName = "Arial";
+                            HHMembersStyle.Font.Size = 12f;
+                            HHMembersStyle.Font.Color = ExcelKnownColors.White;
+                            HHMembersStyle.WrapText = true;
+                            HHMembersStyle.Borders.Color = ExcelKnownColors.White;
+                            HHMembersStyle.Borders[ExcelBordersIndex.EdgeLeft].LineStyle = ExcelLineStyle.Thin;
+                            HHMembersStyle.Borders[ExcelBordersIndex.EdgeRight].LineStyle = ExcelLineStyle.Thin;
+                            HHMembersStyle.Borders[ExcelBordersIndex.EdgeTop].LineStyle = ExcelLineStyle.Thin;
+                            HHMembersStyle.Borders[ExcelBordersIndex.EdgeBottom].LineStyle = ExcelLineStyle.Thin;
+                            HHMembersStyle.EndUpdate();
+
+                            #endregion
+
+                            int row = 1;
+                            worksheet.Range["A" + row].Text = "GROUP ASSOCIATION  COMPOSITION REPORT";
+                            worksheet.Range["A" + row + ":U" + row].CellStyle = CategoryStyle;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignCenter;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 30;
+                            worksheet.Range["A" + row + ":U" + row].Merge();
+                            row++;
+                            row++;
+
+                            worksheet.Range["A" + row].Text = "Direct Beneficiaries";
+                            worksheet.Range["A" + row + ":U" + row].CellStyle = HHMembersStyle;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 20;
+                            worksheet.Range["A" + row + ":U" + row].Merge();
+
+                            row++;
+
+                            worksheet.Range["A" + row].Text = "Group Name";
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = "Group Code";
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = "Group Type";
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = "Group Cycle";
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = "Meeting Date and Time";
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = "Subcounty";
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text = "Parish";
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = "Meeting Venue";
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = "HouseHold Member Code";
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = "HouseHold Member Name";
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            worksheet.Range["K" + row].Text = "Gender";
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = "Age";
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = "Telephone";
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            //Other Information
+                            worksheet.Range["N" + row].Text = "Officer in Charge (CBT)";
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            worksheet.Range["O" + row].Text = "CBT Code";
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = "Checked By";
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = "Position";
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = "Date Checked";
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = "Verified By";
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            worksheet.Range["T" + row].Text = "Position";
+                            worksheet.Range["T" + row].ColumnWidth = 20;
+
+                            worksheet.Range["U" + row].Text = "Verification Date";
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":U" + row].CellStyle = headerStyle;
+
+                            row++;
+                            foreach (var n in dataDirectMembers)
+                            {
+                                worksheet.Range["A" + row].Text = n.GroupName;
+                                worksheet.Range["A" + row].ColumnWidth = 20;
+
+                                worksheet.Range["B" + row].Text = n.GroupCode;
+                                worksheet.Range["B" + row].ColumnWidth = 20;
+
+                                worksheet.Range["C" + row].Text = n.GroupTypeDesc;
+                                worksheet.Range["C" + row].ColumnWidth = 20;
+
+                                worksheet.Range["D" + row].Text = n.GroupCycleDesc;
+                                worksheet.Range["D" + row].ColumnWidth = 20;
+
+                                if (n.MeetingDate.HasValue)
+                                {
+                                    worksheet.Range["E" + row].Text = n.MeetingDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["E" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["F" + row].Text = n.SubcountyDescription;
+                                worksheet.Range["F" + row].ColumnWidth = 20;
+
+                                worksheet.Range["G" + row].Text = n.ParishDescription;
+                                worksheet.Range["G" + row].ColumnWidth = 20;
+
+                                worksheet.Range["H" + row].Text = n.MeetingVenue;
+                                worksheet.Range["H" + row].ColumnWidth = 20;
+
+                                worksheet.Range["I" + row].Text = n.HouseHoldMemberCode;
+                                worksheet.Range["I" + row].ColumnWidth = 20;
+
+                                worksheet.Range["J" + row].Text = n.Surname + " " + n.Givenname;
+                                worksheet.Range["J" + row].ColumnWidth = 20;
+
+                                worksheet.Range["K" + row].Text = n.GenderDescription;
+                                worksheet.Range["K" + row].ColumnWidth = 20;
+
+                                if (n.Age.HasValue)
+                                {
+                                    worksheet.Range["L" + row].Number = n.Age.Value;
+                                    worksheet.Range["L" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["M" + row].Text = n.PhoneNumber;
+                                worksheet.Range["M" + row].ColumnWidth = 20;
+
+                                worksheet.Range["N" + row].Text = n.OfficerIncharge;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+
+                                worksheet.Range["O" + row].Text = n.CBTCode;
+                                worksheet.Range["O" + row].ColumnWidth = 20;
+
+                                worksheet.Range["P" + row].Text = n.CheckedBy;
+                                worksheet.Range["P" + row].ColumnWidth = 20;
+
+                                worksheet.Range["Q" + row].Text = n.CheckerPosition;
+                                worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                                if (n.DateChecked.HasValue)
+                                {
+                                    worksheet.Range["R" + row].Text = n.DateChecked.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["R" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["S" + row].Text = n.VerifiedBy;
+                                worksheet.Range["S" + row].ColumnWidth = 20;
+
+                                worksheet.Range["T" + row].Text = n.VerifierPosition;
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+
+
+                                if (n.DateofVerification.HasValue)
+                                {
+                                    worksheet.Range["U" + row].Text = n.DateofVerification.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["U" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["A" + row + ":U" + row].CellStyle = Style;
+
+                                row++;
+                            }
+
+                            //Indirect Members
+                            row++;
+
+                            worksheet.Range["A" + row].Text = "Indirect Beneficiaries";
+                            worksheet.Range["A" + row + ":V" + row].CellStyle = HHMembersStyle;
+                            worksheet.Range["A" + row + ":V" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["A" + row + ":V" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 20;
+                            worksheet.Range["A" + row + ":V" + row].Merge();
+                            row++;
+
+                            worksheet.Range["A" + row].Text = "Group Name";
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = "Group Code";
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = "Group Type";
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = "Group Cycle";
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = "Meeting Date and Time";
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = "Subcounty";
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text = "Parish";
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = "Village";
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = "Meeting Venue";
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = "Member Code";
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            worksheet.Range["K" + row].Text = "Member Name";
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = "Gender";
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = "Age";
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            worksheet.Range["N" + row].Text = "Telephone";
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            //Other Information
+                            worksheet.Range["O" + row].Text = "Officer in Charge (CBT)";
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = "CBT Code";
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = "Checked By";
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = "Position";
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = "Date Checked";
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            worksheet.Range["T" + row].Text = "Verified By";
+                            worksheet.Range["T" + row].ColumnWidth = 20;
+
+                            worksheet.Range["U" + row].Text = "Position";
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["V" + row].Text = "Verification Date";
+                            worksheet.Range["V" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":V" + row].CellStyle = headerStyle;
+
+                            row++;
+
+                            foreach (var n in dataIndirectMembers)
+                            {
+                                worksheet.Range["A" + row].Text = n.GroupName;
+                                worksheet.Range["A" + row].ColumnWidth = 20;
+
+                                worksheet.Range["B" + row].Text = n.GroupCode;
+                                worksheet.Range["B" + row].ColumnWidth = 20;
+
+                                worksheet.Range["C" + row].Text = n.GroupTypeDesc;
+                                worksheet.Range["C" + row].ColumnWidth = 20;
+
+                                worksheet.Range["D" + row].Text = n.GroupCycleDesc;
+                                worksheet.Range["D" + row].ColumnWidth = 20;
+
+                                if (n.MeetingDate.HasValue)
+                                {
+                                    worksheet.Range["E" + row].Text = n.MeetingDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["E" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["F" + row].Text = n.SubcountyDescription;
+                                worksheet.Range["F" + row].ColumnWidth = 20;
+
+                                worksheet.Range["G" + row].Text = n.ParishDescription;
+                                worksheet.Range["G" + row].ColumnWidth = 20;
+
+                                worksheet.Range["H" + row].Text = n.VillageDescription;
+                                worksheet.Range["H" + row].ColumnWidth = 20;
+
+                                worksheet.Range["I" + row].Text = n.MeetingVenue;
+                                worksheet.Range["I" + row].ColumnWidth = 20;
+
+                                worksheet.Range["J" + row].Text = n.IndirectMemberCode;
+                                worksheet.Range["J" + row].ColumnWidth = 20;
+
+                                worksheet.Range["K" + row].Text = n.MemberName;
+                                worksheet.Range["K" + row].ColumnWidth = 20;
+
+                                worksheet.Range["L" + row].Text = n.GenderDescription;
+                                worksheet.Range["L" + row].ColumnWidth = 20;
+
+                                if (n.Age.HasValue)
+                                {
+                                    worksheet.Range["M" + row].Number = n.Age.Value;
+                                    worksheet.Range["M" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["N" + row].Text = n.VSLAGroupIndirectMemberPhoneNumber;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+
+                                worksheet.Range["O" + row].Text = n.OfficerIncharge;
+                                worksheet.Range["O" + row].ColumnWidth = 20;
+
+                                worksheet.Range["P" + row].Text = n.CBTCode;
+                                worksheet.Range["P" + row].ColumnWidth = 20;
+
+                                worksheet.Range["Q" + row].Text = n.CheckedBy;
+                                worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                                worksheet.Range["R" + row].Text = n.CheckerPosition;
+                                worksheet.Range["R" + row].ColumnWidth = 20;
+
+                                if (n.DateChecked.HasValue)
+                                {
+                                    worksheet.Range["S" + row].Text = n.DateChecked.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["S" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["T" + row].Text = n.VerifiedBy;
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+
+                                worksheet.Range["U" + row].Text = n.VerifierPosition;
+                                worksheet.Range["U" + row].ColumnWidth = 20;
+
+
+                                if (n.DateofVerification.HasValue)
+                                {
+                                    worksheet.Range["V" + row].Text = n.DateofVerification.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["V" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["A" + row + ":V" + row].CellStyle = Style;
+
+                                row++;
+                            }
+
+                            row++;
+
+                            //GROUP EXECUTIVE COMMITTEE COMPOSITION
+                            worksheet.Range["A" + row].Text = "Group Executive Committee Composition";
+                            worksheet.Range["A" + row + ":U" + row].CellStyle = HHMembersStyle;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.HorizontalAlignment = ExcelHAlign.HAlignLeft;
+                            worksheet.Range["A" + row + ":U" + row].CellStyle.VerticalAlignment = ExcelVAlign.VAlignCenter;
+                            worksheet.Range["A" + row].RowHeight = 20;
+                            worksheet.Range["A" + row + ":U" + row].Merge();
+                            row++;
+
+                            worksheet.Range["A" + row].Text = "Group Name";
+                            worksheet.Range["A" + row].ColumnWidth = 20;
+
+                            worksheet.Range["B" + row].Text = "Group Code";
+                            worksheet.Range["B" + row].ColumnWidth = 20;
+
+                            worksheet.Range["C" + row].Text = "Group Type";
+                            worksheet.Range["C" + row].ColumnWidth = 20;
+
+                            worksheet.Range["D" + row].Text = "Group Cycle";
+                            worksheet.Range["D" + row].ColumnWidth = 20;
+
+                            worksheet.Range["E" + row].Text = "Meeting Date and Time";
+                            worksheet.Range["E" + row].ColumnWidth = 20;
+
+                            worksheet.Range["F" + row].Text = "Subcounty";
+                            worksheet.Range["F" + row].ColumnWidth = 20;
+
+                            worksheet.Range["G" + row].Text = "Parish";
+                            worksheet.Range["G" + row].ColumnWidth = 20;
+
+                            worksheet.Range["H" + row].Text = "Meeting Venue";
+                            worksheet.Range["H" + row].ColumnWidth = 20;
+
+                            worksheet.Range["I" + row].Text = "Member Name";
+                            worksheet.Range["I" + row].ColumnWidth = 20;
+
+                            worksheet.Range["J" + row].Text = "Gender";
+                            worksheet.Range["J" + row].ColumnWidth = 20;
+
+                            worksheet.Range["K" + row].Text = "Age";
+                            worksheet.Range["K" + row].ColumnWidth = 20;
+
+                            worksheet.Range["L" + row].Text = "Telephone";
+                            worksheet.Range["L" + row].ColumnWidth = 20;
+
+                            worksheet.Range["M" + row].Text = "Position";
+                            worksheet.Range["M" + row].ColumnWidth = 20;
+
+                            //Other Information
+                            worksheet.Range["N" + row].Text = "Officer in Charge (CBT)";
+                            worksheet.Range["N" + row].ColumnWidth = 20;
+
+                            worksheet.Range["O" + row].Text = "CBT Code";
+                            worksheet.Range["O" + row].ColumnWidth = 20;
+
+                            worksheet.Range["P" + row].Text = "Checked By";
+                            worksheet.Range["P" + row].ColumnWidth = 20;
+
+                            worksheet.Range["Q" + row].Text = "Position";
+                            worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                            worksheet.Range["R" + row].Text = "Date Checked";
+                            worksheet.Range["R" + row].ColumnWidth = 20;
+
+                            worksheet.Range["S" + row].Text = "Verified By";
+                            worksheet.Range["S" + row].ColumnWidth = 20;
+
+                            worksheet.Range["T" + row].Text = "Position";
+                            worksheet.Range["T" + row].ColumnWidth = 20;
+
+                            worksheet.Range["U" + row].Text = "Verification Date";
+                            worksheet.Range["U" + row].ColumnWidth = 20;
+
+                            worksheet.Range["A" + row + ":U" + row].CellStyle = headerStyle;
+
+                            row++;
+
+                            foreach (var n in dataGroupCommittee)
+                            {
+                                worksheet.Range["A" + row].Text = n.GroupName;
+                                worksheet.Range["A" + row].ColumnWidth = 20;
+
+                                worksheet.Range["B" + row].Text = n.GroupCode;
+                                worksheet.Range["B" + row].ColumnWidth = 20;
+
+                                worksheet.Range["C" + row].Text = n.GroupTypeDesc;
+                                worksheet.Range["C" + row].ColumnWidth = 20;
+
+                                worksheet.Range["D" + row].Text = n.GroupCycleDesc;
+                                worksheet.Range["D" + row].ColumnWidth = 20;
+
+                                if (n.MeetingDate.HasValue)
+                                {
+                                    worksheet.Range["E" + row].Text = n.MeetingDate.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["E" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["F" + row].Text = n.SubcountyDescription;
+                                worksheet.Range["F" + row].ColumnWidth = 20;
+
+                                worksheet.Range["G" + row].Text = n.ParishDescription;
+                                worksheet.Range["G" + row].ColumnWidth = 20;
+
+                                worksheet.Range["H" + row].Text = n.MeetingVenue;
+                                worksheet.Range["H" + row].ColumnWidth = 20;
+
+                                worksheet.Range["I" + row].Text = n.VSLAGroupCommitteeMemberName;
+                                worksheet.Range["I" + row].ColumnWidth = 20;
+
+                                worksheet.Range["J" + row].Text = n.GenderDescription;
+                                worksheet.Range["J" + row].ColumnWidth = 20;
+
+                                if (n.VSLAGroupCommitteeAge.HasValue)
+                                {
+                                    worksheet.Range["K" + row].Number = n.VSLAGroupCommitteeAge.Value;
+                                    worksheet.Range["K" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["L" + row].Text = n.VSLAGroupCommitteePhoneNumber;
+                                worksheet.Range["L" + row].ColumnWidth = 20;
+
+                                worksheet.Range["M" + row].Text = n.Group_Position_Desc;
+                                worksheet.Range["M" + row].ColumnWidth = 20;
+
+                                worksheet.Range["N" + row].Text = n.OfficerIncharge;
+                                worksheet.Range["N" + row].ColumnWidth = 20;
+
+                                worksheet.Range["O" + row].Text = n.CBTCode;
+                                worksheet.Range["O" + row].ColumnWidth = 20;
+
+                                worksheet.Range["P" + row].Text = n.CheckedBy;
+                                worksheet.Range["P" + row].ColumnWidth = 20;
+
+                                worksheet.Range["Q" + row].Text = n.CheckerPosition;
+                                worksheet.Range["Q" + row].ColumnWidth = 20;
+
+                                if (n.DateChecked.HasValue)
+                                {
+                                    worksheet.Range["R" + row].Text = n.DateChecked.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["R" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["S" + row].Text = n.VerifiedBy;
+                                worksheet.Range["S" + row].ColumnWidth = 20;
+
+                                worksheet.Range["T" + row].Text = n.VerifierPosition;
+                                worksheet.Range["T" + row].ColumnWidth = 20;
+
+
+                                if (n.DateofVerification.HasValue)
+                                {
+                                    worksheet.Range["U" + row].Text = n.DateofVerification.Value.ToString("dd/MM/yyyy");
+                                    worksheet.Range["U" + row].ColumnWidth = 20;
+                                }
+
+                                worksheet.Range["A" + row + ":U" + row].CellStyle = Style;
+                            }
+
+                            MemoryStream ms = new MemoryStream();
+                            // Save and close the document.
+                            workbook.SaveAs(ms);
+                            //Reset the memory stream position.
+                            ms.Position = 0;
+                            await JS.SaveAs("GROUP ASSOCIATION COMPOSITION Report.xlsx", ms.ToArray());
+                            ms.Dispose();
+                            workbook.Close();
+                            //excelEngine.Dispose();
+                            Response = "Success:- The report was successfully downloaded.";
+                        }
+                    }
+                    else
+                    {
+                        Response = "No Record:- There were no records found for this search";
+                    }
+                }
+            }
+        }
+
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+        finally
+        {
+            await DownloadingSpinner.HideAsync();
+            Downloadreport = false;
+        }
+    }
+
+}
+

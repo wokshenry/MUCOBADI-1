@@ -1,0 +1,312 @@
+﻿@using MUCOBADI.Models;
+@using System.Collections;
+@using Microsoft.EntityFrameworkCore;
+@using Syncfusion.Blazor.Data;
+@using System.IO;
+@using Syncfusion.DocIO.DLS;
+@using Syncfusion.DocIORenderer;
+@using Syncfusion.Pdf;
+@inject MUCOBADIContext _context;
+@inject NavigationManager Navigation;
+@using MUCOBADI.Data;
+@inject UserManagement userManagement;
+@using Microsoft.AspNetCore.Hosting;
+@inject IWebHostEnvironment hostingEnv;
+
+<style>
+    /*Increase font size for Multi Line Text Box Place Holder*/
+    .e-multi-line-input label.e-float-text {
+        font-size: 17px !important;
+    }
+</style>
+
+<ol class="breadcrumb" style="margin-top:5px;">
+    <li class="breadcrumb-item active" style="color: brown;"> <strong>Viral Load Suppressed</strong></li>
+</ol>
+
+<div class="row">
+    <div class="col-lg-12 control-section">
+        <SfToast @ref="ToastObj" ID="toast_type">
+            <ToastPosition X="@ToastPosition"></ToastPosition>
+        </SfToast>
+    </div>
+</div>
+
+<SfGrid @ref="ViralLoadGrid" TValue="AHhviralLoadSuppressed"
+        Toolbar="@(new string[] {"Add","Edit","Delete","Update","Cancel","ColumnChooser"})" AllowGrouping="true" ShowColumnChooser="true" AllowTextWrap="true"
+        AllowPaging="true" AllowFiltering="true" GridLines="GridLine.Both" AllowSelection="true">
+    <SfDataManager AdaptorInstance="@typeof(ViralLoadAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
+    <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
+    <GridEvents OnActionBegin="ViralLoadActionBegin" TValue="AHhviralLoadSuppressed"></GridEvents>
+    <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+        <HeaderTemplate>
+            @{
+                var text = GetViralLoadHeader((context as AHhviralLoadSuppressed));
+                <div class="headerbandimg" /><span>@text</span>
+            }
+        </HeaderTemplate>
+        <Template Context="VLContext">
+            @{
+                var VLData = (VLContext as AHhviralLoadSuppressed);
+                <div style="padding:15px;">
+                    <div class="form-row">
+                        <div class="form-group col-md-12" hidden>
+                            <SfNumericTextBox ID="HhviralLoadSuppresedId" @bind-Value="@(VLData.HhviralLoadSuppresedId)" Enabled="false" Placeholder="Id" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <SfTextBox Multiline="true" ID="HhviralLoadSuppresedDescription" @bind-Value="@(VLData.HhviralLoadSuppresedDescription)" Placeholder="Description" FloatLabelType="FloatLabelType.Always"></SfTextBox>
+                        </div>
+                        <div class="form-group col-md-12">
+                            <SfNumericTextBox ID="TreatmentAdheranceScore" @bind-Value="@(VLData.HhviralLoadSuppresedScores)" Enabled="true" Placeholder="Score" Format="N0" FloatLabelType="FloatLabelType.Always"></SfNumericTextBox>
+                        </div>
+                    </div>
+                </div>
+            }
+        </Template>
+    </GridEditSettings>
+    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Excel"></GridFilterSettings>
+    <GridPageSettings PageSize="20"></GridPageSettings>
+    <GridColumns>
+        <GridColumn Type="ColumnType.CheckBox" Width="50"></GridColumn>
+        <GridColumn Field=@nameof(AHhviralLoadSuppressed.HhviralLoadSuppresedId) HeaderText="Id" TextAlign="TextAlign.Left" IsPrimaryKey="true" IsIdentity="true" Visible="false" Width="100"></GridColumn>
+        <GridColumn Field=@nameof(AHhviralLoadSuppressed.HhviralLoadSuppresedDescription) HeaderText="Description"></GridColumn>
+        <GridColumn Field=@nameof(AHhviralLoadSuppressed.HhviralLoadSuppresedScores) HeaderText="Scores"></GridColumn>
+    </GridColumns>
+</SfGrid>
+
+@code {
+    #region Toasters
+    public static string ToastContent { get; set; }
+    SfToast ToastObj;
+    SfToast DeleteToastObj;
+    private string ToastPosition = "Right";
+    private int AlarmTimeout { get; set; } = 120000;
+    private List<ToastModel> Toast = new List<ToastModel>
+{
+        new ToastModel{ Title = "Warning!", Content=ToastContent, CssClass="e-toast-warning", Icon="e-warning toast-icons" },
+        new ToastModel{ Title = "Success!", Content=ToastContent, CssClass="e-toast-success", Icon="e-success toast-icons" },
+        new ToastModel{ Title = "Error!", Content=ToastContent, CssClass="e-toast-danger", Icon="e-error toast-icons" },
+        new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
+    };
+    #endregion Toasters
+
+    private SfGrid<AHhviralLoadSuppressed> ViralLoadGrid;
+    public string ButtonText { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!userManagement.IsSignedIn())
+            {
+                Navigation.NavigateTo("/", true);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = ex.Message.ToString(), CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+        }
+    }
+
+    #region ViralLoadSuppressed
+    public class ViralLoadAdapter : DataAdaptor
+    {
+        public IToastService toastService;
+        private UserManagement _userManagement;
+        public ViralLoadAdapter(IToastService ts, UserManagement userManagement)
+        {
+            _userManagement = userManagement;
+            toastService = ts;
+        }
+        public override async Task<Object> ReadAsync(DataManagerRequest dataManagerRequest, string key = null)
+        {
+            var data = new List<AHhviralLoadSuppressed>();
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    data = await dbContext.AHhviralLoadSuppressed.OrderByDescending(o => o.HhviralLoadSuppresedId).ToListAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            IEnumerable GridData = data;
+            int _count = data.Count;
+            if (dataManagerRequest.Search != null && dataManagerRequest.Search.Count > 0)
+            {
+                // Searching
+                GridData = DataOperations.PerformSearching(GridData, dataManagerRequest.Search);
+            }
+            if (dataManagerRequest.Where != null && dataManagerRequest.Where.Count > 0)
+            {
+                // Filtering
+                GridData = DataOperations.PerformFiltering(GridData, dataManagerRequest.Where, dataManagerRequest.Where[0].Operator);
+            }
+            if (dataManagerRequest.Sorted?.Count > 0) // perform Sorting
+            {
+                GridData = DataOperations.PerformSorting(GridData, dataManagerRequest.Sorted);
+            }
+            if (dataManagerRequest.Skip != 0)
+            {
+                GridData = DataOperations.PerformSkip(GridData, dataManagerRequest.Skip); //Paging
+            }
+            if (dataManagerRequest.Take != 0)
+            {
+                GridData = DataOperations.PerformTake(GridData, dataManagerRequest.Take);
+            }
+            IDictionary<string, object> aggregates = new Dictionary<string, object>();
+            if (dataManagerRequest.Aggregates != null) // Aggregation
+            {
+                aggregates = DataUtil.PerformAggregation(GridData, dataManagerRequest.Aggregates);
+            }
+            if (dataManagerRequest.Group != null && dataManagerRequest.Group.Any()) //Grouping
+            {
+                foreach (var group in dataManagerRequest.Group)
+                {
+                    GridData = DataUtil.Group<AHhviralLoadSuppressed>(GridData, group, dataManagerRequest.Aggregates, 0, dataManagerRequest.GroupByFormatter);
+                }
+            }
+            return dataManagerRequest.RequiresCounts ? new DataResult() { Result = GridData, Count = _count, Aggregates = aggregates } : (object)GridData;
+        }
+
+        public override Object Insert(DataManager dataManager, object value, string key)
+        {
+            try
+            {
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var val = (value as AHhviralLoadSuppressed);
+                    var exists = dbContext.AHhviralLoadSuppressed.FirstOrDefault(o => o.HhviralLoadSuppresedId == val.HhviralLoadSuppresedId);
+                    if (exists == null)
+                    {
+                        int id = 1;
+                        var last = dbContext.AHhviralLoadSuppressed.OrderBy(o => o.HhviralLoadSuppresedId).LastOrDefault();
+                        if (last != null)
+                        {
+                            id = (last.HhviralLoadSuppresedId + 1);
+                        }
+                        val.HhviralLoadSuppresedId = id;
+
+                        dbContext.AHhviralLoadSuppressed.Add(val);
+                        dbContext.SaveChanges();
+                        toastService.ShowSuccess("Record saved successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> RemoveAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                int data = (int)value;
+                using (var dbContext = new MUCOBADIContext())
+                {
+                    var exists = dbContext.AHhviralLoadSuppressed.FirstOrDefault(o => o.HhviralLoadSuppresedId == data);
+                    if (exists != null)
+                    {
+                        dbContext.AHhviralLoadSuppressed.Remove(exists);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+            return value;
+        }
+
+        public override async Task<object> UpdateAsync(DataManager dataManager, object value, string keyField, string key)
+        {
+            try
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var val = (value as AHhviralLoadSuppressed);
+                    var exist = db.AHhviralLoadSuppressed.FirstOrDefault(o => o.HhviralLoadSuppresedId == val.HhviralLoadSuppresedId);
+                    if (exist != null)
+                    {
+                        db.Entry(exist).CurrentValues.SetValues(val);
+                        db.Entry(exist).State = EntityState.Modified;
+                        await db.SaveChangesAsync();
+                        toastService.ShowSuccess("Record updated successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                toastService.ShowError(ex.Message.ToString());
+            }
+
+            return value;
+        }
+    }
+
+    public void ViralLoadActionBegin(ActionEventArgs<AHhviralLoadSuppressed> args)
+    {
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.BeginEdit)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Add)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Cancel)
+        {
+
+        }
+        if (args.RequestType == Syncfusion.Blazor.Grids.Action.Save)
+        {
+            if (string.IsNullOrEmpty(args.Data.HhviralLoadSuppresedDescription))
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the viral load suppressed description before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else if (args.Data.HhviralLoadSuppresedScores == null)
+            {
+                ToastObj.ShowAsync(new ToastModel { Title = "Warning!", Content = "Please enter the score before saving this record.", CssClass = "e-toast-warning", Icon = "e-warning toast-icons" });
+                args.Cancel = true;
+            }
+            else
+            {
+                using (var db = new MUCOBADIContext())
+                {
+                    var exists = db.AHhviralLoadSuppressed.FirstOrDefault(o => (o.HhviralLoadSuppresedDescription.ToLower() == args.Data.HhviralLoadSuppresedDescription.ToLower()));
+                    if (exists != null && exists.HhviralLoadSuppresedId != args.Data.HhviralLoadSuppresedId)
+                    {
+                        ToastObj.ShowAsync(new ToastModel { Title = "Error!", Content = "This record already exists in the database and will not be saved.", CssClass = "e-toast-danger", Icon = "e-error toast-icons" });
+                        args.Cancel = true;
+                    }
+                }
+            }
+        }
+    }
+
+    public string GetViralLoadHeader(AHhviralLoadSuppressed Value)
+    {
+        if (Value.HhviralLoadSuppresedId == 0)
+        {
+            ButtonText = "Insert";
+            return "Add a new Record";
+        }
+        else
+        {
+            ButtonText = "Save Changes";
+            return "Edit Details for " + Value.HhviralLoadSuppresedDescription;
+        }
+    }
+
+    #endregion ViralLoadSuppressed
+}
