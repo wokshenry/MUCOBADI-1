@@ -38,6 +38,7 @@ namespace MUCOBADI.Models
         public string Artnumber { get; set; }
         public string Copies { get; set; }
         public int? ViralLoadSuppressedId { get; set; }
+        public string ViralLoadSuppressedDescription { get; set; }
         public int? SourceDocumentId { get; set; }
         public string OtherSourceDocument { get; set; }
         public string SourceDocumentUrl { get; set; }

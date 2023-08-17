@@ -6741,6 +6741,8 @@ namespace MUCOBADI.Models
 
                 entity.Property(e => e.TelephoneContact).HasMaxLength(1000);
 
+                entity.Property(e => e.ViralLoadSuppressedDescription).HasMaxLength(50);
+
                 entity.Property(e => e.VirallaodDate).HasColumnType("date");
 
                 entity.Property(e => e.VisitationDate).HasColumnType("date");

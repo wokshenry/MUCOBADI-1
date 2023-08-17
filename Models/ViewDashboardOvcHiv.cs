@@ -10,6 +10,7 @@ namespace MUCOBADI.Models
         public int HivTbTrackingFormId { get; set; }
         public int? HouseHoldMemberId { get; set; }
         public DateTime? FollowUpDate { get; set; }
+        public int? Qtr { get; set; }
         public int? HivstatusId { get; set; }
         public int? OnArt { get; set; }
         public string Artnumber { get; set; }
