@@ -12,6 +12,7 @@ namespace MUCOBADI.Models
         public string ProgramParticipationDescription { get; set; }
         public DateTime? VisitationDate { get; set; }
         public int? VisitationMonth { get; set; }
+        public int? Qtr { get; set; }
         public int? VisitationYear { get; set; }
         public string HouseHoldCode { get; set; }
         public DateTime? DateofIdentification { get; set; }

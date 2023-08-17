@@ -233,7 +233,9 @@ namespace MUCOBADI.Models
         public virtual DbSet<ViewBeneficiaryEnrolmentRegisterDetails> ViewBeneficiaryEnrolmentRegisterDetails { get; set; }
         public virtual DbSet<ViewBeneficiaryIdentificationRegister> ViewBeneficiaryIdentificationRegister { get; set; }
         public virtual DbSet<ViewDashboardBeneficiariesonIcare> ViewDashboardBeneficiariesonIcare { get; set; }
+        public virtual DbSet<ViewDashboardBeneficiariesonIcarenoFilter> ViewDashboardBeneficiariesonIcarenoFilter { get; set; }
         public virtual DbSet<ViewDashboardBeneficiariesonIcarepivot> ViewDashboardBeneficiariesonIcarepivot { get; set; }
+        public virtual DbSet<ViewDashboardBeneficiariesonIcarepivotNoFilter> ViewDashboardBeneficiariesonIcarepivotNoFilter { get; set; }
         public virtual DbSet<ViewDashboardBeneficiaryIdentificationRegister> ViewDashboardBeneficiaryIdentificationRegister { get; set; }
         public virtual DbSet<ViewDashboardHhvisitedCurrentQuarter> ViewDashboardHhvisitedCurrentQuarter { get; set; }
         public virtual DbSet<ViewDashboardHivstatus> ViewDashboardHivstatus { get; set; }
@@ -307,7 +309,7 @@ namespace MUCOBADI.Models
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
                 optionsBuilder.UseSqlServer(connectionString);
             }
-		}
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -6293,6 +6295,19 @@ namespace MUCOBADI.Models
                 entity.Property(e => e.DistrictDescription).HasMaxLength(2000);
 
                 entity.Property(e => e.RiskFactorsDescription).HasMaxLength(3000);
+
+                entity.Property(e => e.SubcountyDescription).HasMaxLength(2000);
+            });
+
+            modelBuilder.Entity<ViewDashboardBeneficiariesonIcarenoFilter>(entity =>
+            {
+                entity.HasNoKey();
+
+                entity.ToView("View_DashboardBeneficiariesonICARENoFilter");
+
+                entity.Property(e => e.DistrictDescription).HasMaxLength(2000);
+
+                entity.Property(e => e.RiskFactorsDescription).HasMaxLength(3000);
             });
 
             modelBuilder.Entity<ViewDashboardBeneficiariesonIcarepivot>(entity =>
@@ -6300,6 +6315,39 @@ namespace MUCOBADI.Models
                 entity.HasNoKey();
 
                 entity.ToView("View_DashboardBeneficiariesonICAREPivot");
+
+                entity.Property(e => e.Calhiv).HasColumnName("CALHIV");
+
+                entity.Property(e => e.ChildofFsw).HasColumnName("ChildofFSW");
+
+                entity.Property(e => e.DistrictDescription).HasMaxLength(2000);
+
+                entity.Property(e => e.Fsw).HasColumnName("FSW");
+
+                entity.Property(e => e.Hei).HasColumnName("HEI");
+
+                entity.Property(e => e.LivinginHhwithAdolescentMother).HasColumnName("LivinginHHwithAdolescentMother");
+
+                entity.Property(e => e.LivinginHhwithFsw).HasColumnName("LivinginHHwithFSW");
+
+                entity.Property(e => e.LivinginHhwithHei).HasColumnName("LivinginHHwithHEI");
+
+                entity.Property(e => e.LivinginHhwithPlhiv).HasColumnName("LivinginHHwithPLHIV");
+
+                entity.Property(e => e.LivinginHhwithSvac).HasColumnName("LivinginHHwithSVAC");
+
+                entity.Property(e => e.Plhiv).HasColumnName("PLHIV");
+
+                entity.Property(e => e.SubcountyDescription).HasMaxLength(2000);
+
+                entity.Property(e => e.Svac).HasColumnName("SVAC");
+            });
+
+            modelBuilder.Entity<ViewDashboardBeneficiariesonIcarepivotNoFilter>(entity =>
+            {
+                entity.HasNoKey();
+
+                entity.ToView("View_DashboardBeneficiariesonICAREPivotNoFilter");
 
                 entity.Property(e => e.Calhiv).HasColumnName("CALHIV");
 

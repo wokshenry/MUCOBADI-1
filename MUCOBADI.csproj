@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <Content Remove="Pages\Dashboards\Charts\BeneficiariesICare.razor" />
-    <Content Remove="Pages\Dashboards\Charts\DashboardPage.razor" />
+    <Content Remove="Pages\Dashboards\Charts\DashboardPageBackUp.razor" />
     <Content Remove="Pages\Dashboards\DashboardRazorPage.razor" />
     <Content Remove="Pages\Utilities\StakeHolderTargets.razor" />
   </ItemGroup>

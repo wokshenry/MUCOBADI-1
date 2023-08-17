@@ -5,14 +5,11 @@ using System.Collections.Generic;
 
 namespace MUCOBADI.Models
 {
-    public partial class ViewDashboardBeneficiariesonIcare
+    public partial class ViewDashboardBeneficiariesonIcarenoFilter
     {
         public int? TotalNumber { get; set; }
-        public int? ProgramParticipationId { get; set; }
         public int? DistrictId { get; set; }
         public string DistrictDescription { get; set; }
-        public int? SubcountyId { get; set; }
-        public string SubcountyDescription { get; set; }
         public int? KnownRiskFactorId { get; set; }
         public string RiskFactorsDescription { get; set; }
         public int? Qtr { get; set; }
