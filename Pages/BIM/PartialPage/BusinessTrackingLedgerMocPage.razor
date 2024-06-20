@@ -12,7 +12,7 @@
         <GridPageSettings PageSize="20"></GridPageSettings>
         <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
         <GridEvents OnActionBegin="OnActionBegin" OnActionComplete="OnActionComplete" TValue="BusinessTrackingLedgerMoc"></GridEvents>
-        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+        <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog" Dialog="DialogParams">
         </GridEditSettings>
         <GridColumns>
             <GridColumn HeaderText="Manage Records" Width="80">
@@ -46,6 +46,8 @@ else
     SfGrid<BusinessTrackingLedgerMoc>? HeaderGrid;
 
     int MonthlyOperationalCostsId { get; set; } = -1;
+
+    private DialogSettings DialogParams = new DialogSettings { Height = "auto", MinHeight = "90vh", Width = "98%" };
 
     public void OnActionBegin(ActionEventArgs<BusinessTrackingLedgerMoc> args)
     {
