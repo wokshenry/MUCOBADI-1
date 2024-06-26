@@ -79,8 +79,8 @@
                                         </SfMultiSelect>
                                     </div>
                                     <div class="form-group col-md-3">
-                                        <BSButton Color="Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
-                                        <BSButton Color="Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
+                                        <BSButton Color="BlazorStrap.Color.Primary" ButtonType="BlazorStrap.ButtonType.Submit">Search</BSButton>
+                                        <BSButton Color="BlazorStrap.Color.Secondary" ButtonType="BlazorStrap.ButtonType.Button" @onclick="ClearSearchBtnClick">Clear Search</BSButton>
                                     </div>
                                     <div class="form-group col-md-12">
                                         <DataAnnotationsValidator />
@@ -102,7 +102,7 @@
             <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
             <SfDataManager AdaptorInstance="@typeof(VslaGroupShareOutHeaderAdapter)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
             <GridEvents OnActionBegin="OnVslaGroupShareOutHeaderActionBegin" OnActionComplete="@OnVslaGroupShareOutHeaderActionComplete" TValue="VslaGroupShareOutHeader"></GridEvents>
-            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog" Dialog="DialogParams">
                 <Template Context="VslaGroupShareOutHeaderContext">
                     @{
                         VslaGroupShareOutHeaderReviewData = (VslaGroupShareOutHeaderContext as VslaGroupShareOutHeader);
@@ -452,6 +452,8 @@
             new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
         };
     #endregion Toasters
+
+    private DialogSettings DialogParams = new DialogSettings { Height = "auto", MinHeight = "90vh", Width = "98%" };
     SfGrid<VslaGroupShareOutHeader> VslaGroupShareOutHeaderGrid;
     private VslaGroupShareOutHeader VslaGroupShareOutHeaderReviewData { get; set; }
 

@@ -24,7 +24,7 @@
             <GridSelectionSettings Mode="Syncfusion.Blazor.Grids.SelectionMode.Row" Type="Syncfusion.Blazor.Grids.SelectionType.Single"></GridSelectionSettings>
             <GridSearchSettings IgnoreCase="true"></GridSearchSettings>
             <GridEvents OnActionBegin="OnAvatActionBegin" OnActionComplete="OnAvatActionComplete" TValue="spAVATGetAllResult"></GridEvents>
-            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog">
+            <GridEditSettings AllowAdding="true" AllowDeleting="false" AllowEditing="true" Mode="@EditMode.Dialog" Dialog="DialogParams">
                 <Template Context="ReviewHeaderContext">
                     @{
                         HVatReviewData = (ReviewHeaderContext as spAVATGetAllResult);
@@ -165,7 +165,7 @@
                                 </div>
                                 <div class="form-group col-md-4">
                                     <p>HH Member</p>
-                                    <SfDropDownList ID="HouseHoldMemberId" @bind-Value="@(HVatReviewData.HouseHoldMemberId)" Enabled="false" TItem="ViewHouseHoldMembers" TValue="int" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
+                                    <SfDropDownList ID="HouseHoldMemberId" @bind-Value="@(HVatReviewData.HouseHoldMemberId)" Enabled="false" TItem="ViewHouseHoldMembers" TValue="int?" DataSource="@HouseHoldMembersData" Placeholder="Please select" FloatLabelType="FloatLabelType.Never" AllowFiltering="true">
                                         <DropDownListTemplates TItem="ViewHouseHoldMembers">
                                             <ItemTemplate>
                                                 <div style="margin-left:10px;">
@@ -697,6 +697,8 @@
         new ToastModel{ Title = "Information!", Content=ToastContent, CssClass="e-toast-info", Icon="e-info toast-icons" }
     };
     #endregion Toasters
+
+    private DialogSettings DialogParams = new DialogSettings { Height = "auto", MinHeight = "90vh", Width = "98%" };
 
     SfGrid<spAVATGetAllResult> HVatGrid;
     spAVATGetAllResult HVatReviewData { get; set; }
